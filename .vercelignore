@@ -1,0 +1,27 @@
+# Backend
+backend/
+*.py
+
+# Git
+.git
+.gitignore
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
