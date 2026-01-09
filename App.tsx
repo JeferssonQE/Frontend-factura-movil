@@ -196,8 +196,7 @@ const App: React.FC = () => {
           description: p.description,
           unit: p.unit,
           basePrice: parseFloat(p.base_price),
-          hasIgv: p.has_igv,
-          stock: p.stock
+          hasIgv: p.has_igv
         })));
 
         setClients(loadedClients.map((c: any) => ({
@@ -455,24 +454,140 @@ const App: React.FC = () => {
       showToast('DOCUMENTO EMITIDO');
     } catch (error: any) {
       console.error('Error guardando invoice:', error);
-      showToast(error.message || 'ERROR AL GUARDAR', 'error');
+      
+      // Manejo específico para error de duplicado
+      if (error.message && error.message.includes('duplicate key value violates unique constraint')) {
+        showToast('ERROR: Ya existe un comprobante con esa serie y número. Intenta nuevamente.', 'error');
+      } else {
+        showToast(error.message || 'ERROR AL GUARDAR', 'error');
+      }
     }
   };
 
   const handleEmitCreditNote = async (baseInvoice: Invoice, reason: CreditNoteReason) => {
-    const nc: Invoice = {
-      ...baseInvoice,
-      id: Date.now().toString(),
-      type: InvoiceType.NOTA_CREDITO,
-      series: 'NC01',
-      number: (invoices.filter((i: Invoice) => i.type === InvoiceType.NOTA_CREDITO).length + 1).toString().padStart(4, '0'),
-      date: new Date().toISOString().split('T')[0],
-      status: InvoiceStatus.ACEPTADO,
-      referencedInvoiceId: `${baseInvoice.series}-${baseInvoice.number}`,
-      creditNoteReason: reason
-    };
-    setInvoices((prev: Invoice[]) => [...prev, nc]);
-    showToast("NOTA DE CRÉDITO EMITIDA");
+    if (!activeSenderId) {
+      showToast("Selecciona una empresa primero", "error");
+      return;
+    }
+
+    const sender = senders.find(s => s.id === activeSenderId);
+    if (!sender) {
+      showToast("Empresa no encontrada", "error");
+      return;
+    }
+
+    try {
+      // Crear objeto de Nota de Crédito
+      const series = 'NC01';
+      const nextNumber = await SupabaseDB.getNextInvoiceNumber(activeSenderId, series);
+      
+      const nc: Invoice = {
+        ...baseInvoice,
+        id: Date.now().toString(),
+        type: InvoiceType.NOTA_CREDITO,
+        series,
+        number: nextNumber,
+        date: new Date().toISOString().split('T')[0],
+        status: InvoiceStatus.PROCESANDO,
+        referencedInvoiceId: `${baseInvoice.series}-${baseInvoice.number}`,
+        creditNoteReason: reason,
+        // Montos negativos para nota de crédito
+        subtotal: -baseInvoice.subtotal,
+        igv: -baseInvoice.igv,
+        total: -baseInvoice.total,
+        items: baseInvoice.items.map(item => ({
+          ...item,
+          quantity: -item.quantity,
+          total: -item.total
+        }))
+      };
+
+      // Buscar cliente
+      const client = clients.find(c => c.id === baseInvoice.clientId) || {
+        id: 'temp',
+        senderId: activeSenderId,
+        name: baseInvoice.clientName,
+        dni: baseInvoice.clientDocument?.length === 8 ? baseInvoice.clientDocument : undefined,
+        ruc: baseInvoice.clientDocument?.length === 11 ? baseInvoice.clientDocument : undefined
+      };
+
+      // Desencriptar credenciales SUNAT
+      const sunatUser = sender.sunatUser ? await decrypt(sender.sunatUser) : '';
+      const sunatPass = sender.sunatPass ? await decrypt(sender.sunatPass) : '';
+
+      if (!sunatUser || !sunatPass) {
+        showToast("Configura las credenciales SUNAT en tu perfil", "error");
+        return;
+      }
+
+      // Guardar NC en base de datos primero
+      const savedNC = await SupabaseDB.createInvoice(nc, nc.items);
+      
+      // Actualizar estado local
+      setInvoices((prev: Invoice[]) => [...prev, { ...nc, id: savedNC.id }]);
+      showToast("Procesando Nota de Crédito...");
+
+      // Emitir a SUNAT
+      const { SunatApiService } = await import('./services/sunatApi');
+      const result = await SunatApiService.emitirNotaCreditoYEsperar(
+        baseInvoice,
+        nc,
+        nc.items,
+        sender,
+        client,
+        {
+          ruc: sender.ruc,
+          usuario: sunatUser,
+          password: sunatPass
+        },
+        `Nota de crédito por motivo: ${reason}`
+      );
+
+      if (result.success) {
+        // Actualizar estado en base de datos
+        await SupabaseDB.updateInvoiceStatus(savedNC.id, InvoiceStatus.ACEPTADO, {
+          pdf_base64: result.pdf?.content,
+          sunat_message: result.message
+        });
+
+        // Actualizar estado local
+        setInvoices((prev: Invoice[]) => 
+          prev.map(inv => 
+            inv.id === savedNC.id 
+              ? { ...inv, status: InvoiceStatus.ACEPTADO, pdfBase64: result.pdf?.content }
+              : inv
+          )
+        );
+
+        showToast("NOTA DE CRÉDITO EMITIDA EXITOSAMENTE");
+      } else {
+        throw new Error(result.error || 'Error desconocido');
+      }
+
+    } catch (error: any) {
+      console.error('Error emitiendo Nota de Crédito:', error);
+      showToast(`Error: ${error.message}`, "error");
+      
+      // Actualizar estado a FALLO si ya se guardó
+      const failedNC = invoices.find(inv => 
+        inv.type === InvoiceType.NOTA_CREDITO && 
+        inv.referencedInvoiceId === `${baseInvoice.series}-${baseInvoice.number}`
+      );
+      
+      if (failedNC) {
+        await SupabaseDB.updateInvoiceStatus(failedNC.id, InvoiceStatus.FALLO, {
+          sunat_message: error.message
+        });
+        
+        setInvoices((prev: Invoice[]) => 
+          prev.map(inv => 
+            inv.id === failedNC.id 
+              ? { ...inv, status: InvoiceStatus.FALLO }
+              : inv
+          )
+        );
+      }
+    }
   };
 
   const handleLogout = async () => {
@@ -538,8 +653,7 @@ const App: React.FC = () => {
       description: p.description,
       unit: p.unit,
       basePrice: parseFloat(p.base_price),
-      hasIgv: p.has_igv,
-      stock: p.stock
+      hasIgv: p.has_igv
     })));
 
     setClients(loadedClients.map((c: any) => ({

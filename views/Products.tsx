@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-// Added AlertTriangle to imports
-import { Plus, Search, Trash2, Pencil, Package, CheckCircle2, AlertCircle, Info, X, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Pencil, Package, CheckCircle2, AlertCircle, X, AlertTriangle } from 'lucide-react';
 import { Product, UnitOfMeasure } from '../types';
+import ProductSearchSelector from '../components/ProductSearchSelector';
 
 interface ProductsProps {
   products: Product[];
@@ -20,7 +20,7 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const filteredProducts = products.filter(p => 
-    p.senderId === senderId && 
+    String(p.senderId) === String(senderId) && 
     p.description.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -76,14 +76,13 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
   return (
     <div className="space-y-4 relative">
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Buscar en el catálogo..."
+        <div className="flex-1">
+          <ProductSearchSelector
+            products={products.filter(p => String(p.senderId) === String(senderId))}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white border-none rounded-2xl py-3 pl-11 pr-4 shadow-sm text-sm focus:ring-2 focus:ring-blue-500 font-medium uppercase"
+            onChange={(value) => setSearch(value)}
+            placeholder="BUSCAR EN EL CATÁLOGO..."
+            showDropdownButton={false}
           />
         </div>
         <button 

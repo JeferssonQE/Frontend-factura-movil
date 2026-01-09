@@ -13,6 +13,8 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,15 +24,24 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     try {
       if (isLogin) {
         await AuthService.signIn(email, password);
+        onSuccess();
       } else {
         if (!name.trim()) {
           setError('Ingresa tu nombre');
           setLoading(false);
           return;
         }
-        await AuthService.signUp(email, password, name);
+        const result = await AuthService.signUp(email, password, name);
+        
+        // Si el signup fue exitoso pero el usuario necesita confirmar email
+        if (result.user && !result.user.email_confirmed_at) {
+          setRegisteredEmail(email);
+          setShowEmailConfirmation(true);
+        } else {
+          // Si no necesita confirmación, continuar
+          onSuccess();
+        }
       }
-      onSuccess();
     } catch (err: any) {
       setError(err.message || 'Error de autenticación');
     } finally {

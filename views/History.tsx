@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Search, FileText, ExternalLink, X, Calendar, Download, CheckCircle2, Clock, AlertCircle, Printer, Ban, ArrowLeftRight, FileWarning, FileCheck, ArrowDownLeft, ShieldCheck, CornerUpLeft } from 'lucide-react';
+import { Search, FileText, ExternalLink, X, Calendar, Download, CheckCircle2, Clock, AlertCircle, Printer, Ban, ArrowLeftRight, FileWarning, FileCheck, ArrowDownLeft, ShieldCheck, CornerUpLeft, Share2 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
+import { PDFService } from '../services/pdfService';
 
 interface HistoryProps {
   invoices: Invoice[];
@@ -221,26 +222,30 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
                ) : (
                  <div className="flex flex-col gap-3 pt-2 px-2">
                    <div className="flex gap-3">
+                     <button 
+                       onClick={() => {
+                         if (selectedInvoice?.pdfBase64) {
+                           PDFService.viewPDF(selectedInvoice.pdfBase64);
+                         } else {
+                           alert('PDF no disponible para visualizar');
+                         }
+                       }}
+                       className={`flex-1 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all ${
+                         selectedInvoice?.pdfBase64
+                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                           : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                       }`}
+                       disabled={!selectedInvoice?.pdfBase64}
+                     >
+                       <FileText size={18} /> Ver PDF Oficial
+                     </button>
                      <button onClick={() => window.print()} className="flex-1 bg-slate-100 text-slate-700 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-slate-200 active:scale-95 transition-all">
-                       <Printer size={18} /> Imprimir Ticket
+                       <Printer size={18} /> Imprimir
                      </button>
                      <button 
                        onClick={() => {
                          if (selectedInvoice?.pdfBase64) {
-                           // Descargar PDF desde base64
-                           const byteCharacters = atob(selectedInvoice.pdfBase64);
-                           const byteNumbers = new Array(byteCharacters.length);
-                           for (let i = 0; i < byteCharacters.length; i++) {
-                             byteNumbers[i] = byteCharacters.charCodeAt(i);
-                           }
-                           const byteArray = new Uint8Array(byteNumbers);
-                           const blob = new Blob([byteArray], { type: 'application/pdf' });
-                           const url = URL.createObjectURL(blob);
-                           const link = document.createElement('a');
-                           link.href = url;
-                           link.download = `${selectedInvoice.series}-${selectedInvoice.number}.pdf`;
-                           link.click();
-                           URL.revokeObjectURL(url);
+                           PDFService.downloadPDF(selectedInvoice.pdfBase64, `${selectedInvoice.series}-${selectedInvoice.number}.pdf`);
                          } else {
                            alert('PDF no disponible para este documento');
                          }
@@ -252,6 +257,25 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
                        }`}
                      >
                        <Download size={20} />
+                     </button>
+                     <button 
+                       onClick={() => {
+                         if (selectedInvoice?.pdfBase64) {
+                           // Buscar teléfono del cliente (necesitarías agregarlo al invoice o buscarlo)
+                           const clientPhone = ''; // Por ahora vacío, se puede mejorar
+                           PDFService.shareWhatsApp(selectedInvoice, clientPhone, selectedInvoice.pdfBase64);
+                         } else {
+                           alert('PDF no disponible para compartir');
+                         }
+                       }}
+                       className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-sm active:scale-95 transition-all border ${
+                         selectedInvoice?.pdfBase64 
+                           ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' 
+                           : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                       }`}
+                       disabled={!selectedInvoice?.pdfBase64}
+                     >
+                       <Share2 size={20} />
                      </button>
                    </div>
                    

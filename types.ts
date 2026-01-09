@@ -1,9 +1,11 @@
 
 export enum UnitOfMeasure {
   KILOGRAMO = 'KILOGRAMO',
-  CAJA = 'CAJA',
+  CAJA = 'CAJA', 
   UNIDAD = 'UNIDAD',
-  BOLSA = 'BOLSA'
+  BOLSA = 'BOLSA',
+  LITRO = 'LITRO',
+  DOCENA = 'DOCENA'
 }
 
 export enum InvoiceType {
@@ -74,6 +76,7 @@ export interface Invoice {
   senderId: string;
   clientId: string;
   clientName: string;
+  clientDocument?: string;
   type: InvoiceType;
   series: string;
   number: string;

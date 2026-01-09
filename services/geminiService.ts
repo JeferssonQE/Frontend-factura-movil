@@ -92,7 +92,7 @@ export const processInvoiceImage = async (base64Image: string, catalog: Product[
   try {
     console.log('🖼️ Procesando imagen con', catalog.length, 'productos en catálogo');
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: {
         parts: [
           { text: getSystemPrompt(catalog) },
@@ -128,7 +128,7 @@ export const processInvoiceAudio = async (base64Audio: string, mimeType: string,
   try {
     console.log('🎤 Procesando audio con', catalog.length, 'productos en catálogo');
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: {
         parts: [
           { text: getSystemPrompt(catalog) + "\n\n🎤 AUDIO DE VENTA DICTADA - Haz matching con el catálogo:" },

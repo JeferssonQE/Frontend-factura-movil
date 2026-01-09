@@ -238,13 +238,13 @@ export const SupabaseDB = {
     return data;
   },
 
-  async createProduct(product: { sender_id: string | number; description: string; unit: string; base_price: number; has_igv: boolean; stock?: number }) {
+  async createProduct(product: { sender_id: string | number; description: string; unit: string; base_price: number; has_igv: boolean }) {
     const { data, error } = await supabase.from('products').insert(product).select().single();
     if (error) throw error;
     return data;
   },
 
-  async updateProduct(id: string | number, updates: Partial<{ description: string; unit: string; base_price: number; has_igv: boolean; stock: number }>) {
+  async updateProduct(id: string | number, updates: Partial<{ description: string; unit: string; base_price: number; has_igv: boolean }>) {
     const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
     if (error) throw error;
     return data;
@@ -286,17 +286,37 @@ export const SupabaseDB = {
   },
 
   async getNextInvoiceNumber(senderId: string | number, series: string) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .select('number')
-      .eq('sender_id', senderId)
-      .eq('series', series)
-      .order('number', { ascending: false })
-      .limit(1);
+    // Intentar hasta 5 veces para evitar conflictos de concurrencia
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('number')
+        .eq('sender_id', senderId)
+        .eq('series', series)
+        .order('number', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      
+      const lastNumber = data?.[0]?.number ? parseInt(data[0].number) : 0;
+      const nextNumber = String(lastNumber + 1 + attempt).padStart(8, '0');
+      
+      // Verificar que este número no existe
+      const { data: existing } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('sender_id', senderId)
+        .eq('series', series)
+        .eq('number', nextNumber)
+        .limit(1);
+      
+      if (!existing || existing.length === 0) {
+        return nextNumber;
+      }
+    }
     
-    if (error) throw error;
-    const lastNumber = data?.[0]?.number ? parseInt(data[0].number) : 0;
-    return String(lastNumber + 1).padStart(8, '0');
+    // Si después de 5 intentos no encuentra un número libre, usar timestamp
+    return String(Date.now()).slice(-8);
   },
 
   // REPORTES

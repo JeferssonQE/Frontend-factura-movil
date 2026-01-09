@@ -4,6 +4,9 @@ import { processInvoiceImage, processInvoiceAudio } from '../services/geminiServ
 import { SunatApiService } from '../services/sunatApi';
 import { SupabaseDB } from '../services/supabase';
 import { decrypt } from '../services/crypto';
+import { checkRateLimit, incrementUsage, getRemainingUsage } from '../services/rateLimiter';
+import { PDFService } from '../services/pdfService';
+import ProductSearchSelector from '../components/ProductSearchSelector';
 import React, { useState, useRef } from 'react';
 import { Camera, Plus, Trash2, X, ShoppingCart, User, CheckCircle2, RotateCcw, ChevronDown, Zap, Layers, Mic, Square, AlertTriangle, MessageCircle, Download, Loader2 } from 'lucide-react';
 
@@ -75,6 +78,15 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
   };
 
   const startRecording = async () => {
+    // Verificar límite de uso
+    const userId = sender?.userId || 'anonymous';
+    const { allowed, remaining } = checkRateLimit(userId);
+    
+    if (!allowed) {
+      alert(`⚠️ Has alcanzado el límite diario de 5 extracciones con IA. Intenta mañana o ingresa los datos manualmente.`);
+      return;
+    }
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -89,7 +101,10 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
           setIsProcessing(true);
           setProcessingType('audio');
           const result = await processInvoiceAudio(base64Audio, 'audio/webm', products.filter(p => p.senderId === sender?.id));
-          if (result) fillFormWithResult(result);
+          if (result) {
+            fillFormWithResult(result);
+            incrementUsage(userId); // Incrementar contador
+          }
           setIsProcessing(false);
           setProcessingType(null);
         };
@@ -114,6 +129,15 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
     const file = e.target.files?.[0];
     if (!file) return;
     
+    // Verificar límite de uso
+    const userId = sender?.userId || 'anonymous';
+    const { allowed, remaining } = checkRateLimit(userId);
+    
+    if (!allowed) {
+      alert(`⚠️ Has alcanzado el límite diario de 5 extracciones con IA. Intenta mañana o ingresa los datos manualmente.`);
+      return;
+    }
+    
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
@@ -123,7 +147,10 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
         setIsProcessing(true);
         setProcessingType('image');
         const result = await processInvoiceImage(base64, products.filter(p => p.senderId === sender?.id));
-        if (result) fillFormWithResult(result);
+        if (result) {
+          fillFormWithResult(result);
+          incrementUsage(userId); // Incrementar contador
+        }
         setIsProcessing(false);
         setProcessingType(null);
       }, 100);
@@ -341,24 +368,21 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (pdfBase64 && emissionSuccess) {
-      SunatApiService.downloadPdf(pdfBase64, `${emissionSuccess.series}-${emissionSuccess.number}.pdf`);
-    }
+  const handleWhatsAppShare = () => {
+    if (!emissionSuccess) return;
+    PDFService.shareWhatsApp(emissionSuccess, clientData.phone, pdfBase64);
   };
 
   const handleViewPdf = () => {
     if (pdfBase64) {
-      SunatApiService.openPdf(pdfBase64);
+      PDFService.viewPDF(pdfBase64);
     }
   };
 
-  const handleWhatsAppShare = () => {
-    if (!emissionSuccess) return;
-    const text = `Hola ${emissionSuccess.clientName}, le envío su comprobante electrónico ${emissionSuccess.type} ${emissionSuccess.series}-${emissionSuccess.number} por un monto de S/ ${emissionSuccess.total.toFixed(2)}.`;
-    const encodedText = encodeURIComponent(text);
-    const phoneNumber = clientData.phone?.replace(/\D/g, '') || '';
-    window.open(`https://wa.me/${phoneNumber.startsWith('51') ? phoneNumber : '51' + phoneNumber}?text=${encodedText}`, '_blank');
+  const handleDownloadPdf = () => {
+    if (pdfBase64 && emissionSuccess) {
+      PDFService.downloadPDF(pdfBase64, `${emissionSuccess.series}-${emissionSuccess.number}.pdf`);
+    }
   };
 
   if (emissionSuccess) {
@@ -381,7 +405,7 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
           </button>
 
           <button 
-            onClick={() => alert("Mostrando PDF Oficial...")}
+            onClick={() => handleViewPdf()}
             className="w-full bg-blue-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-100 active:scale-95 transition-all"
           >
             <Layers size={20} /> Ver PDF Oficial
@@ -588,21 +612,34 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
         <div className="space-y-3">
           {items.map((item, index) => (
             <div key={item.productId} className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-4 animate-in slide-in-from-left duration-300">
-              {/* Descripción + Eliminar */}
+              {/* Campo unificado: Descripción + Búsqueda + Catálogo */}
               <div className="flex items-center gap-2 mb-3">
-                <input 
-                  value={item.description} 
-                  onChange={e => updateItem(index, { description: e.target.value.toUpperCase() })} 
-                  placeholder="Nombre del producto" 
-                  className="flex-1 bg-slate-50 rounded-xl px-3 py-2.5 font-bold text-slate-800 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-slate-300 uppercase" 
-                />
+                <div className="flex-1">
+                  <ProductSearchSelector 
+                    products={products.filter(p => String(p.senderId) === String(sender?.id))}
+                    value={item.description}
+                    onChange={(value) => updateItem(index, { description: value.toUpperCase() })}
+                    onSelectProduct={(selectedProduct) => {
+                      updateItem(index, {
+                        productId: selectedProduct.id,
+                        description: selectedProduct.description,
+                        unit: selectedProduct.unit,
+                        unitPrice: selectedProduct.basePrice,
+                        hasIgv: selectedProduct.hasIgv,
+                        total: selectedProduct.basePrice * (item.quantity || 1) * (selectedProduct.hasIgv ? 1.18 : 1)
+                      });
+                    }}
+                    placeholder="NOMBRE DEL PRODUCTO"
+                    showDropdownButton={true}
+                  />
+                </div>
                 <button onClick={() => setItems(items.filter((_, i) => i !== index))} className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                   <Trash2 size={18} />
                 </button>
               </div>
 
-              {/* Cantidad + P.Unitario + Total */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
+              {/* Cantidad + Unidad + P.Unitario + Total */}
+              <div className="grid grid-cols-4 gap-2 mb-3">
                 <div>
                   <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block px-1">Cant.</label>
                   <input 
@@ -612,6 +649,19 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
                     placeholder="1"
                     className="w-full bg-slate-50 rounded-xl px-2 py-3 text-sm font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none" 
                   />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block px-1">Unidad</label>
+                  <select
+                    value={item.unit}
+                    onChange={e => updateItem(index, { unit: e.target.value as UnitOfMeasure })}
+                    className="w-full bg-slate-50 rounded-xl px-2 py-3 text-[11px] font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
+                  >
+                    <option value={UnitOfMeasure.UNIDAD}>UNIDAD</option>
+                    <option value={UnitOfMeasure.KILOGRAMO}>KILOGRAMO</option>
+                    <option value={UnitOfMeasure.CAJA}>CAJA</option>
+                    <option value={UnitOfMeasure.BOLSA}>BOLSA</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block px-1">P.Unit</label>
@@ -658,30 +708,53 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
       </section>
 
       {/* Resumen Final */}
-      <section className="bg-white p-8 rounded-[48px] shadow-xl shadow-slate-200/50 border border-slate-100 mx-1">
-        <div className="space-y-3 mb-8">
-          <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            <span>Subtotal</span>
-            <span className="text-slate-800 font-black">S/ {(gravada + exonerada).toFixed(2)}</span>
+      <section className="bg-gradient-to-br from-slate-50 to-white p-6 rounded-[40px] shadow-xl shadow-slate-200/30 border border-slate-100 mx-1 relative overflow-hidden">
+        {/* Decoración de fondo */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -translate-y-16 translate-x-16 opacity-50"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-50 rounded-full translate-y-12 -translate-x-12 opacity-30"></div>
+        
+        <div className="relative z-10">
+          {/* Header del resumen */}
+          <div className="text-center mb-6">
+            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Resumen de Venta</h3>
+            <div className="w-16 h-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 mx-auto rounded-full"></div>
           </div>
-          <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            <span>IGV (18%)</span>
-            <span className="text-blue-600 font-black">S/ {igvTotal.toFixed(2)}</span>
-          </div>
-          <div className="h-px bg-slate-100 my-4" />
-          <div className="flex justify-between items-end">
-            <div className="flex flex-col">
-              <span className="text-[9px] font-black text-blue-600 uppercase tracking-[0.3em]">Total a Pagar</span>
-              <span className="text-5xl font-black text-slate-900 tracking-tighter">S/ {total.toFixed(2)}</span>
+
+          {/* Líneas de detalle */}
+          <div className="space-y-4 mb-6">
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <span className="text-sm font-bold text-slate-600">Subtotal</span>
+              <span className="text-sm font-black text-slate-800">S/ {(gravada + exonerada).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <span className="text-sm font-bold text-slate-600">IGV (18%)</span>
+              <span className="text-sm font-black text-blue-600">S/ {igvTotal.toFixed(2)}</span>
             </div>
           </div>
+
+          {/* Total destacado */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-[28px] text-white mb-6 shadow-lg shadow-blue-200/50">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-blue-100 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Total a Pagar</p>
+                <p className="text-3xl font-black tracking-tight">S/ {total.toFixed(2)}</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Botón de emisión */}
+          <button 
+            onClick={handleOpenConfirm} 
+            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
+          >
+            <CheckCircle2 size={22} /> Emitir Documento
+          </button>
         </div>
-        <button 
-          onClick={handleOpenConfirm} 
-          className="w-full bg-blue-600 text-white h-20 rounded-[32px] shadow-2xl shadow-blue-200 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
-        >
-          <CheckCircle2 size={24} /> Emitir Documento
-        </button>
       </section>
 
       {/* Modal de Confirmación */}

@@ -1,6 +1,6 @@
 # repository.py - CRUD operations para FactuMovil AI (con Supabase Auth)
 from connection import Database
-from crypto import encrypt, decrypt
+from crypto import encrypt
 from typing import Optional, List, Dict
 import uuid
 
@@ -21,17 +21,12 @@ class Repository:
 
     def get_sender_by_id(self, sender_id: str) -> Optional[Dict]:
         sender = self.db.fetch_one("SELECT * FROM senders WHERE id = %s", (sender_id,))
-        if sender:
-            # Desencriptar credenciales SUNAT
-            sender['sunat_user'] = decrypt(sender.get('sunat_user_encrypted'))
-            sender['sunat_pass'] = decrypt(sender.get('sunat_pass_encrypted'))
+        # Las credenciales se mantienen encriptadas
         return sender
 
     def get_sender_by_ruc(self, ruc: str) -> Optional[Dict]:
         sender = self.db.fetch_one("SELECT * FROM senders WHERE ruc = %s", (ruc,))
-        if sender:
-            sender['sunat_user'] = decrypt(sender.get('sunat_user_encrypted'))
-            sender['sunat_pass'] = decrypt(sender.get('sunat_pass_encrypted'))
+        # Las credenciales se mantienen encriptadas
         return sender
 
     def create_sender(self, user_id: str, name: str, ruc: str, sunat_user: str = None, sunat_pass: str = None) -> Optional[str]:
@@ -88,11 +83,11 @@ class Repository:
         return self.db.fetch_one("SELECT * FROM products WHERE id = %s", (product_id,))
 
     def create_product(self, sender_id: str, description: str, unit: str = "UNIDAD",
-                       base_price: float = 0, has_igv: bool = True, stock: int = 0) -> Optional[str]:
+                       base_price: float = 0, has_igv: bool = True) -> Optional[str]:
         product_id = str(uuid.uuid4())
         success = self.db.execute(
-            "INSERT INTO products (id, sender_id, description, unit, base_price, has_igv, stock) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            (product_id, sender_id, description, unit, base_price, has_igv, stock)
+            "INSERT INTO products (id, sender_id, description, unit, base_price, has_igv) VALUES (%s, %s, %s, %s, %s, %s)",
+            (product_id, sender_id, description, unit, base_price, has_igv)
         )
         return product_id if success else None
 
@@ -101,12 +96,7 @@ class Repository:
         values = list(kwargs.values()) + [product_id]
         return self.db.execute(f"UPDATE products SET {fields} WHERE id = %s", values)
 
-    def update_stock(self, product_id: str, quantity: int) -> bool:
-        """Resta stock después de una venta"""
-        return self.db.execute(
-            "UPDATE products SET stock = stock - %s WHERE id = %s AND stock >= %s",
-            (quantity, product_id, quantity)
-        )
+
 
     def delete_product(self, product_id: str) -> bool:
         return self.db.execute("DELETE FROM products WHERE id = %s", (product_id,))

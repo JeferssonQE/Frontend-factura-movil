@@ -17,7 +17,7 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete }
   const [formError, setFormError] = useState<string | null>(null);
 
   const filteredClients = clients.filter(c => 
-    c.senderId === senderId && 
+    String(c.senderId) === String(senderId) && 
     (c.name.toLowerCase().includes(search.toLowerCase()) || (c.dni || '').includes(search) || (c.ruc || '').includes(search))
   );
 

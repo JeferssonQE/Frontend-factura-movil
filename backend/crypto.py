@@ -1,51 +1,82 @@
-# crypto.py - Encriptación AES-256 para datos sensibles (credenciales SUNAT)
+# crypto.py - Encriptación AES-GCM para datos sensibles (credenciales SUNAT)
+# Compatible con el frontend (services/crypto.ts)
 import base64
 import os
-from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-# La clave maestra debe estar en variable de entorno
-# Genera una con: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-ENCRYPTION_KEY = os.environ.get('FACTUMOVIL_ENCRYPTION_KEY', 'CAMBIAR_EN_PRODUCCION')
+# La misma clave que en el frontend (.env.local -> VITE_ENCRYPTION_KEY)
+ENCRYPTION_KEY = os.environ.get('FACTUMOVIL_ENCRYPTION_KEY', 'factumovil-default-key-change-in-prod')
+SALT = b'factumovil-salt-v1'
 
 
-def _get_fernet():
-    """Deriva una clave Fernet desde la clave maestra"""
-    if ENCRYPTION_KEY == 'CAMBIAR_EN_PRODUCCION':
-        print("⚠️  ADVERTENCIA: Usando clave de encriptación por defecto. Configura FACTUMOVIL_ENCRYPTION_KEY")
-    
-    # Derivar clave usando PBKDF2
+def _derive_key(password: str) -> bytes:
+    """Deriva una clave AES-256 desde el password usando PBKDF2"""
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b'factumovil_salt_v1',  # Salt fijo para poder desencriptar
+        salt=SALT,
         iterations=100000,
     )
-    key = base64.urlsafe_b64encode(kdf.derive(ENCRYPTION_KEY.encode()))
-    return Fernet(key)
+    return kdf.derive(password.encode())
 
 
 def encrypt(plain_text: str) -> str:
-    """Encripta texto plano → string base64"""
+    """Encripta texto plano → string Base64 (compatible con frontend)"""
     if not plain_text:
         return None
-    f = _get_fernet()
-    encrypted = f.encrypt(plain_text.encode())
-    return encrypted.decode()
-
-
-def decrypt(encrypted_text: str) -> str:
-    """Desencripta string base64 → texto plano"""
-    if not encrypted_text:
+    
+    try:
+        # Derivar clave
+        key = _derive_key(ENCRYPTION_KEY)
+        
+        # Generar IV aleatorio de 12 bytes
+        iv = os.urandom(12)
+        
+        # Encriptar con AES-GCM
+        aesgcm = AESGCM(key)
+        ciphertext = aesgcm.encrypt(iv, plain_text.encode('utf-8'), None)
+        
+        # Concatenar IV + datos encriptados y convertir a Base64
+        combined = iv + ciphertext
+        return base64.b64encode(combined).decode('utf-8')
+    
+    except Exception as e:
+        print(f"Error encriptando: {e}")
         return None
-    f = _get_fernet()
-    decrypted = f.decrypt(encrypted_text.encode())
-    return decrypted.decode()
+
+
+def decrypt(encrypted_base64: str) -> str:
+    """Desencripta string Base64 → texto plano (compatible con frontend)"""
+    if not encrypted_base64:
+        return None
+    
+    try:
+        # Derivar clave
+        key = _derive_key(ENCRYPTION_KEY)
+        
+        # Decodificar Base64 y separar IV + datos
+        combined = base64.b64decode(encrypted_base64)
+        iv = combined[:12]  # Primeros 12 bytes son el IV
+        ciphertext = combined[12:]  # Resto son los datos encriptados
+        
+        # Desencriptar con AES-GCM
+        aesgcm = AESGCM(key)
+        plaintext = aesgcm.decrypt(iv, ciphertext, None)
+        
+        return plaintext.decode('utf-8')
+    
+    except Exception as e:
+        print(f"Error desencriptando: {e}")
+        return None
 
 
 # Test
 if __name__ == "__main__":
+    print("=== Test de Encriptación AES-GCM ===")
+    print(f"Clave: {ENCRYPTION_KEY[:20]}...")
+    
     original = "MODDATOS123"
     print(f"Original: {original}")
     
@@ -55,5 +86,10 @@ if __name__ == "__main__":
     decrypted = decrypt(encrypted)
     print(f"Desencriptado: {decrypted}")
     
-    assert original == decrypted
-    print("✅ Encriptación funcionando correctamente")
+    if original == decrypted:
+        print("✅ Test exitoso: Encriptación/Desencriptación funciona correctamente")
+    else:
+        print("❌ Test fallido: Los datos no coinciden")
+    
+    print("✅ Credenciales listas para el servicio SUNAT")
+
