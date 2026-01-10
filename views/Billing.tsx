@@ -3,7 +3,6 @@ import { Sender, Product, Client, Invoice, InvoiceType, UnitOfMeasure, InvoiceIt
 import { processInvoiceImage, processInvoiceAudio } from '../services/geminiService';
 import { SunatApiService } from '../services/sunatApi';
 import { SupabaseDB } from '../services/supabase';
-import { decrypt } from '../services/crypto';
 import { checkRateLimit, incrementUsage, getRemainingUsage } from '../services/rateLimiter';
 import { PDFService } from '../services/pdfService';
 import ProductSearchSelector from '../components/ProductSearchSelector';
@@ -48,6 +47,15 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
   const total = gravada + exonerada + igvTotal;
 
   const fillFormWithResult = (result: IAExtractionResult) => {
+    console.log('🤖 Resultado de IA:', result);
+    
+    // Detectar automáticamente el tipo de documento
+    if (result.tipo_documento) {
+      const detectedType = result.tipo_documento === 'FACTURA' ? InvoiceType.FACTURA : InvoiceType.BOLETA;
+      setType(detectedType);
+      console.log('🎯 Tipo detectado automáticamente:', detectedType);
+    }
+    
     setClientData(prev => ({
       ...prev,
       name: result.cliente.cliente || '',
@@ -317,21 +325,12 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
       setEmissionStep(2);
       setEmissionStatus('Enviando a SUNAT...');
 
-      // Desencriptar credenciales SUNAT
-      const sunatUser = sender.sunatUser ? await decrypt(sender.sunatUser) : '';
-      const sunatPass = sender.sunatPass ? await decrypt(sender.sunatPass) : '';
-
-      // Llamar a la API SUNAT
+      // Llamar a la API SUNAT (el backend obtendrá las credenciales desde Supabase)
       const result = await SunatApiService.emitirYEsperar(
         invoiceData,
         items,
         sender,
-        clientForApi,
-        {
-          ruc: sender.ruc,
-          usuario: sunatUser,
-          password: sunatPass
-        }
+        clientForApi
       );
 
       setEmissionStep(3);
@@ -434,7 +433,7 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
               const isActive = emissionStep === i + 1;
               const isDone = emissionStep > i + 1;
               return (
-                <div key={i} className={`flex items-center gap-4 transition-all duration-500 ${isActive ? 'scale-110' : isDone ? 'opacity-100' : 'opacity-30'}`}>
+                <div key={`step-${i}-${label}`} className={`flex items-center gap-4 transition-all duration-500 ${isActive ? 'scale-110' : isDone ? 'opacity-100' : 'opacity-30'}`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDone ? 'bg-emerald-500 text-white' : isActive ? 'bg-blue-600 text-white animate-pulse' : 'bg-slate-100 text-slate-400'}`}>
                     {isDone ? <CheckCircle2 size={20} /> : <Loader2 size={20} className="animate-spin" />}
                   </div>
@@ -463,7 +462,7 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
             </div>
             <ul className="space-y-1">
               {errors.map((err, i) => (
-                <li key={i} className="text-[11px] font-bold flex items-start gap-2">
+                <li key={`error-${i}-${err.substring(0, 10)}`} className="text-[11px] font-bold flex items-start gap-2">
                   <span className="text-red-200">•</span> {err}
                 </li>
               ))}
@@ -611,7 +610,7 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
 
         <div className="space-y-3">
           {items.map((item, index) => (
-            <div key={item.productId} className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-4 animate-in slide-in-from-left duration-300">
+            <div key={`item-${index}-${item.productId || 'new'}`} className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-4 animate-in slide-in-from-left duration-300">
               {/* Campo unificado: Descripción + Búsqueda + Catálogo */}
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex-1">

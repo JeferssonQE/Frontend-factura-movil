@@ -85,9 +85,9 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, activeSender, onEmit, o
           </div>
           <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">LIVE DATA</span>
         </div>
-        <div className="h-48 w-full">
+        <div className="h-48 w-full" style={{ minHeight: '192px', minWidth: '300px' }}>
           {last7Days.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={192}>
               <BarChart data={last7Days}>
                 <CartesianGrid strokeDasharray="0" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontWeight: 700}} />

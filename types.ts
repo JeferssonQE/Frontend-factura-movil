@@ -31,8 +31,9 @@ export enum UserRole {
 export enum CreditNoteReason {
   ANULACION_OPERACION = '01',
   ANULACION_ERROR_RUC = '02',
-  CORRECCION_ERROR_DESCRIPCION = '03',
-  DEVOLUCION_TOTAL = '06'
+  DEVOLUCION_TOTAL = '03',
+  CORRECCION_ERROR_DESCRIPCION = '04',
+  DEVOLUCION_POR_ITEM = '05'
 }
 
 export interface Sender {
@@ -95,6 +96,7 @@ export interface Invoice {
 }
 
 export interface IAExtractionResult {
+  tipo_documento: 'BOLETA' | 'FACTURA';
   cliente: {
     fecha: string;
     cliente: string; 

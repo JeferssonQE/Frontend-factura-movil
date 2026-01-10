@@ -7,6 +7,11 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const EXTRACTION_SCHEMA = {
   type: Type.OBJECT,
   properties: {
+    tipo_documento: {
+      type: Type.STRING,
+      description: "BOLETA o FACTURA según el cliente",
+      enum: ["BOLETA", "FACTURA"]
+    },
     cliente: {
       type: Type.OBJECT,
       properties: {
@@ -36,7 +41,7 @@ const EXTRACTION_SCHEMA = {
     },
     total: { type: Type.NUMBER }
   },
-  required: ["cliente", "productos", "total"]
+  required: ["tipo_documento", "cliente", "productos", "total"]
 };
 
 const getSystemPrompt = (catalog: Product[]) => {
@@ -45,6 +50,13 @@ const getSystemPrompt = (catalog: Product[]) => {
     : '(Catálogo vacío)';
   
   return `Eres un asistente de facturación peruana. Extrae datos de ventas desde imágenes o audio.
+
+═══════════════════════════════════════
+🎯 DETECCIÓN AUTOMÁTICA DE TIPO DE DOCUMENTO
+═══════════════════════════════════════
+- Si el cliente tiene RUC (11 dígitos) → tipo_documento: "FACTURA"
+- Si el cliente tiene DNI (8 dígitos) o solo nombre → tipo_documento: "BOLETA"
+- Si no está claro, usar "BOLETA" por defecto
 
 ═══════════════════════════════════════
 📦 CATÁLOGO DE PRODUCTOS (USAR PARA MATCHING)
@@ -79,6 +91,11 @@ ${catalogList}
    - precio_total: 15 (3 x 5)
 
 7. Extrae cliente (nombre, DNI/RUC, teléfono) y fecha si se mencionan.
+
+8. EJEMPLOS DE DETECCIÓN:
+   - "Venta a Juan Pérez DNI 12345678" → BOLETA
+   - "Factura para Empresa ABC RUC 20123456789" → FACTURA
+   - "Cliente: María" → BOLETA (por defecto)
 `;
 };
 

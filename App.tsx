@@ -144,21 +144,23 @@ const App: React.FC = () => {
       // Cargar senders - Admin ve todos, Empresa solo los suyos
       const loadedSenders = await SupabaseDB.getSenders(isAdmin);
       
-      // Desencriptar credenciales SUNAT
+      // Desencriptar credenciales SUNAT (modo desarrollo - usar valores por defecto)
       const sendersWithDecrypted = await Promise.all(
         loadedSenders.map(async (s: any) => {
-          let sunatUser = '';
-          let sunatPass = '';
+          let sunatUser = 'MODDATOS'; // Valor por defecto para desarrollo
+          let sunatPass = 'MODDATOS123'; // Valor por defecto para desarrollo
           
           try {
             if (s.sunat_user_encrypted) {
-              sunatUser = await decrypt(s.sunat_user_encrypted);
+              const decrypted = await decrypt(s.sunat_user_encrypted);
+              if (decrypted) sunatUser = decrypted;
             }
             if (s.sunat_pass_encrypted) {
-              sunatPass = await decrypt(s.sunat_pass_encrypted);
+              const decrypted = await decrypt(s.sunat_pass_encrypted);
+              if (decrypted) sunatPass = decrypted;
             }
           } catch (e) {
-            console.warn('Error desencriptando credenciales:', e);
+            console.warn('Error desencriptando credenciales, usando valores por defecto:', e);
           }
           
           return {
@@ -511,17 +513,36 @@ const App: React.FC = () => {
         ruc: baseInvoice.clientDocument?.length === 11 ? baseInvoice.clientDocument : undefined
       };
 
-      // Desencriptar credenciales SUNAT
-      const sunatUser = sender.sunatUser ? await decrypt(sender.sunatUser) : '';
-      const sunatPass = sender.sunatPass ? await decrypt(sender.sunatPass) : '';
-
-      if (!sunatUser || !sunatPass) {
-        showToast("Configura las credenciales SUNAT en tu perfil", "error");
-        return;
-      }
-
       // Guardar NC en base de datos primero
-      const savedNC = await SupabaseDB.createInvoice(nc, nc.items);
+      const ncData = {
+        sender_id: parseInt(activeSenderId),
+        client_id: clients.find(c => c.id === baseInvoice.clientId) ? parseInt(baseInvoice.clientId) : null,
+        client_name: baseInvoice.clientName,
+        client_document: baseInvoice.clientDocument || null,
+        type: nc.type,
+        series: nc.series,
+        number: nc.number,
+        date: nc.date,
+        subtotal: nc.subtotal,
+        igv: nc.igv,
+        total: nc.total,
+        status: nc.status,
+        referenced_invoice_id: parseInt(baseInvoice.id),
+        credit_note_reason: nc.creditNoteReason,
+        credit_note_sustento: `Nota de crédito por motivo: ${reason}`
+      };
+
+      const ncItemsData = nc.items.map(item => ({
+        product_id: item.productId ? parseInt(item.productId) : null,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        unit_price: item.unitPrice,
+        has_igv: item.hasIgv,
+        total: item.total
+      }));
+
+      const savedNC = await SupabaseDB.createInvoice(ncData, ncItemsData);
       
       // Actualizar estado local
       setInvoices((prev: Invoice[]) => [...prev, { ...nc, id: savedNC.id }]);
@@ -535,11 +556,6 @@ const App: React.FC = () => {
         nc.items,
         sender,
         client,
-        {
-          ruc: sender.ruc,
-          usuario: sunatUser,
-          password: sunatPass
-        },
         `Nota de crédito por motivo: ${reason}`
       );
 
