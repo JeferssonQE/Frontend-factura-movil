@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Pencil, Package, CheckCircle2, AlertCircle, X, AlertTriangle } from 'lucide-react';
+import { z } from 'zod';
 import { Product, UnitOfMeasure } from '../types';
+import { productSchema } from '../schemas/business';
 import ProductSearchSelector from '../components/ProductSearchSelector';
 
 interface ProductsProps {
@@ -39,26 +41,25 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
 
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
-    const description = (formData.get('description') as string).trim();
-    const basePrice = parseFloat(formData.get('basePrice') as string);
-    const unit = formData.get('unit') as UnitOfMeasure;
+    
+    const data = {
+      description: (formData.get('description') as string).trim(),
+      unit: formData.get('unit') as UnitOfMeasure,
+      basePrice: parseFloat(formData.get('basePrice') as string),
+      hasIgv: Boolean(hasIgv),
+    };
 
-    if (!description) {
-      setFormError("La descripción es obligatoria.");
-      return;
-    }
-    if (isNaN(basePrice) || basePrice < 0) {
-      setFormError("El precio debe ser un número válido mayor o igual a 0.");
+    // ✅ Validar con Zod
+    const result = productSchema.safeParse(data);
+    if (!result.success) {
+      setFormError(result.error.issues[0].message);
       return;
     }
 
     const product: Product = {
       id: editingProduct?.id || Date.now().toString(),
       senderId,
-      description: description.toUpperCase(),
-      unit,
-      basePrice,
-      hasIgv: Boolean(hasIgv)
+      ...result.data,
     };
     
     onSave(product);

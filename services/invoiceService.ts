@@ -2,6 +2,7 @@
 import { SupabaseDB } from './supabase';
 import { decrypt } from './crypto';
 import { Invoice, InvoiceItem, Sender, Client, Product, InvoiceStatus, CreditNoteReason, InvoiceType } from '../types';
+import { clientSchema, invoiceItemSchema } from '../schemas/business';
 
 export class InvoiceService {
   /**
@@ -73,12 +74,20 @@ export class InvoiceService {
       if (existingClient) {
         return parseInt(existingClient.id);
       } else {
-        // Crear cliente nuevo con documento
+        // ✅ Validar antes de crear
+        const validation = clientSchema.safeParse({
+          name: invoice.clientName,
+          dni: clientDocument.length === 8 ? clientDocument : '',
+          ruc: clientDocument.length === 11 ? clientDocument : '',
+        });
+
+        if (!validation.success) {
+          throw new Error(validation.error.issues[0].message);
+        }
+
         const newClient = await SupabaseDB.createClient({
           sender_id: senderId,
-          name: invoice.clientName,
-          dni: clientDocument.length === 8 ? clientDocument : undefined,
-          ruc: clientDocument.length === 11 ? clientDocument : undefined
+          ...validation.data
         });
         return newClient.id;
       }
@@ -86,9 +95,19 @@ export class InvoiceService {
 
     // Si hay nombre pero no documento, crear cliente sin documento
     if (invoice.clientName && invoice.clientName.trim()) {
+      const validation = clientSchema.safeParse({
+        name: invoice.clientName,
+        dni: '',
+        ruc: '',
+      });
+
+      if (!validation.success) {
+        throw new Error(validation.error.issues[0].message);
+      }
+
       const newClient = await SupabaseDB.createClient({
         sender_id: senderId,
-        name: invoice.clientName
+        ...validation.data
       });
       return newClient.id;
     }
@@ -109,6 +128,12 @@ export class InvoiceService {
 
     return Promise.all(
       items.map(async (item) => {
+        // ✅ Validar item
+        const validation = invoiceItemSchema.safeParse(item);
+        if (!validation.success) {
+          throw new Error(`Item inválido: ${validation.error.issues[0].message}`);
+        }
+
         let productId: number | null = null;
 
         // Si ya es ID numérico de la BD, usarlo

@@ -6,6 +6,7 @@ import { SupabaseDB } from '../services/supabase';
 import { checkRateLimit, incrementUsage, getRemainingUsage } from '../services/rateLimiter';
 import { PDFService } from '../services/pdfService';
 import ProductSearchSelector from '../components/ProductSearchSelector';
+import { invoiceEmissionSchema } from '../schemas/business';
 import React, { useState, useRef } from 'react';
 import { Camera, Plus, Trash2, X, ShoppingCart, User, CheckCircle2, RotateCcw, ChevronDown, Zap, Layers, Mic, Square, AlertTriangle, MessageCircle, Download, Loader2 } from 'lucide-react';
 
@@ -247,38 +248,22 @@ const Billing: React.FC<BillingProps> = ({ sender, products, clients, invoices, 
   };
 
   const handleOpenConfirm = () => {
-    const errs: string[] = [];
+    // ✅ Validar con Zod
+    const result = invoiceEmissionSchema.safeParse({
+      type,
+      clientData,
+      items
+    });
 
-    if (!sender) errs.push("Configura tu empresa en Perfil");
-    
-    if (items.length === 0) {
-      errs.push("Agrega al menos un producto");
-    } else {
-      if (items.some(it => !it.description || it.description.trim() === "")) {
-        errs.push("Todos los productos deben tener descripción");
-      }
-      if (items.some(it => it.total <= 0)) {
-        errs.push("Los productos deben tener precio mayor a 0");
-      }
-    }
-
-    if (!clientData.name || clientData.name.trim() === "") {
-      errs.push("Ingresa el nombre del cliente");
-    }
-    
-    if (type === InvoiceType.FACTURA) {
-      if (!clientData.idDoc || clientData.idDoc.length !== 11) {
-        errs.push("Para FACTURA el RUC debe tener 11 dígitos");
-      }
-    }
-
-    if (errs.length > 0) {
-      setErrors(errs);
+    if (!result.success) {
+      // Mostrar todos los errores
+      setErrors(result.error.issues.map(issue => issue.message));
       // Scroll al inicio para ver errores
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    // Si llegamos aquí, todo es válido
     setErrors([]);
     setShowConfirmModal(true);
   };

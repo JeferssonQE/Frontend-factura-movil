@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Trash2, Pencil, Users, UserPlus, AlertTriangle, X, AlertCircle } from 'lucide-react';
+import { z } from 'zod';
+import { clientSchema } from '../schemas/business';
 import { Client } from '../types';
 
 interface ClientsProps {
@@ -29,33 +31,24 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete }
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
     
-    const name = (formData.get('name') as string).trim();
-    const dni = (formData.get('dni') as string).trim();
-    const ruc = (formData.get('ruc') as string).trim();
-    const phone = (formData.get('phone') as string).trim();
+    const data = {
+      name: (formData.get('name') as string).trim(),
+      dni: (formData.get('dni') as string).trim(),
+      ruc: (formData.get('ruc') as string).trim(),
+      phone: (formData.get('phone') as string).trim(),
+    };
 
-    if (dni && dni.length !== 8) {
-      setFormError("El DNI debe tener exactamente 8 dígitos.");
-      return;
-    }
-
-    if (ruc && ruc.length !== 11) {
-      setFormError("El RUC debe tener exactamente 11 dígitos.");
-      return;
-    }
-
-    if (!dni && !ruc) {
-      setFormError("Debe ingresar al menos un DNI o un RUC.");
+    // ✅ Validar con Zod
+    const result = clientSchema.safeParse(data);
+    if (!result.success) {
+      setFormError(result.error.issues[0].message);
       return;
     }
 
     const client: Client = {
       id: editingClient?.id || Date.now().toString(),
       senderId,
-      name: name.toUpperCase(),
-      dni: dni || undefined,
-      ruc: ruc || undefined,
-      phone: phone || undefined
+      ...result.data,
     };
     
     onSave(client);

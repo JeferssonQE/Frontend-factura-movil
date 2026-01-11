@@ -1,7 +1,9 @@
 
 import React, { useState } from 'react';
 import { Plus, Trash2, CheckCircle, Building2, Pencil, AlertTriangle, X } from 'lucide-react';
+import { z } from 'zod';
 import { Sender } from '../types';
+import { senderSchema } from '../schemas/business';
 
 interface SendersProps {
   senders: Sender[];
@@ -15,18 +17,32 @@ const Senders: React.FC<SendersProps> = ({ senders, activeSenderId, onSave, onDe
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSender, setEditingSender] = useState<Partial<Sender> | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
     
+    const data = {
+      name: (formData.get('name') as string).trim(),
+      ruc: (formData.get('ruc') as string).trim(),
+      sunatUser: (formData.get('sunatUser') as string).trim(),
+      sunatPass: (formData.get('sunatPass') as string).trim(),
+    };
+
+    // Validar con Zod
+    const result = senderSchema.safeParse(data);
+    if (!result.success) {
+      setFormError(result.error.issues[0].message);
+      return;
+    }
+
     const sender: Sender = {
       id: (editingSender?.id as string) || Date.now().toString(),
-      name: formData.get('name') as string,
-      ruc: formData.get('ruc') as string,
-      sunatUser: formData.get('sunatUser') as string,
-      sunatPass: formData.get('sunatPass') as string,
+      ...result.data,
     };
     
     onSave(sender);
@@ -130,6 +146,13 @@ const Senders: React.FC<SendersProps> = ({ senders, activeSenderId, onSave, onDe
                </div>
                <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-300 transition-colors"><X size={20} /></button>
             </div>
+            
+            {formError && (
+              <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 mb-6">
+                <AlertTriangle className="text-red-500" size={20} />
+                <p className="text-red-700 text-xs font-black uppercase">{formError}</p>
+              </div>
+            )}
             
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>

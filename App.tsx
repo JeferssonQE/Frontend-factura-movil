@@ -10,6 +10,7 @@ import History from './views/History';
 import Clients from './views/Clients';
 import Login from './views/Login';
 import Profile from './views/Profile';
+import ResetPassword from './views/ResetPassword';
 import { CheckCircle2, AlertCircle, X, Building, ChevronDown } from 'lucide-react';
 
 const Toast: React.FC<{ message: string; type: 'success' | 'error'; onClose: () => void }> = ({ message, type, onClose }) => (

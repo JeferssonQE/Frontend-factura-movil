@@ -1,4 +1,5 @@
 // services/sunatApi.ts - Cliente para API SUNAT en Digital Ocean
+import { z } from 'zod';
 import { Invoice, InvoiceItem, Sender, Client, InvoiceType } from '../types';
 
 // Configuración de tu API en Digital Ocean
@@ -55,6 +56,33 @@ export const TIPOS_NOTA_CREDITO = [
   { codigo: '04', descripcion: 'Corrección por error en descripción', uso: 'Error en descripción de producto' },
   { codigo: '05', descripcion: 'Devolución por ítem', uso: 'Cliente devuelve algunos productos' }
 ];
+
+// ✅ Esquema de validación para requests SUNAT
+const sunatRequestSchema = z.object({
+  tipo_documento: z.enum(['FACTURA', 'BOLETA']),
+  fecha: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Formato de fecha inválido'),
+  cliente: z.object({
+    dni: z.string().optional(),
+    ruc: z.string().optional(),
+    nombre: z.string().optional(),
+  }),
+  productos: z.array(z.object({
+    cantidad: z.number().positive('Cantidad debe ser positiva'),
+    unidad_medida: z.string(),
+    descripcion: z.string(),
+    precio_base: z.number().nonnegative('Precio no puede ser negativo'),
+    igv: z.number(),
+    precio_total: z.number(),
+  })),
+  resumen: z.object({
+    serie: z.string(),
+    numero: z.string(),
+    sub_total: z.number().nonnegative(),
+    igv_total: z.number().nonnegative(),
+    total: z.number().nonnegative(),
+  }),
+  sender_id: z.string().or(z.number()),
+});
 
 /**
  * Genera el sustento automáticamente basado en el tipo de nota
@@ -222,10 +250,16 @@ export const SunatApiService = {
     console.log('- Resumen:', request.resumen);
     console.log('- Sender ID:', request.sender_id, '(Backend obtendrá credenciales desde Supabase)');
 
+    // ✅ Validar request antes de enviar
+    const validation = sunatRequestSchema.safeParse(request);
+    if (!validation.success) {
+      throw new Error(`Request inválido: ${validation.error.issues[0].message}`);
+    }
+
     const response = await fetch(`${DIGITAL_OCEAN_API_URL}/api/v1/emitir`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request)
+      body: JSON.stringify(validation.data)
     });
 
     if (response.status !== 202) {
