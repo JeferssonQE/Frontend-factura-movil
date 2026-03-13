@@ -10,12 +10,12 @@ import {
   InvoiceItem,
   IAExtractionResult,
   InvoiceStatus,
-} from '../src/types';
-import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
-import { checkRateLimit, incrementUsage } from '../services/utils/rateLimiter';
-import { PDFService } from '../services/integrations/pdfService';
-import ProductSearchSelector from '../src/components/ProductSearchSelector';
-import { invoiceEmissionSchema } from '../schemas/business';
+} from '../types';
+import { processInvoiceImage, processInvoiceAudio } from '../../services/integrations/geminiService';
+import { checkRateLimit, incrementUsage } from '../../services/utils/rateLimiter';
+import { PDFService } from '../../services/integrations/pdfService';
+import ProductSearchSelector from '../components/ProductSearchSelector';
+import { invoiceEmissionSchema } from '../../schemas/business';
 import {
   Camera,
   Plus,
