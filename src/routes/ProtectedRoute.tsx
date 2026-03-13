@@ -1,6 +1,6 @@
 // routes/ProtectedRoute.tsx
 import { Navigate, useLocation } from 'react-router-dom';
-import { authService } from '../../services/core/authService';
+import { authService } from '../services/core/authService';
  
 export default function ProtectedRoute({
   children,

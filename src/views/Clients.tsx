@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Search,
 } from 'lucide-react';
-import { clientSchema } from '../../schemas/business';
+import { clientSchema } from '../schemas/business';
 import { Client } from '../types';
 
 interface ClientsProps {

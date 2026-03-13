@@ -11,8 +11,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { z } from 'zod';
-import { authService } from '../../services/core/authService';
-import { emailSchema, passwordSchema, loginSchema } from '../../schemas/auth';
+import { authService } from '../services/core/authService';
+import { emailSchema, passwordSchema, loginSchema } from '../schemas/auth';
 
 interface LoginProps {
   onSuccess: () => void;

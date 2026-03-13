@@ -15,7 +15,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
-import { PDFService } from '../../services/integrations/pdfService';
+import { PDFService } from '../services/integrations/pdfService';
 
 interface HistoryProps {
   invoices: Invoice[];

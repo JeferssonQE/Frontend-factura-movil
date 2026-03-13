@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, CheckCircle, Building2, Pencil, AlertTriangle, X } from 'lucide-react';
 import { z } from 'zod';
 import { Sender } from '../types';
-import { senderSchema } from '../../schemas/business';
+import { senderSchema } from '../schemas/business';
 
 interface SendersProps {
   senders: Sender[];

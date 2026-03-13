@@ -11,7 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { Product, UnitOfMeasure } from '../types';
-import { productSchema } from '../../schemas/business';
+import { productSchema } from '../schemas/business';
 import ProductSearchSelector from '../components/ProductSearchSelector';
 
 interface ProductsProps {

@@ -11,11 +11,11 @@ import {
   IAExtractionResult,
   InvoiceStatus,
 } from '../types';
-import { processInvoiceImage, processInvoiceAudio } from '../../services/integrations/geminiService';
-import { checkRateLimit, incrementUsage } from '../../services/utils/rateLimiter';
-import { PDFService } from '../../services/integrations/pdfService';
+import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
+import { checkRateLimit, incrementUsage } from '../services/utils/rateLimiter';
+import { PDFService } from '../services/integrations/pdfService';
 import ProductSearchSelector from '../components/ProductSearchSelector';
-import { invoiceEmissionSchema } from '../../schemas/business';
+import { invoiceEmissionSchema } from '../schemas/business';
 import {
   Camera,
   Plus,
