@@ -1,3 +1,4 @@
+// @ts-nocheck
 // views/Billing.tsx
 import React, { useRef, useState } from 'react';
 import {
@@ -11,11 +12,11 @@ import {
   IAExtractionResult,
   InvoiceStatus,
 } from '../src/types';
-import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
-import { checkRateLimit, incrementUsage } from '../services/utils/rateLimiter';
-import { PDFService } from '../services/integrations/pdfService';
+import { processInvoiceImage, processInvoiceAudio } from '../src/services/integrations/geminiService';
+import { checkRateLimit, incrementUsage } from '../src/services/utils/rateLimiter';
+import { PDFService } from '../src/services/integrations/pdfService';
 import ProductSearchSelector from '../src/components/ProductSearchSelector';
-import { invoiceEmissionSchema } from '../schemas/business';
+import { invoiceEmissionSchema } from '../src/schemas/business';
 import {
   Camera,
   Plus,

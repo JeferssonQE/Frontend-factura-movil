@@ -102,17 +102,17 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-bold text-blue-600">
-                        S/ {product.basePrice.toFixed(2)}
+                        S/ {product.base_price.toFixed(2)}
                       </span>
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}
                       </span>
                       <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                        product.hasIgv 
-                          ? 'text-emerald-600 bg-emerald-50' 
+                        product.has_igv
+                          ? 'text-emerald-600 bg-emerald-50'
                           : 'text-slate-400 bg-slate-50'
                       }`}>
-                        {product.hasIgv ? 'Afecto' : 'Exonerado'}
+                        {product.has_igv ? 'Afecto' : 'Exonerado'}
                       </span>
                     </div>
                   </div>
@@ -146,17 +146,17 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-bold text-blue-600">
-                        S/ {product.basePrice.toFixed(2)}
+                        S/ {product.base_price.toFixed(2)}
                       </span>
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}
                       </span>
                       <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                        product.hasIgv 
-                          ? 'text-emerald-600 bg-emerald-50' 
+                        product.has_igv
+                          ? 'text-emerald-600 bg-emerald-50'
                           : 'text-slate-400 bg-slate-50'
                       }`}>
-                        {product.hasIgv ? 'Afecto' : 'Exonerado'}
+                        {product.has_igv ? 'Afecto' : 'Exonerado'}
                       </span>
                     </div>
                   </div>

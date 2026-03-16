@@ -33,16 +33,15 @@ export default function AppRouter() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminUsersPage />
+              </AdminRoute>
+            }
+          />
         </Route>
-
-        <Route
-          path="/admin/users"
-          element={
-            <AdminRoute>
-              <AdminUsersPage />
-            </AdminRoute>
-          }
-        />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

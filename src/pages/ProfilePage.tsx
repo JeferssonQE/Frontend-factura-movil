@@ -1,21 +1,25 @@
 // src/pages/ProfilePage.tsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Profile from '../views/Profile';
 import { useAppData } from '../context/AppDataContext';
 
 const ProfilePage: React.FC = () => {
-  const { user, activeSender, saveSender, deleteSender, logout } = useAppData();
+  const navigate = useNavigate();
+  const { user, activeSender, saveSender, deleteSender, logout, isAdmin } = useAppData();
 
   return (
     <Profile
       user={user}
       sender={activeSender}
+      isAdmin={isAdmin}
       onSaveSender={saveSender}
       onDeleteSender={() => {
         if (activeSender) {
           deleteSender(activeSender.id);
         }
       }}
+      onGoToAdmin={() => navigate('/admin/users')}
       onLogout={logout}
     />
   );

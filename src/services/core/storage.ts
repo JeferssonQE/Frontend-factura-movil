@@ -1,6 +1,6 @@
 // services/storage.ts
 
-import { Sender, Product, Client, Invoice } from '../types';
+import { Sender, Product, Client, Invoice } from '../../types';
 
 const KEYS = {
   SENDERS: 'factumovil_senders',

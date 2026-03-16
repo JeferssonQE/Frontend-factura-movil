@@ -133,6 +133,10 @@ export const authService = {
 
   isSessionExpiredByInactivity,
 
+  async updatePassword(newPassword: string): Promise<void> {
+    await apiClient.post('/auth/change-password', { new_password: newPassword });
+  },
+
   async bootstrapSession(): Promise<MeResponse | null> {
     const token = getToken();
     if (!token) return null;

@@ -1,7 +1,7 @@
 // services/geminiService.ts
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { IAExtractionResult, Product } from "../types";
+import { IAExtractionResult, Product } from "../../types";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -47,7 +47,7 @@ const EXTRACTION_SCHEMA = {
 
 const getSystemPrompt = (catalog: Product[]) => {
   const catalogList = catalog.length > 0 
-    ? catalog.map(p => `• ID="${p.id}" → "${p.description}" (S/${p.basePrice}, ${p.unit}, IGV:${p.hasIgv ? 'SÍ' : 'NO'})`).join('\n')
+    ? catalog.map(p => `• ID="${p.id}" → "${p.description}" (S/${p.base_price}, ${p.unit}, IGV:${p.has_igv ? 'SÍ' : 'NO'})`).join('\n')
     : '(Catálogo vacío)';
   
   return `Eres un asistente de facturación peruana. Extrae datos de ventas desde imágenes o audio.

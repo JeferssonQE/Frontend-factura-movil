@@ -1,18 +1,14 @@
 // src/pages/AdminUsersPage.tsx
 import React from 'react';
 import { useAppData } from '../context/AppDataContext';
+import AdminUsers from '../views/AdminUsers';
 
 const AdminUsersPage: React.FC = () => {
-  const { isAdmin } = useAppData();
+  const { user, isAdmin } = useAppData();
 
   if (!isAdmin) return null;
 
-  return (
-    <div className="p-6 text-center text-slate-500">
-      {/* TODO: Implementar gestión de usuarios admin */}
-      <p className="text-sm">Gestión de usuarios (próximamente)</p>
-    </div>
-  );
+  return <AdminUsers currentUserId={user?.id ?? ''} />;
 };
 
 export default AdminUsersPage;

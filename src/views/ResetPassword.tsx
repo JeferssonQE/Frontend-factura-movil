@@ -1,7 +1,7 @@
 // views/ResetPassword.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Lock, Eye, EyeOff, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
-import { AuthService } from '../services/supabase';
+import { authService } from '../services/core/authService';
 
 interface ResetPasswordProps {
   onSuccess: () => void;
@@ -41,7 +41,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
     setError('');
 
     try {
-      await AuthService.updatePassword(password);
+      await authService.updatePassword(password);
       setSuccess(true);
       
       // Redirigir después de 2 segundos

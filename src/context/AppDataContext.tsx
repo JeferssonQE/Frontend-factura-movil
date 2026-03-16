@@ -266,8 +266,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
           })),
         });
 
+        // Enviar a SUNAT inmediatamente después de crear
+        await invoiceService.emitInvoice(createdInvoice.id);
+
         await refreshAllData();
-        showToast('DOCUMENTO CREADO');
+        showToast('DOCUMENTO ENVIADO A SUNAT');
         return createdInvoice;
       } catch (error: any) {
         console.error('Error guardando invoice:', error);

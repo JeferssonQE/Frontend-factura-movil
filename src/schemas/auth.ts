@@ -8,11 +8,8 @@ export const emailSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(8, 'Mínimo 8 caracteres')
-  .max(128, 'Máximo 128 caracteres')
-  .regex(/[A-Z]/, 'Debe contener al menos una mayúscula')
-  .regex(/[a-z]/, 'Debe contener al menos una minúscula')
-  .regex(/[0-9]/, 'Debe contener al menos un número');
+  .min(6, 'Mínimo 6 caracteres')
+
 
 export const nameSchema = z
   .string()
