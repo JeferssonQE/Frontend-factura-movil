@@ -77,11 +77,6 @@ const Profile: React.FC<ProfileProps> = ({
       sunat_pass: form.sunat_pass.trim() || undefined,
     };
 
-    console.debug('[Profile] Guardando sender con payload:', {
-      ...payload,
-      sunat_pass: payload.sunat_pass ? '***' : undefined,
-    });
-
     setSaving(true);
     setSaveError(null);
 
