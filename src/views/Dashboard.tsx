@@ -170,9 +170,9 @@ const Dashboard: React.FC<DashboardProps> = ({
           </span>
         </div>
 
-        <div className="h-48 w-full" style={{ minHeight: '192px', minWidth: '300px' }}>
+        <div className="w-full" style={{ minWidth: '300px' }}>
           {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={192}>
+            <ResponsiveContainer width="100%" height={192}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="0" vertical={false} stroke="#f1f5f9" />
                 <XAxis
