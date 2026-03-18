@@ -164,7 +164,7 @@ const Profile: React.FC<ProfileProps> = ({
       )}
 
       {/* ── Sender / empresa section ──────────────────────────── */}
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+      {!isAdmin && <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <Building className="text-blue-600" size={20} />
@@ -314,7 +314,7 @@ const Profile: React.FC<ProfileProps> = ({
             </button>
           </div>
         ) : null}
-      </div>
+      </div>}
 
       {/* ── Logout ────────────────────────────────────────────── */}
       <div className="space-y-3">
