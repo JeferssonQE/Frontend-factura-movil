@@ -1,8 +1,6 @@
 /* FactuMovil AI - Global Styles */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {
