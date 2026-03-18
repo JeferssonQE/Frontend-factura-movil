@@ -33,7 +33,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onHistory,
 }) => {
   // Fallback local cuando la API todavía no respondió
-  const totalSales = summary?.total_sales ?? invoices.reduce((s, i) => s + i.total, 0);
+  const totalSales = Number(summary?.total_sales ?? invoices.reduce((s, i) => s + Number(i.total), 0));
   const totalTickets = summary?.total_invoices ?? invoices.length;
   const avgSales = totalTickets > 0 ? totalSales / totalTickets : 0;
 
@@ -66,14 +66,14 @@ const Dashboard: React.FC<DashboardProps> = ({
     salesByMonth.length > 0
       ? salesByMonth.slice(-7).map((item) => ({
           name: item.month,
-          total: item.total_sales,
+          total: Number(item.total_sales),
         }))
       : invoices.slice(-7).map((inv) => ({
           name: new Date(inv.invoice_date).toLocaleDateString('es-PE', {
             day: '2-digit',
             month: 'short',
           }),
-          total: inv.total,
+          total: Number(inv.total),
         }));
 
   return (
@@ -264,7 +264,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-black text-slate-900">S/ {inv.total.toFixed(2)}</p>
+                    <p className="text-sm font-black text-slate-900">S/ {Number(inv.total).toFixed(2)}</p>
                     <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
                       {inv.series}-{inv.number}
                     </p>

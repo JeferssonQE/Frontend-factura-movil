@@ -4,32 +4,38 @@ import Layout from '../components/Layout';
 import { useAppData } from '../context/AppDataContext';
 
 const titles: Record<string, string> = {
-  '/dashboard': 'Resumen',
-  '/billing': 'Emitir Documento',
-  '/history': 'Historial',
-  '/products': 'Productos',
-  '/clients': 'Clientes',
-  '/profile': 'Mi Perfil',
+  '/dashboard':   'Resumen',
+  '/billing':     'Emitir Documento',
+  '/history':     'Historial',
+  '/products':    'Productos',
+  '/clients':     'Clientes',
+  '/profile':     'Mi Perfil',
+  '/agent':       'Agente SUNAT IA',
+  '/feedback':    'Información y Opinión',
   '/admin/users': 'Gestión de Usuarios',
 };
 
 const activeTabMap: Record<string, string> = {
-  '/dashboard': 'dashboard',
-  '/billing': 'billing',
-  '/history': 'history',
-  '/products': 'products',
-  '/clients': 'clients',
-  '/profile': 'profile',
+  '/dashboard':   'dashboard',
+  '/billing':     'billing',
+  '/history':     'history',
+  '/products':    'products',
+  '/clients':     'clients',
+  '/profile':     'profile',
+  '/agent':       'agent',
+  '/feedback':    'feedback',
   '/admin/users': 'admin-users',
 };
 
 const routeMap: Record<string, string> = {
-  dashboard: '/dashboard',
-  billing: '/billing',
-  history: '/history',
-  products: '/products',
-  clients: '/clients',
-  profile: '/profile',
+  dashboard:     '/dashboard',
+  billing:       '/billing',
+  history:       '/history',
+  products:      '/products',
+  clients:       '/clients',
+  profile:       '/profile',
+  agent:         '/agent',
+  feedback:      '/feedback',
   'admin-users': '/admin/users',
 };
 

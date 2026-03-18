@@ -15,11 +15,11 @@ export type UserStatusResponse = {
 
 export const adminService = {
   async listUsers(): Promise<AdminUserRow[]> {
-    return apiClient.get<AdminUserRow[]>('/admin/users/');
+    return apiClient.get<AdminUserRow[]>('/admin/users');
   },
 
   async createUser(payload: CreateUserPayload): Promise<AdminUserRow> {
-    return apiClient.post<AdminUserRow>('/admin/users/', payload);
+    return apiClient.post<AdminUserRow>('/admin/users', payload);
   },
 
   async activateUser(userId: string): Promise<UserStatusResponse> {
@@ -36,6 +36,10 @@ export const adminService = {
 
   async changeUserRole(userId: string, role: UserRole): Promise<UserStatusResponse> {
     return apiClient.patch<UserStatusResponse>(`/admin/users/${userId}/role`, { role });
+  },
+
+  async deleteUser(userId: string): Promise<{ message: string }> {
+    return apiClient.delete<{ message: string }>(`/admin/users/${userId}`);
   },
 
   async resetUserPassword(userId: string, newPassword: string): Promise<{ message: string }> {

@@ -26,7 +26,6 @@ import {
   CheckCircle2,
   RotateCcw,
   ChevronDown,
-  Zap,
   Layers,
   Mic,
   Square,
@@ -40,7 +39,8 @@ interface BillingProps {
   products: Product[];
   clients: Client[];
   invoices: Invoice[];
-  onEmit: (invoice: Invoice) => void;
+  onEmit: (invoice: Invoice) => Promise<Invoice | null>;
+  onSaveDraft: (invoice: Invoice) => Promise<Invoice | null>;
   onAddClient: (client: Client) => void;
   onSelectSender: () => void;
 }
@@ -58,6 +58,7 @@ const Billing: React.FC<BillingProps> = ({
   clients,
   invoices,
   onEmit,
+  onSaveDraft,
   onAddClient,
   onSelectSender,
 }) => {
@@ -66,7 +67,7 @@ const Billing: React.FC<BillingProps> = ({
     name: '',
     document: '',
     phone: '',
-    invoice_date: new Date().toISOString().split('T')[0],
+    invoice_date: new Date().toLocaleDateString('en-CA'),
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -75,7 +76,9 @@ const Billing: React.FC<BillingProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [iaWarning, setIaWarning] = useState<string | null>(null);
   const [isEmitting, setIsEmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [emissionStep, setEmissionStep] = useState(0);
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
@@ -115,21 +118,35 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const fillFormWithResult = (result: IAExtractionResult) => {
+    setIaWarning(null);
+
     if (result.tipo_documento) {
       setInvoiceType(
         result.tipo_documento === 'FACTURA' ? InvoiceType.FACTURA : InvoiceType.BOLETA
       );
     }
 
-    setClientData((prev) => ({
-      ...prev,
-      name: result.cliente.cliente || '',
-      document: result.cliente.dni || result.cliente.ruc || '',
-      phone: result.cliente.telefono || '',
-      invoice_date: result.cliente.fecha
-        ? formatDateForInput(result.cliente.fecha)
-        : prev.invoice_date,
-    }));
+    const hasClient = result.cliente?.cliente?.trim();
+    if (hasClient) {
+      setClientData((prev) => ({
+        ...prev,
+        name: result.cliente.cliente || '',
+        document: result.cliente.dni || result.cliente.ruc || '',
+        phone: result.cliente.telefono || '',
+        invoice_date: result.cliente.fecha
+          ? formatDateForInput(result.cliente.fecha)
+          : prev.invoice_date,
+      }));
+    }
+
+    if (!result.productos || result.productos.length === 0) {
+      setIaWarning(
+        hasClient
+          ? `Cliente "${result.cliente.cliente}" detectado. No se identificaron productos — agrégalos manualmente.`
+          : 'No se detectaron productos ni cliente. Intenta dictar más claro o agrega los datos manualmente.'
+      );
+      return;
+    }
 
     setItems(
       result.productos.map((product) => {
@@ -214,6 +231,7 @@ const Billing: React.FC<BillingProps> = ({
 
       recorder.start();
       setIsRecording(true);
+      setIaWarning(null);
     } catch {
       alert('No se pudo acceder al micrófono.');
     }
@@ -300,7 +318,7 @@ const Billing: React.FC<BillingProps> = ({
       name: '',
       document: '',
       phone: '',
-      invoice_date: new Date().toISOString().split('T')[0],
+      invoice_date: new Date().toLocaleDateString('en-CA'),
     });
     setItems([]);
     setPreviewImage(null);
@@ -335,7 +353,7 @@ const Billing: React.FC<BillingProps> = ({
     if (senderInvoices.length === 0) return '00000001';
 
     const lastNumber = Math.max(...senderInvoices.map((invoice) => parseInt(invoice.number, 10)));
-    return String(lastNumber + 1).padStart(8, '0');
+    return String(lastNumber + 1).padStart(6, '0');
   };
 
   const handleOpenConfirm = () => {
@@ -360,6 +378,48 @@ const Billing: React.FC<BillingProps> = ({
 
     setErrors([]);
     setShowConfirmModal(true);
+  };
+
+  const handleSaveDraft = async () => {
+    if (!sender || items.length === 0) return;
+
+    setIsSavingDraft(true);
+    try {
+      const series = invoiceType === InvoiceType.BOLETA ? 'B001' : 'F001';
+      const nextNumber = getNextNumber();
+
+      const invoiceData: Invoice = {
+        id: Date.now(),
+        sender_id: sender.id,
+        client_id: null,
+        client_name: clientData.name,
+        client_document: clientData.document || null,
+        invoice_type: invoiceType,
+        series,
+        number: nextNumber,
+        numero_comprobante_sunat: null,
+        invoice_date: clientData.invoice_date,
+        subtotal: gravada + exonerada,
+        igv: igvTotal,
+        total,
+        status: InvoiceStatus.BORRADOR,
+        task_id: null,
+        pdf_base64: null,
+        sunat_message: null,
+        referenced_invoice_id: null,
+        credit_note_reason: null,
+        credit_note_sustento: null,
+        items,
+      };
+
+      await onSaveDraft(invoiceData);
+      setClientData({ name: '', document: '', phone: '', invoice_date: new Date().toLocaleDateString('en-CA') });
+      setItems([]);
+      setPreviewImage(null);
+      setErrors([]);
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   const handleFinalEmit = async () => {
@@ -398,13 +458,12 @@ const Billing: React.FC<BillingProps> = ({
       };
 
       setEmissionStep(2);
-      await onEmit(invoiceData);
+      const createdInvoice = await onEmit(invoiceData);
       setEmissionStep(3);
 
-      const finalInvoice: Invoice = {
-        ...invoiceData,
-        status: InvoiceStatus.PROCESANDO,
-      };
+      const finalInvoice: Invoice = createdInvoice
+        ? { ...createdInvoice, status: InvoiceStatus.PROCESANDO }
+        : { ...invoiceData, status: InvoiceStatus.PROCESANDO };
 
       setEmissionSuccess(finalInvoice);
     } catch (error: any) {
@@ -548,10 +607,23 @@ const Billing: React.FC<BillingProps> = ({
         </div>
       )}
 
+      {iaWarning && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
+          <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={16} />
+          <div className="flex-1">
+            <p className="text-amber-800 text-[11px] font-black uppercase tracking-wide leading-relaxed">
+              {iaWarning}
+            </p>
+          </div>
+          <button onClick={() => setIaWarning(null)} className="text-amber-400 hover:text-amber-600">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <section className="bg-white p-5 rounded-[40px] shadow-sm border border-slate-100 relative overflow-hidden">
         <div
-          className="w-full h-44 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative overflow-hidden mb-4 cursor-pointer hover:bg-slate-100 transition-all group"
-          onClick={() => !isRecording && !previewImage && fileInputRef.current?.click()}
+          className="w-full h-44 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative overflow-hidden mb-4"
         >
           {previewImage ? (
             <div className="relative w-full h-full">
@@ -583,12 +655,110 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           ) : (
             <>
-              <div className="w-16 h-16 bg-white rounded-3xl shadow-md flex items-center justify-center text-blue-500 mb-3 group-hover:scale-110 transition-transform">
-                <Zap size={32} />
+              {/* Circuit grid background */}
+              <svg className="absolute inset-0 w-full h-full opacity-[0.07] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="ai-grid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+                    <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#2563eb" strokeWidth="0.6"/>
+                    <circle cx="0" cy="0" r="1.4" fill="#2563eb"/>
+                    <circle cx="28" cy="0" r="1.4" fill="#2563eb"/>
+                    <circle cx="0" cy="28" r="1.4" fill="#2563eb"/>
+                    <circle cx="28" cy="28" r="1.4" fill="#2563eb"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#ai-grid)"/>
+              </svg>
+
+              {/* Pulsing rings */}
+              <span className="absolute w-32 h-32 rounded-full border border-blue-400/25" style={{animation: 'aiRing 2.2s ease-out infinite'}} />
+              <span className="absolute w-24 h-24 rounded-full border border-blue-500/30" style={{animation: 'aiRing 2.2s ease-out infinite 0.55s'}} />
+              <span className="absolute w-16 h-16 rounded-full border border-blue-600/35" style={{animation: 'aiRing 2.2s ease-out infinite 1.1s'}} />
+
+              {/* Robot */}
+              <div
+                className="z-10 mb-3"
+                style={{animation: 'aiFloat 3.5s ease-in-out infinite'}}
+              >
+                <svg viewBox="0 0 56 64" className="w-14 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Antenna */}
+                  <rect x="26.5" y="1" width="3" height="7" rx="1.5" fill="#1e40af" opacity="0.9"/>
+                  <circle cx="28" cy="1.5" r="3" fill="#3b82f6"/>
+                  <circle cx="28" cy="1.5" r="1.5" fill="#93c5fd" style={{animation: 'antBlink 2s ease-in-out infinite'}}/>
+
+                  {/* Head */}
+                  <rect x="8" y="8" width="40" height="26" rx="10" fill="#0f172a"/>
+                  <rect x="9.5" y="9.5" width="37" height="23" rx="9" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.4"/>
+
+                  {/* Eyes */}
+                  <circle cx="20" cy="22" r="6" fill="#1d4ed8"/>
+                  <circle cx="36" cy="22" r="6" fill="#1d4ed8"/>
+                  <circle cx="20" cy="22" r="3.5" fill="#60a5fa" style={{animation: 'eyeBlink 3.5s ease-in-out infinite'}}/>
+                  <circle cx="36" cy="22" r="3.5" fill="#60a5fa" style={{animation: 'eyeBlink 3.5s ease-in-out infinite'}}/>
+                  <circle cx="21" cy="21" r="1.2" fill="white" opacity="0.9"/>
+                  <circle cx="37" cy="21" r="1.2" fill="white" opacity="0.9"/>
+
+                  {/* Mouth bar */}
+                  <rect x="17" y="29" width="22" height="3" rx="1.5" fill="#334155"/>
+                  <rect x="19" y="29.5" width="4" height="2" rx="1" fill="#3b82f6" style={{animation: 'mouthLight 1.4s ease-in-out infinite'}}/>
+                  <rect x="25" y="29.5" width="4" height="2" rx="1" fill="#3b82f6" style={{animation: 'mouthLight 1.4s ease-in-out infinite 0.35s'}}/>
+                  <rect x="31" y="29.5" width="4" height="2" rx="1" fill="#3b82f6" style={{animation: 'mouthLight 1.4s ease-in-out infinite 0.7s'}}/>
+
+                  {/* Body */}
+                  <rect x="12" y="36" width="32" height="22" rx="8" fill="#0f172a"/>
+                  <rect x="13.5" y="37.5" width="29" height="19" rx="7" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.35"/>
+
+                  {/* Chest light */}
+                  <circle cx="28" cy="47" r="5" fill="#1d4ed8"/>
+                  <circle cx="28" cy="47" r="3" fill="#3b82f6" style={{animation: 'chestPulse 2s ease-in-out infinite'}}/>
+                  <circle cx="28" cy="47" r="1.5" fill="#93c5fd"/>
+
+                  {/* Side vents */}
+                  <rect x="15" y="42" width="6" height="1.5" rx="0.75" fill="#334155"/>
+                  <rect x="15" y="45" width="6" height="1.5" rx="0.75" fill="#334155"/>
+                  <rect x="35" y="42" width="6" height="1.5" rx="0.75" fill="#334155"/>
+                  <rect x="35" y="45" width="6" height="1.5" rx="0.75" fill="#334155"/>
+
+                  {/* Arms */}
+                  <rect x="2" y="37" width="9" height="16" rx="4.5" fill="#0f172a" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.3"/>
+                  <rect x="45" y="37" width="9" height="16" rx="4.5" fill="#0f172a" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.3"/>
+                  <circle cx="6.5" cy="55" r="3" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.5"/>
+                  <circle cx="49.5" cy="55" r="3" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.5"/>
+                </svg>
               </div>
-              <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em]">
-                Dictar o Tomar Foto
+
+              <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] z-10">
+                Asistente IA
               </p>
+              <p className="text-slate-400 text-[9px] font-semibold text-center leading-relaxed z-10 mt-1 px-4">
+                Toma foto o grábate y emite una factura en segundos
+              </p>
+
+              <style>{`
+                @keyframes aiRing {
+                  0%   { transform: scale(1);   opacity: 0.55; }
+                  100% { transform: scale(1.9);  opacity: 0;    }
+                }
+                @keyframes aiFloat {
+                  0%,100% { transform: translateY(0px); }
+                  50%     { transform: translateY(-6px); }
+                }
+                @keyframes eyeBlink {
+                  0%,90%,100% { transform: scaleY(1); }
+                  95%         { transform: scaleY(0.15); }
+                }
+                @keyframes antBlink {
+                  0%,40%,100% { opacity: 1; }
+                  70%         { opacity: 0.2; }
+                }
+                @keyframes mouthLight {
+                  0%,100% { opacity: 0.35; }
+                  50%     { opacity: 1; }
+                }
+                @keyframes chestPulse {
+                  0%,100% { r: 3; opacity: 0.8; }
+                  50%     { r: 4; opacity: 1;   }
+                }
+              `}</style>
             </>
           )}
 
@@ -945,12 +1115,27 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={handleOpenConfirm}
-            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
-          >
-            <CheckCircle2 size={22} /> Emitir Documento
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft || isEmitting || items.length === 0}
+              className="w-full bg-slate-200 text-slate-600 h-12 rounded-[20px] font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isSavingDraft ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <Layers size={18} />
+              )}
+              Guardar como Borrador
+            </button>
+
+            <button
+              onClick={handleOpenConfirm}
+              className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
+            >
+              <CheckCircle2 size={22} /> Emitir Documento
+            </button>
+          </div>
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 // components/ProductSearchSelector.tsx
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductSearchSelectorProps {
@@ -76,9 +76,6 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
               />
             </button>
           )}
-          <div className="p-2">
-            <Search size={18} className="text-blue-500" />
-          </div>
         </div>
       </div>
 
@@ -102,7 +99,7 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-bold text-blue-600">
-                        S/ {product.base_price.toFixed(2)}
+                        S/ {Number(product.base_price).toFixed(2)}
                       </span>
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}
@@ -127,9 +124,6 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
       {shouldShowCatalogDropdown && (
         <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white border border-slate-200 rounded-[20px] shadow-xl max-h-60 overflow-y-auto">
           <div className="p-2">
-            <div className="px-3 py-2 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-2">
-              📦 Seleccionar del catálogo
-            </div>
             {products.map((product) => (
               <button
                 key={product.id}
@@ -146,7 +140,7 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-bold text-blue-600">
-                        S/ {product.base_price.toFixed(2)}
+                        S/ {Number(product.base_price).toFixed(2)}
                       </span>
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}

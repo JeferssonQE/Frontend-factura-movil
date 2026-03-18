@@ -20,7 +20,7 @@ interface ProfileProps {
   user: AuthUser | null;
   sender: Sender | null;
   isAdmin: boolean;
-  onSaveSender: (sender: SenderUpsertInput) => void;
+  onSaveSender: (sender: SenderUpsertInput) => Promise<void>;
   onDeleteSender: () => void;
   onGoToAdmin: () => void;
   onLogout: () => void;
@@ -55,6 +55,8 @@ const Profile: React.FC<ProfileProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [form, setForm] = useState<SenderFormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sender) {
@@ -65,16 +67,34 @@ const Profile: React.FC<ProfileProps> = ({
     setForm({ name: sender.name, ruc: sender.ruc, sunat_user: '', sunat_pass: '' });
   }, [sender, isAdmin]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.ruc || form.ruc.length !== 11) return;
-    onSaveSender({
+
+    const payload: SenderUpsertInput = {
       name: form.name.trim().toUpperCase(),
       ruc: form.ruc.trim(),
       sunat_user: form.sunat_user.trim() || undefined,
       sunat_pass: form.sunat_pass.trim() || undefined,
+    };
+
+    console.debug('[Profile] Guardando sender con payload:', {
+      ...payload,
+      sunat_pass: payload.sunat_pass ? '***' : undefined,
     });
-    setIsEditing(false);
-    setForm((prev) => ({ ...prev, sunat_user: '', sunat_pass: '' }));
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await onSaveSender(payload);
+      setIsEditing(false);
+      setForm((prev) => ({ ...prev, sunat_user: '', sunat_pass: '' }));
+    } catch (err: any) {
+      console.error('[Profile] Error al guardar sender:', err);
+      setSaveError(err?.message || 'Error al guardar. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteSender = () => {
@@ -241,26 +261,34 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             </div>
 
+            {saveError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+                <span className="text-red-500 text-[11px] font-black uppercase">{saveError}</span>
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               {(sender || isAdmin) && (
                 <button
                   onClick={() => {
                     setIsEditing(false);
+                    setSaveError(null);
                     if (sender) setForm({ name: sender.name, ruc: sender.ruc, sunat_user: '', sunat_pass: '' });
                     else setForm(EMPTY_FORM);
                   }}
-                  className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                  disabled={saving}
+                  className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50"
                 >
                   Cancelar
                 </button>
               )}
               <button
                 onClick={handleSave}
-                disabled={!form.name || !form.ruc || form.ruc.length !== 11}
+                disabled={!form.name || !form.ruc || form.ruc.length !== 11 || saving}
                 className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={16} />
-                Guardar
+                {saving ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
           </div>

@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import {
   Home,
-  FileText,
   Package,
   Users,
   History,
@@ -12,6 +11,8 @@ import {
   UserCircle,
   ChevronLeft,
   ShieldCheck,
+  Bot,
+  MessageCircle,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -44,9 +45,9 @@ const Layout: React.FC<LayoutProps> = ({
   ];
 
   const sidebarLinks = [
-    { id: 'history', icon: History, label: 'Historial' },
-    { id: 'products', icon: Package, label: 'Catálogo' },
-    { id: 'clients', icon: Users, label: 'Clientes' },
+    { id: 'products',  icon: Package,        label: 'Productos'  },
+    { id: 'clients',   icon: Users,          label: 'Clientes'   },
+    { id: 'history',   icon: History,        label: 'Historial'  },
   ];
 
   const handleLinkClick = (id: string) => {
@@ -111,6 +112,38 @@ const Layout: React.FC<LayoutProps> = ({
               <span className="text-[11px] uppercase font-black tracking-widest">{link.label}</span>
             </button>
           ))}
+
+          {/* Agente SUNAT IA — destacado */}
+          <div className="h-px bg-slate-100 my-4 mx-4" />
+          <button
+            onClick={() => handleLinkClick('agent')}
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all relative overflow-hidden ${
+              activeTab === 'agent'
+                ? 'bg-violet-600 text-white font-black shadow-lg shadow-violet-200'
+                : 'bg-gradient-to-r from-violet-50 to-blue-50 text-violet-600 hover:from-violet-100 hover:to-blue-100 font-black'
+            }`}
+          >
+            <Bot size={20} />
+            <span className="text-[11px] uppercase font-black tracking-widest">Agente SUNAT IA</span>
+            {activeTab !== 'agent' && (
+              <span className="ml-auto text-[8px] font-black bg-violet-500 text-white px-2 py-0.5 rounded-full uppercase tracking-widest shrink-0">
+                Nuevo
+              </span>
+            )}
+          </button>
+
+          {/* Información y Opinión */}
+          <button
+            onClick={() => handleLinkClick('feedback')}
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
+              activeTab === 'feedback'
+                ? 'bg-blue-50 text-blue-600 font-black'
+                : 'text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            <MessageCircle size={20} />
+            <span className="text-[11px] uppercase font-black tracking-widest">Información y Opinión</span>
+          </button>
 
           {/* Admin section */}
           {isAdmin && (

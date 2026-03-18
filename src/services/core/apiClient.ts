@@ -87,6 +87,8 @@ const request = async <TResponse>(
   body?: unknown,
   init?: RequestInit
 ): Promise<TResponse> => {
+  console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? body : '');
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
@@ -98,10 +100,13 @@ const request = async <TResponse>(
   });
 
   if (!response.ok) {
+    console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
     return handleErrorResponse(response);
   }
 
-  return parseResponse(response) as Promise<TResponse>;
+  const data = await parseResponse(response);
+  console.log(`[API] ${method} ${path} → ${response.status}`, data);
+  return data as TResponse;
 };
 
 export const apiClient = {

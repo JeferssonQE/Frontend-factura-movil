@@ -8,6 +8,11 @@ const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { user, activeSender, saveSender, deleteSender, logout, isAdmin } = useAppData();
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <Profile
       user={user}
@@ -20,7 +25,7 @@ const ProfilePage: React.FC = () => {
         }
       }}
       onGoToAdmin={() => navigate('/admin/users')}
-      onLogout={logout}
+      onLogout={handleLogout}
     />
   );
 };

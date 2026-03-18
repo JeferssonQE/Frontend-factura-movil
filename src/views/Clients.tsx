@@ -39,7 +39,10 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete }
     event.preventDefault();
     setFormError(null);
 
-    if (!senderId) return;
+    if (!senderId) {
+      setFormError('Primero configura tu empresa en la sección Perfil.');
+      return;
+    }
 
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -78,6 +81,15 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete }
 
   return (
     <div className="space-y-4">
+      {!senderId && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+          <AlertCircle className="text-amber-500 shrink-0" size={18} />
+          <p className="text-amber-700 text-[11px] font-black uppercase tracking-wide">
+            Para agregar clientes, primero configura tu empresa en la sección Perfil.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -96,8 +108,7 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete }
             setFormError(null);
             setIsModalOpen(true);
           }}
-          disabled={!senderId}
-          className="bg-blue-600 text-white p-3 rounded-2xl shadow-lg active:scale-95 transition-transform disabled:opacity-50"
+          className="bg-blue-600 text-white p-3 rounded-2xl shadow-lg active:scale-95 transition-transform"
         >
           <UserPlus size={20} />
         </button>

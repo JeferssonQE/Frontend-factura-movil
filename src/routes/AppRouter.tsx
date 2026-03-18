@@ -12,6 +12,8 @@ import ProductsPage from '../pages/ProductsPage';
 import ClientsPage from '../pages/ClientsPage';
 import ProfilePage from '../pages/ProfilePage';
 import AdminUsersPage from '../pages/AdminUsersPage';
+import AgentPage from '../pages/AgentPage';
+import FeedbackPage from '../pages/FeedbackPage';
 
 export default function AppRouter() {
   return (
@@ -33,6 +35,8 @@ export default function AppRouter() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/agent" element={<AgentPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
           <Route
             path="/admin/users"
             element={

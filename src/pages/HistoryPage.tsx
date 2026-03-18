@@ -8,7 +8,7 @@ import { InvoiceStatus } from '../types';
 const POLL_INTERVAL_MS = 10_000; // 10 segundos
 
 const HistoryPage: React.FC = () => {
-  const { invoices, emitCreditNote, refreshAllData } = useAppData();
+  const { invoices, emitCreditNote, emitDraft, refreshAllData } = useAppData();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const procesandoIds = invoices
@@ -48,7 +48,7 @@ const HistoryPage: React.FC = () => {
     };
   }, [procesandoIds.join(','), refreshAllData]); // eslint-disable-line
 
-  return <History invoices={invoices} onEmitCreditNote={emitCreditNote} />;
+  return <History invoices={invoices} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} />;
 };
 
 export default HistoryPage;

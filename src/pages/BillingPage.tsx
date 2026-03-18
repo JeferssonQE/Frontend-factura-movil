@@ -6,7 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 
 const BillingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSender, products, clients, invoices, persistInvoice, saveClient } = useAppData();
+  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient } = useAppData();
 
   return (
     <Billing
@@ -15,7 +15,10 @@ const BillingPage: React.FC = () => {
       clients={clients}
       invoices={invoices}
       onEmit={async (invoice) => {
-        await persistInvoice(invoice);
+        return await persistInvoice(invoice);
+      }}
+      onSaveDraft={async (invoice) => {
+        return await saveDraft(invoice);
       }}
       onAddClient={async (client) => {
         await saveClient(client);

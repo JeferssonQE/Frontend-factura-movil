@@ -11,11 +11,10 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { z } from 'zod';
-import { authService } from '../services/core/authService';
 import { emailSchema, passwordSchema, loginSchema } from '../schemas/auth';
 
 interface LoginProps {
-  onSuccess: () => void;
+  onLogin: (email: string, password: string) => Promise<void>;
 }
 
 const validateField = (
@@ -34,7 +33,7 @@ const validateField = (
   };
 };
 
-const Login: React.FC<LoginProps> = ({ onSuccess }) => {
+const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,9 +88,8 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
         return;
       }
 
-      await authService.login(email, password);
+      await onLogin(email, password);
       setAttemptCount(0);
-      onSuccess();
     } catch (err: any) {
       setAttemptCount((prev) => prev + 1);
       setError(err?.message || 'Credenciales inválidas. Verifica tu email y contraseña.');
@@ -192,7 +190,7 @@ const Login: React.FC<LoginProps> = ({ onSuccess }) => {
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••"
                 required
-                minLength={8}
+                minLength={6}
                 className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
                   password && !passwordValidation.isValid
                     ? 'border-red-300 focus:ring-red-500'

@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   CornerUpLeft,
   Share2,
+  Zap,
+  Loader2,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
@@ -20,6 +22,7 @@ import { PDFService } from '../services/integrations/pdfService';
 interface HistoryProps {
   invoices: Invoice[];
   onEmitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => void;
+  onEmitDraft: (invoiceId: number) => Promise<void>;
 }
 
 export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
@@ -41,11 +44,12 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
   );
 };
 
-const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
+const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDraft }) => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showReasonSelect, setShowReasonSelect] = useState(false);
+  const [isEmittingDraft, setIsEmittingDraft] = useState(false);
 
   const filtered = invoices.filter((invoice) => {
     const matchesSearch =
@@ -159,7 +163,7 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
                       : 'text-slate-900'
                   }`}
                 >
-                  S/ {invoice.total.toFixed(2)}
+                  S/ {Number(invoice.total).toFixed(2)}
                 </p>
                 <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">
                   {invoice.series}-{invoice.number}
@@ -235,12 +239,12 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
                           {item.description}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                          Cant: {item.quantity} {item.unit} • S/ {item.unit_price.toFixed(2)} c/u
+                          Cant: {item.quantity} {item.unit} • S/ {Number(item.unit_price).toFixed(2)} c/u
                         </span>
                       </div>
                       <div className="text-right shrink-0">
                         <span className="font-black text-slate-900 text-sm">
-                          S/ {item.total.toFixed(2)}
+                          S/ {Number(item.total).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -255,12 +259,12 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
 
                 <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
                   <span>Valor Gravado</span>
-                  <span>S/ {selectedInvoice.subtotal.toFixed(2)}</span>
+                  <span>S/ {Number(selectedInvoice.subtotal).toFixed(2)}</span>
                 </div>
 
                 <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
                   <span>IGV (18%)</span>
-                  <span className="text-blue-400">S/ {selectedInvoice.igv.toFixed(2)}</span>
+                  <span className="text-blue-400">S/ {Number(selectedInvoice.igv).toFixed(2)}</span>
                 </div>
 
                 <div className="h-px bg-white/10 my-2 border-t border-dashed" />
@@ -277,7 +281,7 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
                           : 'text-white'
                       }`}
                     >
-                      S/ {selectedInvoice.total.toFixed(2)}
+                      S/ {Number(selectedInvoice.total).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -379,6 +383,26 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote }) => {
                       <Share2 size={20} />
                     </button>
                   </div>
+
+                  {selectedInvoice.status === InvoiceStatus.BORRADOR && (
+                    <button
+                      onClick={async () => {
+                        setIsEmittingDraft(true);
+                        await onEmitDraft(selectedInvoice.id);
+                        setIsEmittingDraft(false);
+                        setSelectedInvoice(null);
+                      }}
+                      disabled={isEmittingDraft}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-emerald-200/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isEmittingDraft ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Zap size={18} />
+                      )}
+                      {isEmittingDraft ? 'Enviando a SUNAT...' : 'Emitir a SUNAT'}
+                    </button>
+                  )}
 
                   {selectedInvoice.invoice_type !== InvoiceType.NOTA_CREDITO &&
                     selectedInvoice.status === InvoiceStatus.EMITIDO && (

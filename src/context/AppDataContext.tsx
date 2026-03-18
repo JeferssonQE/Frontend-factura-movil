@@ -34,6 +34,8 @@ type AppDataContextValue = {
   toast: ToastState;
   isAdmin: boolean;
 
+  login: (email: string, password: string) => Promise<void>;
+
   senders: Sender[];
   activeSenderId: number | null;
   activeSender: Sender | null;
@@ -58,6 +60,8 @@ type AppDataContextValue = {
   deleteClient: (id: number) => Promise<void>;
 
   persistInvoice: (invoice: Invoice) => Promise<Invoice | null>;
+  saveDraft: (invoice: Invoice) => Promise<Invoice | null>;
+  emitDraft: (invoiceId: number) => Promise<void>;
   emitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => Promise<void>;
 
   logout: () => void;
@@ -143,19 +147,14 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const saveSender = useCallback(
     async (input: SenderUpsertInput) => {
-      try {
-        if (activeSender) {
-          await senderService.updateSender(input);
-        } else {
-          await senderService.createSender(input);
-        }
-
-        await refreshAllData();
-        showToast('EMPRESA GUARDADA');
-      } catch (error: any) {
-        console.error('Error guardando sender:', error);
-        showToast(error.message || 'ERROR AL GUARDAR', 'error');
+      if (activeSender) {
+        await senderService.updateSender(input);
+      } else {
+        await senderService.createSender(input);
       }
+
+      await refreshAllData();
+      showToast('EMPRESA GUARDADA');
     },
     [activeSender, refreshAllData, showToast]
   );
@@ -281,6 +280,51 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     [refreshAllData, showToast]
   );
 
+  const saveDraft = useCallback(
+    async (invoice: Invoice): Promise<Invoice | null> => {
+      try {
+        const createdInvoice = await invoiceService.createInvoice({
+          client_id: invoice.client_id || undefined,
+          client_name: invoice.client_name || undefined,
+          client_document: invoice.client_document || undefined,
+          invoice_type: invoice.invoice_type,
+          invoice_date: invoice.invoice_date,
+          items: invoice.items.map((item) => ({
+            product_id: item.product_id ?? undefined,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unit_price,
+            has_igv: item.has_igv,
+          })),
+        });
+
+        await refreshAllData();
+        showToast('BORRADOR GUARDADO');
+        return createdInvoice;
+      } catch (error: any) {
+        console.error('Error guardando borrador:', error);
+        showToast(error.message || 'ERROR AL GUARDAR', 'error');
+        return null;
+      }
+    },
+    [refreshAllData, showToast]
+  );
+
+  const emitDraft = useCallback(
+    async (invoiceId: number): Promise<void> => {
+      try {
+        await invoiceService.emitInvoice(invoiceId);
+        await refreshAllData();
+        showToast('DOCUMENTO ENVIADO A SUNAT');
+      } catch (error: any) {
+        console.error('Error emitiendo borrador:', error);
+        showToast(error.message || 'ERROR AL EMITIR', 'error');
+      }
+    },
+    [refreshAllData, showToast]
+  );
+
   const emitCreditNote = useCallback(
     async (baseInvoice: Invoice, reason: CreditNoteReason) => {
       try {
@@ -299,6 +343,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [refreshAllData, showToast]
   );
+
+  const login = useCallback(async (email: string, password: string) => {
+    const response = await authService.login(email, password);
+    setUser(response.user as AuthUser);
+  }, []);
 
   const logout = useCallback(() => {
     authService.logout();
@@ -375,6 +424,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       setToast,
       showToast,
 
+      login,
       refreshAllData,
       changeSender,
 
@@ -388,6 +438,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       deleteClient,
 
       persistInvoice,
+      saveDraft,
+      emitDraft,
       emitCreditNote,
 
       logout,
@@ -405,6 +457,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       clients,
       invoices,
       showToast,
+      login,
       refreshAllData,
       changeSender,
       saveSender,
@@ -414,6 +467,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       saveClient,
       deleteClient,
       persistInvoice,
+      saveDraft,
+      emitDraft,
       emitCreditNote,
       logout,
     ]

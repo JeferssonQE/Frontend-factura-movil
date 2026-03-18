@@ -29,13 +29,13 @@ const EXTRACTION_SCHEMA = {
       items: {
         type: Type.OBJECT,
         properties: {
-          productId: { type: Type.STRING, description: "ID exacto del producto del catálogo si hay match" },
-          cantidad: { type: Type.NUMBER },
-          unidad_medida: { type: Type.STRING },
-          descripcion: { type: Type.STRING },
-          precio_base: { type: Type.NUMBER },
-          igv: { type: Type.NUMBER },
-          precio_total: { type: Type.NUMBER }
+          productId: { type: Type.STRING, description: "ID exacto del producto del catálogo si hay match, vacío si no hay match" },
+          cantidad: { type: Type.NUMBER, description: "Cantidad vendida, mínimo 1" },
+          unidad_medida: { type: Type.STRING, description: "UNIDAD, KILOGRAMO, CAJA, BOLSA, LITRO o DOCENA" },
+          descripcion: { type: Type.STRING, description: "Nombre del producto en MAYÚSCULAS" },
+          precio_base: { type: Type.NUMBER, description: "Precio unitario sin IGV" },
+          igv: { type: Type.NUMBER, description: "0.18 si el producto tiene IGV incluido, 0 si está exonerado de IGV" },
+          precio_total: { type: Type.NUMBER, description: "precio_base * cantidad (sin IGV si igv=0.18, precio final si igv=0)" }
         },
         required: ["descripcion", "precio_total", "cantidad"]
       }
@@ -87,9 +87,10 @@ ${catalogList}
 
 6. Si el usuario dice "3 kilos de papa a 5 soles":
    - cantidad: 3
-   - unidad_medida: KILOGRAMO  
+   - unidad_medida: KILOGRAMO
    - precio_base: 5 (precio por kilo)
-   - precio_total: 15 (3 x 5)
+   - igv: 0.18 si el producto normalmente lleva IGV, 0 si no
+   - precio_total: 15 (3 x 5, sin IGV)
 
 7. Extrae cliente (nombre, DNI/RUC, teléfono) y fecha si se mencionan.
 
@@ -97,6 +98,15 @@ ${catalogList}
    - "Venta a Juan Pérez DNI 12345678" → BOLETA
    - "Factura para Empresa ABC RUC 20123456789" → FACTURA
    - "Cliente: María" → BOLETA (por defecto)
+
+9. ⚠️ CRÍTICO PARA AUDIO: Aunque no escuches productos claramente, intenta extraer CUALQUIER mención de:
+   - Nombres de productos o servicios
+   - Precios o montos
+   - Cantidades o unidades
+   - Si el audio menciona algo vendido, inclúyelo en productos aunque sea con datos parciales.
+   - Si el catálogo tiene productos similares a lo mencionado, haz el match.
+
+10. El campo "productos" NUNCA debe estar vacío si se menciona alguna venta. Si no se entiende bien, usa descripcion: "PRODUCTO/SERVICIO" con el precio mencionado.
 `;
 };
 
@@ -149,7 +159,7 @@ export const processInvoiceAudio = async (base64Audio: string, mimeType: string,
       model: "gemini-2.5-flash",
       contents: {
         parts: [
-          { text: getSystemPrompt(catalog) + "\n\n🎤 AUDIO DE VENTA DICTADA - Haz matching con el catálogo:" },
+          { text: getSystemPrompt(catalog) + "\n\n🎤 AUDIO DE VENTA DICTADA - EXTRAE TODOS LOS PRODUCTOS MENCIONADOS y haz matching con el catálogo. Si mencionan precio o cantidad aunque sea vagamente, inclúyelo en productos:" },
           {
             inlineData: {
               mimeType: mimeType,

@@ -134,7 +134,7 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                     {product.unit}
                   </span>
                   <span className="text-xs font-black text-blue-600">
-                    S/ {product.base_price.toFixed(2)}
+                    S/ {Number(product.base_price).toFixed(2)}
                   </span>
                   <span
                     className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase border ${
