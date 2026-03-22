@@ -82,7 +82,10 @@ const Layout: React.FC<LayoutProps> = ({
       >
         <div className="p-8 border-b flex flex-col gap-4 bg-slate-900 text-white">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-black tracking-tighter italic">FactuMovil</h2>
+            <div className="flex items-center gap-3">
+              <img src="/logo-icon.svg" alt="FactuMovil AI" className="w-10 h-10 rounded-2xl" />
+              <span className="text-white font-black text-sm tracking-tight italic">FactuMovil</span>
+            </div>
             <button
               onClick={() => setIsSidebarOpen(false)}
               className="p-2 hover:bg-white/10 rounded-full"
@@ -227,9 +230,13 @@ const Layout: React.FC<LayoutProps> = ({
           )}
         </div>
 
-        <h1 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">
-          {title}
-        </h1>
+        {activeTab === 'dashboard' ? (
+          <img src="/logo-icon.svg" alt="FactuMovil AI" className="h-9 w-9 rounded-xl" />
+        ) : (
+          <h1 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">
+            {title}
+          </h1>
+        )}
 
         <div className="w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-200 font-black text-xs">
           {userInitials}

@@ -1,0 +1,110 @@
+<svg width="560" height="200" viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Ultra intenso: azul puro máximo + navy muy profundo -->
+    <linearGradient id="fMarkV3" x1="28" y1="30" x2="120" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#70D4FF"/>
+      <stop offset="35%"  stop-color="#0044FF"/>
+      <stop offset="100%" stop-color="#001266"/>
+    </linearGradient>
+    <linearGradient id="bgV3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#F5F9FF"/>
+      <stop offset="100%" stop-color="#E8F0FF"/>
+    </linearGradient>
+    <!-- Glow fuerte tipo UI -->
+    <filter id="fGlowV3" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur"/>
+      <feFlood flood-color="#0044FF" flood-opacity="0.42" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="textGlowV3" x="-10%" y="-35%" width="120%" height="170%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur"/>
+      <feFlood flood-color="#0044FF" flood-opacity="0.25" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <mask id="movilMaskV3">
+      <rect x="0" y="0" width="560" height="200" fill="black"/>
+      <text x="196" y="148" font-family="Georgia, 'Times New Roman', Times, serif"
+            font-style="italic" font-weight="bold" font-size="58" fill="white" letter-spacing="-2">Movil</text>
+    </mask>
+    <mask id="factuMaskV3">
+      <rect x="0" y="0" width="560" height="200" fill="black"/>
+      <text x="196" y="90" font-family="Georgia, 'Times New Roman', Times, serif"
+            font-style="italic" font-weight="bold" font-size="20" fill="white" letter-spacing="10">FACTU</text>
+    </mask>
+    <!--
+      VARIACIÓN 3:
+      FACTU bicolor: celeste brillante → azul puro (horizontal)
+      Movil: azul puro → navy ultra profundo (vertical)
+      Máximo contraste y saturación
+    -->
+    <linearGradient id="factuV3" x1="196" y1="0" x2="360" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#4DC8FF"/>
+      <stop offset="50%"  stop-color="#0044FF"/>
+      <stop offset="100%" stop-color="#0025CC"/>
+    </linearGradient>
+    <linearGradient id="movilV3" x1="196" y1="98" x2="196" y2="160" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0044FF"/>
+      <stop offset="100%" stop-color="#001266"/>
+    </linearGradient>
+    <!-- Wash azul intenso detrás del wordmark -->
+    <radialGradient id="washV3" cx="42%" cy="58%" r="55%">
+      <stop offset="0%"   stop-color="#BFDBFE" stop-opacity="0.55"/>
+      <stop offset="65%"  stop-color="#DBEAFE" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#F0F7FF"  stop-opacity="0"/>
+    </radialGradient>
+    <!-- Línea divisora con gradiente azul -->
+    <linearGradient id="divV3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#0044FF" stop-opacity="0"/>
+      <stop offset="40%"  stop-color="#0044FF" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#4DC8FF" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="560" height="200" fill="url(#bgV3)"/>
+  <rect x="0" y="0" width="185" height="200" fill="#D8E9FF" opacity="0.5"/>
+  <ellipse cx="320" cy="125" rx="158" ry="53" fill="url(#washV3)"/>
+  <!-- Divisor con gradiente azul -->
+  <line x1="185" y1="20" x2="185" y2="180" stroke="url(#divV3)" stroke-width="1.2"/>
+
+  <!-- F MARK glow ultra -->
+  <g filter="url(#fGlowV3)">
+    <rect x="28" y="30"  width="20" height="140" rx="10" fill="url(#fMarkV3)"/>
+    <rect x="28" y="30"  width="92" height="20"  rx="10" fill="url(#fMarkV3)"/>
+    <rect x="28" y="87"  width="74" height="20"  rx="10" fill="url(#fMarkV3)"/>
+  </g>
+
+  <!-- Signal arcs ultra intensos -->
+  <path d="M 120,80  A 20,20 0 0,1 120,120" fill="none" stroke="#0044FF" stroke-width="6"   stroke-linecap="round" opacity="1"/>
+  <path d="M 120,64  A 36,36 0 0,1 120,136" fill="none" stroke="#1A6AFF" stroke-width="4.5" stroke-linecap="round" opacity="0.62"/>
+  <path d="M 120,48  A 52,52 0 0,1 120,152" fill="none" stroke="#4DC8FF" stroke-width="2.5" stroke-linecap="round" opacity="0.35"/>
+  <circle cx="120" cy="100" r="5.5" fill="#0044FF" filter="url(#fGlowV3)"/>
+
+  <!-- FACTU celeste → azul puro -->
+  <g filter="url(#textGlowV3)">
+    <rect x="196" y="65"  width="280" height="32" fill="url(#factuV3)" mask="url(#factuMaskV3)"/>
+  </g>
+
+  <!-- Separador sutil -->
+  <line x1="196" y1="97" x2="460" y2="97" stroke="#93C5FD" stroke-width="0.7" opacity="0.5"/>
+
+  <!-- Movil azul puro → navy ultra profundo vertical -->
+  <g filter="url(#textGlowV3)">
+    <rect x="196" y="98"  width="280" height="62" fill="url(#movilV3)" mask="url(#movilMaskV3)"/>
+  </g>
+
+  <!-- AI badge ultra intenso -->
+  <rect x="468" y="124" width="40" height="22" rx="8" fill="none" stroke="#0044FF" stroke-width="1.8"/>
+  <text x="488" y="139" text-anchor="middle" font-family="Courier New, Courier, monospace"
+        font-weight="bold" font-size="11" fill="#0044FF" letter-spacing="2">AI</text>
+
+  <text x="196" y="182" font-family="Courier New, Courier, monospace"
+        font-size="10" fill="#94A3B8" letter-spacing="3.5">FACTURACIÓN ELECTRÓNICA · PERÚ</text>
+</svg>

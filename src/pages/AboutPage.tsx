@@ -2,25 +2,14 @@
 import React from 'react';
 import { Zap, Target, Eye, Code2, Phone, Mail, MessageSquare } from 'lucide-react';
 
-const ASCII_LOGO = `
-╔══════════════════════════╗
-║   F A C T U M O V I L   ║
-║   ─────────────────────  ║
-║      A I  ·  P E R Ú    ║
-╚══════════════════════════╝`.trim();
 
 const AboutPage: React.FC = () => {
   return (
     <div className="space-y-5 pb-8">
 
-      {/* Hero ASCII */}
-      <div className="bg-slate-900 rounded-[24px] p-6 flex flex-col items-center gap-4">
-        <pre className="text-emerald-400 text-[10px] leading-snug font-mono text-center select-none">
-          {ASCII_LOGO}
-        </pre>
-        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] text-center">
-          Software a medida · Innovación · Perú
-        </p>
+      {/* Hero logo */}
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex items-center justify-center p-6">
+        <img src="/logo-banner.svg" alt="FactuMovil AI" className="w-full h-auto" />
       </div>
 
       {/* Quiénes somos */}

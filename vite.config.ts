@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.ico', 'robots.txt'],
+          includeAssets: ['favicon.ico', 'robots.txt', 'logo-icon.svg'],
           manifest: {
             name: 'FactuMovil AI',
             short_name: 'FactuMovil',
@@ -30,28 +30,28 @@ export default defineConfig(({ mode }) => {
             orientation: 'portrait-primary',
             icons: [
               {
-                src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect fill="%231e293b" width="192" height="192"/><text x="50%" y="50%" font-size="100" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="central">FM</text></svg>',
-                sizes: '192x192',
+                src: 'logo-icon.svg',
+                sizes: 'any',
                 type: 'image/svg+xml',
                 purpose: 'any'
               },
               {
-                src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%231e293b" width="512" height="512"/><text x="50%" y="50%" font-size="280" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="central">FM</text></svg>',
-                sizes: '512x512',
+                src: 'logo-icon.svg',
+                sizes: 'any',
                 type: 'image/svg+xml',
+                purpose: 'maskable'
+              },
+              {
+                src: 'pwa-192.png',
+                sizes: '192x192',
+                type: 'image/png',
                 purpose: 'any'
               },
               {
-                src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect fill="%231e293b" width="192" height="192" rx="45"/><text x="50%" y="50%" font-size="100" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="central">FM</text></svg>',
-                sizes: '192x192',
-                type: 'image/svg+xml',
-                purpose: 'maskable'
-              },
-              {
-                src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%231e293b" width="512" height="512" rx="120"/><text x="50%" y="50%" font-size="280" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="central">FM</text></svg>',
+                src: 'pwa-512.png',
                 sizes: '512x512',
-                type: 'image/svg+xml',
-                purpose: 'maskable'
+                type: 'image/png',
+                purpose: 'any maskable'
               }
             ],
             categories: ['business', 'productivity'],

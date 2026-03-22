@@ -107,12 +107,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       <div className="mb-8 text-center">
-        <div className="w-20 h-20 bg-slate-900 rounded-[28px] flex items-center justify-center mx-auto mb-4 shadow-xl">
-          <span className="text-3xl">📱</span>
-        </div>
-        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
-          FactuMovil AI
-        </h1>
+        <img src="/logo-icon.svg" alt="FactuMovil AI" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
+        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">FactuMovil AI</h1>
         <p className="text-[10px] text-slate-400 mt-1">Facturación Electrónica Segura</p>
       </div>
 
