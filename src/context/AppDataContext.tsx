@@ -1,10 +1,10 @@
-// src/context/AppDataContext.tsx
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { authService } from '../services/core/authService';
@@ -12,6 +12,7 @@ import { senderService } from '../services/business/senderService';
 import { productsService } from '../services/business/productsService';
 import { clientsService } from '../services/business/clientsService';
 import { invoiceService } from '../services/business/invoiceService';
+import { contadorService } from '../services/business/contadorService';
 import {
   Sender,
   SenderUpsertInput,
@@ -20,6 +21,7 @@ import {
   Invoice,
   CreditNoteReason,
   AuthUser,
+  UserRole,
 } from '../types';
 
 type ToastState = {
@@ -33,6 +35,7 @@ type AppDataContextValue = {
   dataReady: boolean;
   toast: ToastState;
   isAdmin: boolean;
+  isContador: boolean;
 
   login: (email: string, password: string) => Promise<void>;
 
@@ -49,11 +52,13 @@ type AppDataContextValue = {
 
   refreshAllData: () => Promise<void>;
   changeSender: (senderId: number) => Promise<void>;
+  selectSenderAsContador: (senderId: number) => Promise<void>;
 
   saveSender: (input: SenderUpsertInput) => Promise<void>;
   deleteSender: (id: number) => Promise<void>;
 
   saveProduct: (product: Product) => Promise<void>;
+  saveProductSilent: (product: Product) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
 
   saveClient: (client: Client) => Promise<void>;
@@ -83,10 +88,16 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
-  const isAdmin = user?.role === 'admin';
+  const activeSenderIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    activeSenderIdRef.current = activeSenderId;
+  }, [activeSenderId]);
+
+  const isAdmin = user?.role === UserRole.ADMIN;
+  const isContador = user?.role === UserRole.CONTADOR;
 
   const activeSender = useMemo(
-    () => senders.find((sender) => sender.id === activeSenderId) || null,
+    () => senders.find((sender) => sender.id === activeSenderId) ?? null,
     [senders, activeSenderId]
   );
 
@@ -98,11 +109,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
-  const loadSenderData = useCallback(async () => {
+  const loadSenderData = useCallback(async (senderId?: number) => {
     const [loadedProducts, loadedClients, loadedInvoices] = await Promise.all([
-      productsService.getProducts(),
-      clientsService.getClients(),
-      invoiceService.getInvoices(),
+      productsService.getProducts(senderId),
+      clientsService.getClients(senderId),
+      invoiceService.getInvoices(undefined, senderId),
     ]);
 
     setProducts(loadedProducts);
@@ -112,20 +123,37 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshAllData = useCallback(async () => {
     try {
-      const sender = await senderService.getSender();
-      const loadedSenders = sender ? [sender] : [];
+      if (user?.role === UserRole.CONTADOR) {
+        const loadedSenders = await contadorService.getMyAssignedSenders();
+        setSenders(loadedSenders);
 
-      setSenders(loadedSenders);
-
-      if (loadedSenders.length > 0) {
-        const nextActiveSenderId = loadedSenders[0].id;
-        setActiveSenderId(nextActiveSenderId);
-        await loadSenderData();
+        if (loadedSenders.length > 0) {
+          const current = activeSenderIdRef.current;
+          const stillValid = current && loadedSenders.some((s) => s.id === current);
+          const nextId = stillValid ? current : loadedSenders[0].id;
+          setActiveSenderId(nextId);
+          await loadSenderData(nextId);
+        } else {
+          setActiveSenderId(null);
+          setProducts([]);
+          setClients([]);
+          setInvoices([]);
+        }
       } else {
-        setActiveSenderId(null);
-        setProducts([]);
-        setClients([]);
-        setInvoices([]);
+        const sender = await senderService.getSender();
+        const loadedSenders = sender ? [sender] : [];
+        setSenders(loadedSenders);
+
+        if (loadedSenders.length > 0) {
+          const nextActiveSenderId = loadedSenders[0].id;
+          setActiveSenderId(nextActiveSenderId);
+          await loadSenderData();
+        } else {
+          setActiveSenderId(null);
+          setProducts([]);
+          setClients([]);
+          setInvoices([]);
+        }
       }
 
       setDataReady(true);
@@ -133,30 +161,48 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error('Error cargando datos:', error);
       setDataReady(true);
     }
-  }, [loadSenderData]);
+  }, [loadSenderData, user?.role]);
 
-  const changeSender = useCallback(
+  const selectSenderAsContador = useCallback(
     async (senderId: number) => {
       setActiveSenderId(senderId);
-      const senderName = senders.find((sender) => sender.id === senderId)?.name || '';
-      await loadSenderData();
-      showToast(`Empresa: ${senderName}`);
+      await loadSenderData(senderId);
+      const name = senders.find((s) => s.id === senderId)?.name ?? '';
+      showToast(`Operando como: ${name}`);
     },
     [loadSenderData, senders, showToast]
   );
 
+  const changeSender = useCallback(
+    async (senderId: number) => {
+      setActiveSenderId(senderId);
+      const senderName = senders.find((sender) => sender.id === senderId)?.name ?? '';
+      await loadSenderData(isContador ? senderId : undefined);
+      showToast(`Empresa: ${senderName}`);
+    },
+    [loadSenderData, senders, showToast, isContador]
+  );
+
   const saveSender = useCallback(
     async (input: SenderUpsertInput) => {
-      if (activeSender) {
+      if (isContador) {
+        if (!activeSender) return;
+        await contadorService.updateSender(activeSender.id, {
+          name: input.name,
+          ruc: input.ruc,
+          sunat_user: input.sunat_user,
+          sunat_pass: input.sunat_pass,
+        });
+      } else if (activeSender) {
         await senderService.updateSender(input);
       } else {
         await senderService.createSender(input);
       }
 
       await refreshAllData();
-      showToast('EMPRESA GUARDADA');
+      showToast('CREDENCIALES GUARDADAS');
     },
-    [activeSender, refreshAllData, showToast]
+    [activeSender, isContador, refreshAllData, showToast]
   );
 
   const deleteSender = useCallback(
@@ -171,22 +217,30 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const saveProduct = useCallback(
     async (product: Product) => {
       try {
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
         const exists = products.some((current) => current.id === product.id);
 
         if (exists) {
-          await productsService.updateProduct(product.id, {
-            description: product.description,
-            unit: product.unit,
-            base_price: product.base_price,
-            has_igv: product.has_igv,
-          });
+          await productsService.updateProduct(
+            product.id,
+            {
+              description: product.description,
+              unit: product.unit,
+              base_price: product.base_price,
+              has_igv: product.has_igv,
+            },
+            senderId
+          );
         } else {
-          await productsService.createProduct({
-            description: product.description,
-            unit: product.unit,
-            base_price: product.base_price,
-            has_igv: product.has_igv,
-          });
+          await productsService.createProduct(
+            {
+              description: product.description,
+              unit: product.unit,
+              base_price: product.base_price,
+              has_igv: product.has_igv,
+            },
+            senderId
+          );
         }
 
         await refreshAllData();
@@ -195,37 +249,81 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(error.message || 'ERROR', 'error');
       }
     },
-    [products, refreshAllData, showToast]
+    [products, refreshAllData, showToast, isContador]
+  );
+
+  const saveProductSilent = useCallback(
+    async (product: Product) => {
+      try {
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const exists = products.some((current) => current.id === product.id);
+
+        if (exists) {
+          await productsService.updateProduct(
+            product.id,
+            {
+              description: product.description,
+              unit: product.unit,
+              base_price: product.base_price,
+              has_igv: product.has_igv,
+            },
+            senderId
+          );
+        } else {
+          await productsService.createProduct(
+            {
+              description: product.description,
+              unit: product.unit,
+              base_price: product.base_price,
+              has_igv: product.has_igv,
+            },
+            senderId
+          );
+        }
+      } catch {
+        // silencioso — no interrumpe el flujo de emisión
+      }
+    },
+    [products, isContador]
   );
 
   const deleteProduct = useCallback(
     async (id: number) => {
-      await productsService.deleteProduct(id);
+      const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+      await productsService.deleteProduct(id, senderId);
       await refreshAllData();
       showToast('PRODUCTO ELIMINADO');
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast, isContador]
   );
 
   const saveClient = useCallback(
     async (client: Client) => {
       try {
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
         const exists = clients.some((current) => current.id === client.id);
 
         if (exists) {
-          await clientsService.updateClient(client.id, {
-            name: client.name,
-            dni: client.dni || undefined,
-            ruc: client.ruc || undefined,
-            phone: client.phone || undefined,
-          });
+          await clientsService.updateClient(
+            client.id,
+            {
+              name: client.name,
+              dni: client.dni || undefined,
+              ruc: client.ruc || undefined,
+              phone: client.phone || undefined,
+            },
+            senderId
+          );
         } else {
-          await clientsService.createClient({
-            name: client.name,
-            dni: client.dni || undefined,
-            ruc: client.ruc || undefined,
-            phone: client.phone || undefined,
-          });
+          await clientsService.createClient(
+            {
+              name: client.name,
+              dni: client.dni || undefined,
+              ruc: client.ruc || undefined,
+              phone: client.phone || undefined,
+            },
+            senderId
+          );
         }
 
         await refreshAllData();
@@ -234,40 +332,44 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(error.message || 'ERROR', 'error');
       }
     },
-    [clients, refreshAllData, showToast]
+    [clients, refreshAllData, showToast, isContador]
   );
 
   const deleteClient = useCallback(
     async (id: number) => {
-      await clientsService.deleteClient(id);
+      const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+      await clientsService.deleteClient(id, senderId);
       await refreshAllData();
       showToast('CLIENTE ELIMINADO');
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast, isContador]
   );
 
   const persistInvoice = useCallback(
     async (invoice: Invoice): Promise<Invoice | null> => {
       try {
-        const createdInvoice = await invoiceService.createInvoice({
-          client_id: invoice.client_id || undefined,
-          client_name: invoice.client_name || undefined,
-          client_document: invoice.client_document || undefined,
-          invoice_type: invoice.invoice_type,
-          invoice_date: invoice.invoice_date,
-          items: invoice.items.map((item) => ({
-            product_id: item.product_id ?? undefined,
-            description: item.description,
-            quantity: item.quantity,
-            unit: item.unit,
-            unit_price: item.unit_price,
-            has_igv: item.has_igv,
-          })),
-        });
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
 
-        // Enviar a SUNAT inmediatamente después de crear
-        await invoiceService.emitInvoice(createdInvoice.id);
+        const createdInvoice = await invoiceService.createInvoice(
+          {
+            client_id: invoice.client_id || undefined,
+            client_name: invoice.client_name || undefined,
+            client_document: invoice.client_document || undefined,
+            invoice_type: invoice.invoice_type,
+            invoice_date: invoice.invoice_date,
+            items: invoice.items.map((item) => ({
+              product_id: item.product_id ?? undefined,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unit_price: item.unit_price,
+              has_igv: item.has_igv,
+            })),
+          },
+          senderId
+        );
 
+        await invoiceService.emitInvoice(createdInvoice.id, senderId);
         await refreshAllData();
         showToast('DOCUMENTO ENVIADO A SUNAT');
         return createdInvoice;
@@ -277,27 +379,32 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast, isContador]
   );
 
   const saveDraft = useCallback(
     async (invoice: Invoice): Promise<Invoice | null> => {
       try {
-        const createdInvoice = await invoiceService.createInvoice({
-          client_id: invoice.client_id || undefined,
-          client_name: invoice.client_name || undefined,
-          client_document: invoice.client_document || undefined,
-          invoice_type: invoice.invoice_type,
-          invoice_date: invoice.invoice_date,
-          items: invoice.items.map((item) => ({
-            product_id: item.product_id ?? undefined,
-            description: item.description,
-            quantity: item.quantity,
-            unit: item.unit,
-            unit_price: item.unit_price,
-            has_igv: item.has_igv,
-          })),
-        });
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+
+        const createdInvoice = await invoiceService.createInvoice(
+          {
+            client_id: invoice.client_id || undefined,
+            client_name: invoice.client_name || undefined,
+            client_document: invoice.client_document || undefined,
+            invoice_type: invoice.invoice_type,
+            invoice_date: invoice.invoice_date,
+            items: invoice.items.map((item) => ({
+              product_id: item.product_id ?? undefined,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unit_price: item.unit_price,
+              has_igv: item.has_igv,
+            })),
+          },
+          senderId
+        );
 
         await refreshAllData();
         showToast('BORRADOR GUARDADO');
@@ -308,13 +415,14 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast, isContador]
   );
 
   const emitDraft = useCallback(
     async (invoiceId: number): Promise<void> => {
       try {
-        await invoiceService.emitInvoice(invoiceId);
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        await invoiceService.emitInvoice(invoiceId, senderId);
         await refreshAllData();
         showToast('DOCUMENTO ENVIADO A SUNAT');
       } catch (error: any) {
@@ -322,17 +430,30 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(error.message || 'ERROR AL EMITIR', 'error');
       }
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast, isContador]
   );
+
+  const CREDIT_NOTE_SUSTENTO: Record<string, string> = {
+    '01': 'Anulacion de la Operacion',
+    '02': 'Anulacion por Error en el RUC',
+    '03': 'Devolucion Total',
+    '04': 'Correccion por error en la descripcion',
+    '05': 'Devolucion por item',
+  };
 
   const emitCreditNote = useCallback(
     async (baseInvoice: Invoice, reason: CreditNoteReason) => {
       try {
-        await invoiceService.createCreditNote(baseInvoice.id, {
-          date: new Date().toISOString().split('T')[0],
-          reason,
-          sustento: `Nota de crédito por motivo: ${reason}`,
-        });
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        await invoiceService.createCreditNote(
+          baseInvoice.id,
+          {
+            date: new Date().toISOString().split('T')[0],
+            reason,
+            sustento: CREDIT_NOTE_SUSTENTO[reason] ?? 'Anulacion de la Operacion',
+          },
+          senderId
+        );
 
         await refreshAllData();
         showToast('NOTA DE CRÉDITO CREADA');
@@ -341,7 +462,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(`Error: ${error.message}`, 'error');
       }
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast, isContador]
   );
 
   const login = useCallback(async (email: string, password: string) => {
@@ -360,7 +481,12 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     setDataReady(false);
   }, []);
 
+  const bootstrapRan = useRef(false);
+
   useEffect(() => {
+    if (bootstrapRan.current) return;
+    bootstrapRan.current = true;
+
     const bootstrap = async () => {
       try {
         const me = await authService.bootstrapSession();
@@ -412,6 +538,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       dataReady,
       toast,
       isAdmin,
+      isContador,
 
       senders,
       activeSenderId,
@@ -427,11 +554,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       login,
       refreshAllData,
       changeSender,
+      selectSenderAsContador,
 
       saveSender,
       deleteSender,
 
       saveProduct,
+      saveProductSilent,
       deleteProduct,
 
       saveClient,
@@ -450,6 +579,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       dataReady,
       toast,
       isAdmin,
+      isContador,
       senders,
       activeSenderId,
       activeSender,
@@ -460,9 +590,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       login,
       refreshAllData,
       changeSender,
+      selectSenderAsContador,
       saveSender,
       deleteSender,
       saveProduct,
+      saveProductSilent,
       deleteProduct,
       saveClient,
       deleteClient,

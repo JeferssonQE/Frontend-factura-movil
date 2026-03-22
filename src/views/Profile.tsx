@@ -13,16 +13,19 @@ import {
   ShieldCheck,
   Crown,
   ChevronRight,
+  ArrowLeftRight,
 } from 'lucide-react';
-import { AuthUser, Sender, SenderUpsertInput, UserRole, UserPlan } from '../types';
+import { AuthUser, Sender, SenderUpsertInput, UserPlan } from '../types';
 
 interface ProfileProps {
   user: AuthUser | null;
   sender: Sender | null;
   isAdmin: boolean;
+  isContador?: boolean;
   onSaveSender: (sender: SenderUpsertInput) => Promise<void>;
   onDeleteSender: () => void;
   onGoToAdmin: () => void;
+  onChangeSender?: () => void;
   onLogout: () => void;
 }
 
@@ -45,13 +48,15 @@ const Profile: React.FC<ProfileProps> = ({
   user,
   sender,
   isAdmin,
+  isContador = false,
   onSaveSender,
   onDeleteSender,
   onGoToAdmin,
+  onChangeSender,
   onLogout,
 }) => {
   // Admin without a sender starts collapsed (not forced into create form)
-  const [isEditing, setIsEditing] = useState(!sender && !isAdmin);
+  const [isEditing, setIsEditing] = useState(!sender && !isAdmin && !isContador);
   const [showPassword, setShowPassword] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [form, setForm] = useState<SenderFormState>(EMPTY_FORM);
@@ -61,11 +66,11 @@ const Profile: React.FC<ProfileProps> = ({
   useEffect(() => {
     if (!sender) {
       setForm(EMPTY_FORM);
-      setIsEditing(!isAdmin); // admin doesn't need a sender
+      setIsEditing(!isAdmin && !isContador);
       return;
     }
     setForm({ name: sender.name, ruc: sender.ruc, sunat_user: '', sunat_pass: '' });
-  }, [sender, isAdmin]);
+  }, [sender, isAdmin, isContador]);
 
   const handleSave = async () => {
     if (!form.name || !form.ruc || form.ruc.length !== 11) return;
@@ -129,9 +134,9 @@ const Profile: React.FC<ProfileProps> = ({
             <div className="flex items-center gap-2 mt-2">
               {/* Role badge */}
               <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
-                isAdmin ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-600'
+                isAdmin ? 'bg-purple-50 text-purple-700' : isContador ? 'bg-teal-50 text-teal-700' : 'bg-blue-50 text-blue-600'
               }`}>
-                {isAdmin ? 'Admin' : 'Empresa'}
+                {isAdmin ? 'Admin' : isContador ? 'Contador' : 'Empresa'}
               </span>
 
               {/* Plan badge */}
@@ -164,157 +169,320 @@ const Profile: React.FC<ProfileProps> = ({
       )}
 
       {/* ── Sender / empresa section ──────────────────────────── */}
-      {!isAdmin && <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <Building className="text-blue-600" size={20} />
-            <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">
-              Mi Empresa
-            </h4>
-          </div>
-
-          {sender && !isEditing && (
-            <button onClick={() => setIsEditing(true)} className="text-blue-600 p-2">
-              <Edit3 size={18} />
-            </button>
-          )}
-        </div>
-
-        {/* No sender + not editing → show add button */}
-        {!sender && !isEditing ? (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="w-full border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center gap-3 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
-          >
-            <Plus size={32} />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              Agregar Empresa
-            </span>
-          </button>
-
-        /* Editing / create form */
-        ) : isEditing ? (
-          <div className="space-y-4">
-            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-                Razón Social
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.toUpperCase() }))}
-                placeholder="MI EMPRESA SAC"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+      {!isAdmin && (
+        <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <Building className={isContador ? 'text-teal-600' : 'text-blue-600'} size={20} />
+              <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">
+                {isContador ? 'Empresa Activa' : 'Mi Empresa'}
+              </h4>
             </div>
 
-            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-                RUC (11 dígitos)
-              </label>
-              <input
-                type="text"
-                value={form.ruc}
-                onChange={(e) => setForm((p) => ({ ...p, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
-                placeholder="20123456789"
-                maxLength={11}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {form.ruc && form.ruc.length !== 11 && (
-                <p className="text-[9px] text-red-500 mt-1">El RUC debe tener 11 dígitos</p>
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-slate-100">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                Credenciales SUNAT (SOL)
-              </p>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={form.sunat_user}
-                  onChange={(e) => setForm((p) => ({ ...p, sunat_user: e.target.value.toUpperCase() }))}
-                  placeholder={sender ? 'Actualizar usuario SOL (opcional)' : 'Usuario SOL'}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.sunat_pass}
-                    onChange={(e) => setForm((p) => ({ ...p, sunat_pass: e.target.value }))}
-                    placeholder={sender ? 'Actualizar clave SOL (opcional)' : 'Clave SOL'}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((p) => !p)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {saveError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
-                <span className="text-red-500 text-[11px] font-black uppercase">{saveError}</span>
-              </div>
+            {sender && !isEditing && !isContador && (
+              <button onClick={() => setIsEditing(true)} className="text-blue-600 p-2">
+                <Edit3 size={18} />
+              </button>
             )}
 
-            <div className="flex gap-3 pt-2">
-              {(sender || isAdmin) && (
+            {sender && !isEditing && isContador && (
+              <button onClick={() => setIsEditing(true)} className="text-teal-600 p-2">
+                <Edit3 size={18} />
+              </button>
+            )}
+          </div>
+
+          {/* Contador: no sender selected */}
+          {isContador && !sender && (
+            <div className="text-center py-6 space-y-3">
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest">Sin empresa activa</p>
+              {onChangeSender && (
+                <button
+                  onClick={onChangeSender}
+                  className="w-full bg-teal-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <ArrowLeftRight size={14} />
+                  Seleccionar Empresa
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Contador editing: full form */}
+          {isContador && sender && isEditing && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  Razón Social
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.toUpperCase() }))}
+                  placeholder="MI EMPRESA SAC"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  RUC (11 dígitos)
+                </label>
+                <input
+                  type="text"
+                  value={form.ruc}
+                  onChange={(e) => setForm((p) => ({ ...p, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
+                  placeholder="20123456789"
+                  maxLength={11}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                {form.ruc && form.ruc.length !== 11 && (
+                  <p className="text-[9px] text-red-500 mt-1">El RUC debe tener 11 dígitos</p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                  Credenciales SUNAT (SOL)
+                </p>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={form.sunat_user}
+                    onChange={(e) => setForm((p) => ({ ...p, sunat_user: e.target.value.toUpperCase() }))}
+                    placeholder="Actualizar usuario SOL (opcional)"
+                    autoComplete="off"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.sunat_pass}
+                      onChange={(e) => setForm((p) => ({ ...p, sunat_pass: e.target.value }))}
+                      placeholder="Actualizar clave SOL (opcional)"
+                      autoComplete="new-password"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {saveError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  <span className="text-red-500 text-[11px] font-black uppercase">{saveError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => {
                     setIsEditing(false);
                     setSaveError(null);
-                    if (sender) setForm({ name: sender.name, ruc: sender.ruc, sunat_user: '', sunat_pass: '' });
-                    else setForm(EMPTY_FORM);
+                    setForm({ name: sender.name, ruc: sender.ruc, sunat_user: '', sunat_pass: '' });
                   }}
                   disabled={saving}
                   className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50"
                 >
                   Cancelar
                 </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!form.name || !form.ruc || form.ruc.length !== 11 || saving}
+                  className="flex-1 bg-teal-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={16} />
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+
+              {onChangeSender && (
+                <button
+                  onClick={onChangeSender}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-600 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                >
+                  <ArrowLeftRight size={14} />
+                  Cambiar Empresa
+                </button>
               )}
+            </div>
+          )}
+
+          {/* Contador read-only */}
+          {isContador && sender && !isEditing && (
+            <div className="space-y-3">
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Razón Social</p>
+                <p className="text-sm font-black text-slate-800">{sender.name}</p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">RUC</p>
+                <p className="text-sm font-black text-slate-800">{sender.ruc}</p>
+              </div>
+              <div className={`rounded-xl p-4 flex items-center gap-3 ${sender.has_sunat_credentials ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                <CheckCircle2 className={sender.has_sunat_credentials ? 'text-emerald-500' : 'text-amber-500'} size={18} />
+                <p className={`text-[10px] font-bold uppercase ${sender.has_sunat_credentials ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {sender.has_sunat_credentials ? 'Credenciales SUNAT configuradas' : 'Credenciales SUNAT pendientes'}
+                </p>
+              </div>
+              {onChangeSender && (
+                <button
+                  onClick={onChangeSender}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-600 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                >
+                  <ArrowLeftRight size={14} />
+                  Cambiar Empresa
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Non-contador: no sender + not editing → show add button */}
+          {!isContador && !sender && !isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="w-full border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center gap-3 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
+            >
+              <Plus size={32} />
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                Agregar Empresa
+              </span>
+            </button>
+          )}
+
+          {/* Non-contador editing / create form */}
+          {!isContador && isEditing && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  Razón Social
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.toUpperCase() }))}
+                  placeholder="MI EMPRESA SAC"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  RUC (11 dígitos)
+                </label>
+                <input
+                  type="text"
+                  value={form.ruc}
+                  onChange={(e) => setForm((p) => ({ ...p, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
+                  placeholder="20123456789"
+                  maxLength={11}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {form.ruc && form.ruc.length !== 11 && (
+                  <p className="text-[9px] text-red-500 mt-1">El RUC debe tener 11 dígitos</p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                  Credenciales SUNAT (SOL)
+                </p>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={form.sunat_user}
+                    onChange={(e) => setForm((p) => ({ ...p, sunat_user: e.target.value.toUpperCase() }))}
+                    placeholder={sender ? 'Actualizar usuario SOL (opcional)' : 'Usuario SOL'}
+                    autoComplete="off"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.sunat_pass}
+                      onChange={(e) => setForm((p) => ({ ...p, sunat_pass: e.target.value }))}
+                      placeholder={sender ? 'Actualizar clave SOL (opcional)' : 'Clave SOL'}
+                      autoComplete="new-password"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {saveError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+                  <span className="text-red-500 text-[11px] font-black uppercase">{saveError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                {(sender || isAdmin) && (
+                  <button
+                    onClick={() => {
+                      setIsEditing(false);
+                      setSaveError(null);
+                      if (sender) setForm({ name: sender.name, ruc: sender.ruc, sunat_user: '', sunat_pass: '' });
+                      else setForm(EMPTY_FORM);
+                    }}
+                    disabled={saving}
+                    className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <button
+                  onClick={handleSave}
+                  disabled={!form.name || !form.ruc || form.ruc.length !== 11 || saving}
+                  className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={16} />
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Non-contador read-only sender view */}
+          {!isContador && !isEditing && sender && (
+            <div className="space-y-3">
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Razón Social</p>
+                <p className="text-sm font-black text-slate-800">{sender.name}</p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">RUC</p>
+                <p className="text-sm font-black text-slate-800">{sender.ruc}</p>
+              </div>
+              <div className={`rounded-xl p-4 flex items-center gap-3 ${sender.has_sunat_credentials ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                <CheckCircle2 className={sender.has_sunat_credentials ? 'text-emerald-500' : 'text-amber-500'} size={18} />
+                <p className={`text-[10px] font-bold uppercase ${sender.has_sunat_credentials ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {sender.has_sunat_credentials ? 'Credenciales SUNAT configuradas' : 'Credenciales SUNAT pendientes'}
+                </p>
+              </div>
               <button
-                onClick={handleSave}
-                disabled={!form.name || !form.ruc || form.ruc.length !== 11 || saving}
-                className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
               >
-                <CheckCircle2 size={16} />
-                {saving ? 'Guardando...' : 'Guardar'}
+                <Trash2 size={16} />
+                Eliminar Empresa
               </button>
             </div>
-          </div>
-
-        /* Read-only sender view */
-        ) : sender ? (
-          <div className="space-y-3">
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Razón Social</p>
-              <p className="text-sm font-black text-slate-800">{sender.name}</p>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">RUC</p>
-              <p className="text-sm font-black text-slate-800">{sender.ruc}</p>
-            </div>
-            <div className={`rounded-xl p-4 flex items-center gap-3 ${sender.has_sunat_credentials ? 'bg-emerald-50' : 'bg-amber-50'}`}>
-              <CheckCircle2 className={sender.has_sunat_credentials ? 'text-emerald-500' : 'text-amber-500'} size={18} />
-              <p className={`text-[10px] font-bold uppercase ${sender.has_sunat_credentials ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {sender.has_sunat_credentials ? 'Credenciales SUNAT configuradas' : 'Credenciales SUNAT pendientes'}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="w-full bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
-            >
-              <Trash2 size={16} />
-              Eliminar Empresa
-            </button>
-          </div>
-        ) : null}
-      </div>}
+          )}
+        </div>
+      )}
 
       {/* ── Logout ────────────────────────────────────────────── */}
       <div className="space-y-3">

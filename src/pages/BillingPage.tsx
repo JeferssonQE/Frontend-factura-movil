@@ -6,7 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 
 const BillingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient } = useAppData();
+  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent } = useAppData();
 
   return (
     <Billing
@@ -24,6 +24,17 @@ const BillingPage: React.FC = () => {
         await saveClient(client);
       }}
       onSelectSender={() => navigate('/profile')}
+      onSaveProduct={async (data) => {
+        if (!activeSender) return;
+        await saveProductSilent({
+          id: 0,
+          sender_id: activeSender.id,
+          description: data.description,
+          unit: data.unit,
+          base_price: data.base_price,
+          has_igv: data.has_igv,
+        });
+      }}
     />
   );
 };

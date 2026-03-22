@@ -13,7 +13,10 @@ import {
   ShieldCheck,
   Bot,
   MessageCircle,
+  Building2,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { Sender } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -23,7 +26,10 @@ interface LayoutProps {
   showBack?: boolean;
   title: string;
   isAdmin?: boolean;
+  isContador?: boolean;
+  activeSender?: Sender | null;
   userInitials?: string;
+  hideBottomNav?: boolean;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -34,7 +40,10 @@ const Layout: React.FC<LayoutProps> = ({
   showBack,
   title,
   isAdmin = false,
+  isContador = false,
+  activeSender = null,
   userInitials = 'US',
+  hideBottomNav = false,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -84,6 +93,23 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="p-4 space-y-1.5 mt-4">
+          {isContador && (
+            <>
+              <button
+                onClick={() => handleLinkClick('contador-senders')}
+                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
+                  activeTab === 'contador-senders'
+                    ? 'bg-blue-50 text-blue-600 font-black'
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                <Building2 size={20} />
+                <span className="text-[11px] uppercase font-black tracking-widest">Mis Empresas</span>
+              </button>
+              <div className="h-px bg-slate-100 my-4 mx-4" />
+            </>
+          )}
+
           <button
             onClick={() => handleLinkClick('dashboard')}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
@@ -127,12 +153,12 @@ const Layout: React.FC<LayoutProps> = ({
             <span className="text-[11px] uppercase font-black tracking-widest">Agente SUNAT IA</span>
             {activeTab !== 'agent' && (
               <span className="ml-auto text-[8px] font-black bg-violet-500 text-white px-2 py-0.5 rounded-full uppercase tracking-widest shrink-0">
-                Nuevo
+                Próximamente
               </span>
             )}
           </button>
 
-          {/* Información y Opinión */}
+          {/* Opiniones */}
           <button
             onClick={() => handleLinkClick('feedback')}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
@@ -142,7 +168,20 @@ const Layout: React.FC<LayoutProps> = ({
             }`}
           >
             <MessageCircle size={20} />
-            <span className="text-[11px] uppercase font-black tracking-widest">Información y Opinión</span>
+            <span className="text-[11px] uppercase font-black tracking-widest">Opiniones</span>
+          </button>
+
+          {/* Sobre Nosotros */}
+          <button
+            onClick={() => handleLinkClick('about')}
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
+              activeTab === 'about'
+                ? 'bg-blue-50 text-blue-600 font-black'
+                : 'text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            <Building2 size={20} />
+            <span className="text-[11px] uppercase font-black tracking-widest">Sobre Nosotros</span>
           </button>
 
           {/* Admin section */}
@@ -169,7 +208,7 @@ const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md px-4 py-4 sticky top-0 z-30 flex items-center justify-between border-b border-slate-100 h-20">
+      <header className="bg-white/80 backdrop-blur-md px-4 py-3 sticky top-0 z-30 flex items-center justify-between border-b border-slate-100 h-[68px]">
         <div className="flex items-center gap-1">
           {showBack && onGoBack ? (
             <button
@@ -197,10 +236,36 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
       </header>
 
+      {/* Contador active sender banner */}
+      {isContador && activeSender && (
+        <div className="bg-slate-900 px-4 py-2.5 flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+            <Building2 size={13} className="text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-black text-[10px] uppercase tracking-widest truncate leading-tight">
+              {activeSender.name}
+            </p>
+            <p className="text-white/40 text-[9px] font-medium leading-tight">
+              RUC {activeSender.ruc}
+            </p>
+          </div>
+          <button
+            onClick={() => onTabChange('contador-senders')}
+            className="shrink-0 flex items-center gap-1 text-white/50 hover:text-white transition-colors"
+            aria-label="Cambiar empresa"
+          >
+            <ArrowLeftRight size={13} />
+            <span className="text-[9px] font-black uppercase tracking-widest">Cambiar</span>
+          </button>
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-32 px-4 pt-4">{children}</main>
+      <main className={`flex-1 overflow-y-auto px-4 pt-4 ${hideBottomNav ? 'pb-4' : 'pb-32'}`}>{children}</main>
 
       {/* Bottom Navigation */}
+      {!hideBottomNav && (
       <nav className="bg-white/95 backdrop-blur-xl border-t border-slate-50 px-8 py-4 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-30 flex justify-between items-center rounded-t-[40px] shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
         {bottomTabs.map((tab) => {
           const Icon = tab.icon;
@@ -246,6 +311,7 @@ const Layout: React.FC<LayoutProps> = ({
           );
         })}
       </nav>
+      )}
     </div>
   );
 };

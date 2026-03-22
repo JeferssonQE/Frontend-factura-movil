@@ -4,45 +4,51 @@ import Layout from '../components/Layout';
 import { useAppData } from '../context/AppDataContext';
 
 const titles: Record<string, string> = {
-  '/dashboard':   'Resumen',
-  '/billing':     'Emitir Documento',
-  '/history':     'Historial',
-  '/products':    'Productos',
-  '/clients':     'Clientes',
-  '/profile':     'Mi Perfil',
-  '/agent':       'Agente SUNAT IA',
-  '/feedback':    'Información y Opinión',
-  '/admin/users': 'Gestión de Usuarios',
+  '/dashboard':         'Resumen',
+  '/billing':           'Emitir Documento',
+  '/history':           'Historial',
+  '/products':          'Productos',
+  '/clients':           'Clientes',
+  '/profile':           'Mi Perfil',
+  '/agent':             'Agente SUNAT IA',
+  '/feedback':          'Opiniones',
+  '/about':             'Sobre Nosotros',
+  '/admin/users':       'Gestión de Usuarios',
+  '/contador/senders':  'Mis Empresas',
 };
 
 const activeTabMap: Record<string, string> = {
-  '/dashboard':   'dashboard',
-  '/billing':     'billing',
-  '/history':     'history',
-  '/products':    'products',
-  '/clients':     'clients',
-  '/profile':     'profile',
-  '/agent':       'agent',
-  '/feedback':    'feedback',
-  '/admin/users': 'admin-users',
+  '/dashboard':         'dashboard',
+  '/billing':           'billing',
+  '/history':           'history',
+  '/products':          'products',
+  '/clients':           'clients',
+  '/profile':           'profile',
+  '/agent':             'agent',
+  '/feedback':          'feedback',
+  '/about':             'about',
+  '/admin/users':       'admin-users',
+  '/contador/senders':  'contador-senders',
 };
 
 const routeMap: Record<string, string> = {
-  dashboard:     '/dashboard',
-  billing:       '/billing',
-  history:       '/history',
-  products:      '/products',
-  clients:       '/clients',
-  profile:       '/profile',
-  agent:         '/agent',
-  feedback:      '/feedback',
-  'admin-users': '/admin/users',
+  dashboard:            '/dashboard',
+  billing:              '/billing',
+  history:              '/history',
+  products:             '/products',
+  clients:              '/clients',
+  profile:              '/profile',
+  agent:                '/agent',
+  feedback:             '/feedback',
+  about:                '/about',
+  'admin-users':        '/admin/users',
+  'contador-senders':   '/contador/senders',
 };
 
 export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin } = useAppData();
+  const { user, isAdmin, isContador, activeSender } = useAppData();
 
   const pathname = location.pathname;
   const title = titles[pathname] || 'FactuMovil';
@@ -70,7 +76,10 @@ export default function AppLayout() {
       showBack={pathname !== '/dashboard' && pathname !== '/billing' && pathname !== '/profile'}
       title={title}
       isAdmin={isAdmin}
+      isContador={isContador}
+      activeSender={activeSender}
       userInitials={userInitials}
+      hideBottomNav={pathname === '/agent'}
     >
       <Outlet />
     </Layout>

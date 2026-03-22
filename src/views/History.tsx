@@ -13,8 +13,14 @@ import {
   ShieldCheck,
   CornerUpLeft,
   Share2,
+  RefreshCw,
   Zap,
   Loader2,
+  KeyRound,
+  PackageX,
+  FileX,
+  AlertTriangle,
+  HelpCircle,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
@@ -23,7 +29,51 @@ interface HistoryProps {
   invoices: Invoice[];
   onEmitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => void;
   onEmitDraft: (invoiceId: number) => Promise<void>;
+  onRefresh: () => void;
 }
+
+interface FailedStepConfig {
+  label: string;
+  hint: string;
+  isWarning: boolean;
+  icon: React.ReactNode;
+}
+
+const FAILED_STEP_CONFIG: Record<string, FailedStepConfig> = {
+  login: {
+    label: 'Credenciales SUNAT incorrectas',
+    hint: 'Verifique su usuario y clave SUNAT en el perfil.',
+    isWarning: false,
+    icon: <KeyRound size={14} />,
+  },
+  agregar_producto: {
+    label: 'Error al cargar los productos',
+    hint: 'Uno o más productos no pudieron cargarse en el portal SUNAT.',
+    isWarning: false,
+    icon: <PackageX size={14} />,
+  },
+  completar_emision: {
+    label: 'Error al confirmar en SUNAT',
+    hint: 'El portal SUNAT no respondió al confirmar la emisión. Reintente.',
+    isWarning: false,
+    icon: <FileX size={14} />,
+  },
+  descargar_pdf: {
+    label: 'Emitido — PDF no disponible',
+    hint: 'El comprobante pudo haberse emitido en SUNAT. Verifique manualmente en el portal antes de reintentar.',
+    isWarning: true,
+    icon: <AlertTriangle size={14} />,
+  },
+  desconocido: {
+    label: 'Error inesperado',
+    hint: 'Ocurrió un error no esperado. Si el problema persiste, contacte soporte.',
+    isWarning: false,
+    icon: <HelpCircle size={14} />,
+  },
+};
+
+const getFailedStepConfig = (step: string | null | undefined): FailedStepConfig =>
+  FAILED_STEP_CONFIG[step ?? ''] ?? FAILED_STEP_CONFIG['desconocido'];
 
 export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
   const styles: Record<InvoiceStatus, string> = {
@@ -44,7 +94,7 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
   );
 };
 
-const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDraft }) => {
+const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDraft, onRefresh }) => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -71,18 +121,27 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="relative group">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Buscar por cliente o número..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="w-full bg-white border border-slate-100 rounded-[22px] py-4 pl-12 pr-4 shadow-sm text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500/10 transition-all outline-none"
-          />
+        <div className="flex gap-2">
+          <div className="relative group flex-1">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Buscar por cliente o número..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full bg-white border border-slate-100 rounded-[22px] py-4 pl-12 pr-4 shadow-sm text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500/10 transition-all outline-none"
+            />
+          </div>
+          <button
+            onClick={onRefresh}
+            className="bg-white border border-slate-100 text-slate-400 px-4 rounded-[22px] shadow-sm active:scale-95 transition-all hover:text-slate-600 shrink-0"
+            aria-label="Actualizar historial"
+          >
+            <RefreshCw size={17} />
+          </button>
         </div>
 
         <div className="overflow-x-auto hide-scrollbar -mx-2 px-2">
@@ -152,6 +211,25 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                       {invoice.invoice_date}
                     </span>
                   </div>
+                  {invoice.status === InvoiceStatus.FALLO && (
+                    <div className="flex items-center gap-1 mt-1">
+                      {(() => {
+                        const cfg = getFailedStepConfig(invoice.sunat_failed_step);
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full border ${
+                              cfg.isWarning
+                                ? 'text-amber-700 bg-amber-50 border-amber-200'
+                                : 'text-red-600 bg-red-50 border-red-100'
+                            }`}
+                          >
+                            {cfg.icon}
+                            {cfg.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -167,6 +245,9 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                 </p>
                 <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">
                   {invoice.series}-{invoice.number}
+                </p>
+                <p className="text-[7px] text-slate-300 font-mono tracking-wide">
+                  ID: {invoice.id}
                 </p>
               </div>
             </div>
@@ -186,6 +267,9 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                 </h3>
                 <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">
                   {selectedInvoice.series}-{selectedInvoice.number}
+                </p>
+                <p className="text-[10px] font-mono text-slate-300 mt-0.5 select-all">
+                  ID: {selectedInvoice.id}
                 </p>
               </div>
 
@@ -287,6 +371,58 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                 </div>
               </div>
 
+              {selectedInvoice.status === InvoiceStatus.FALLO && (() => {
+                const cfg = getFailedStepConfig(selectedInvoice.sunat_failed_step);
+                return (
+                  <div
+                    className={`rounded-[24px] overflow-hidden border ${
+                      cfg.isWarning ? 'border-amber-200' : 'border-red-100'
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center gap-2.5 px-5 py-3.5 ${
+                        cfg.isWarning ? 'bg-amber-50' : 'bg-red-50'
+                      }`}
+                    >
+                      <span
+                        className={`shrink-0 ${cfg.isWarning ? 'text-amber-600' : 'text-red-500'}`}
+                      >
+                        {cfg.icon}
+                      </span>
+                      <div className="flex-1">
+                        <p
+                          className={`text-[11px] font-black uppercase tracking-tight leading-none ${
+                            cfg.isWarning ? 'text-amber-700' : 'text-red-700'
+                          }`}
+                        >
+                          {cfg.label}
+                        </p>
+                        <p
+                          className={`text-[10px] font-bold mt-0.5 leading-snug ${
+                            cfg.isWarning ? 'text-amber-600' : 'text-red-500'
+                          }`}
+                        >
+                          {cfg.hint}
+                        </p>
+                      </div>
+                      <span className="text-[9px] font-mono text-slate-400 select-all shrink-0">
+                        #{selectedInvoice.id}
+                      </span>
+                    </div>
+                    {selectedInvoice.sunat_message && (
+                      <div className="bg-white px-5 py-3 border-t border-dashed border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                          Detalle técnico
+                        </p>
+                        <p className="text-[10px] font-mono text-slate-500 leading-relaxed break-words">
+                          {selectedInvoice.sunat_message}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {showReasonSelect ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 px-2">
                   <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest text-center">
@@ -366,12 +502,15 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                     </button>
 
                     <button
-                      onClick={() => {
-                        if (selectedInvoice?.pdf_base64) {
-                          PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoice.pdf_base64);
-                        } else {
+                      onClick={async () => {
+                        if (!selectedInvoice?.pdf_base64) {
                           alert('PDF no disponible para compartir');
+                          return;
                         }
+                        const filename = `${selectedInvoice.series}-${selectedInvoice.number}.pdf`;
+                        const shared = await PDFService.shareNative(selectedInvoice.pdf_base64, filename, `Comprobante ${filename}`);
+                        if (shared) return;
+                        PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoice.pdf_base64);
                       }}
                       className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-sm active:scale-95 transition-all border ${
                         selectedInvoice?.pdf_base64
@@ -384,24 +523,46 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                     </button>
                   </div>
 
-                  {selectedInvoice.status === InvoiceStatus.BORRADOR && (
-                    <button
-                      onClick={async () => {
-                        setIsEmittingDraft(true);
-                        await onEmitDraft(selectedInvoice.id);
-                        setIsEmittingDraft(false);
-                        setSelectedInvoice(null);
-                      }}
-                      disabled={isEmittingDraft}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-emerald-200/50 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isEmittingDraft ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <Zap size={18} />
-                      )}
-                      {isEmittingDraft ? 'Enviando a SUNAT...' : 'Emitir a SUNAT'}
-                    </button>
+                  {(selectedInvoice.status === InvoiceStatus.BORRADOR ||
+                    selectedInvoice.status === InvoiceStatus.FALLO) && (
+                    <>
+                      {selectedInvoice.status === InvoiceStatus.FALLO &&
+                        selectedInvoice.sunat_failed_step === 'descargar_pdf' && (
+                          <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                            <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                            <p className="text-[10px] font-bold text-amber-700 leading-snug">
+                              Este comprobante puede ya estar emitido en SUNAT. Verifique en el portal antes de reintentar.
+                            </p>
+                          </div>
+                        )}
+                      <button
+                        onClick={async () => {
+                          setIsEmittingDraft(true);
+                          await onEmitDraft(selectedInvoice.id);
+                          setIsEmittingDraft(false);
+                          setSelectedInvoice(null);
+                        }}
+                        disabled={isEmittingDraft}
+                        className={`w-full text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
+                          selectedInvoice.status === InvoiceStatus.FALLO
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-200/50'
+                            : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-200/50'
+                        }`}
+                      >
+                        {isEmittingDraft ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : selectedInvoice.status === InvoiceStatus.FALLO ? (
+                          <RefreshCw size={18} />
+                        ) : (
+                          <Zap size={18} />
+                        )}
+                        {isEmittingDraft
+                          ? 'Enviando a SUNAT...'
+                          : selectedInvoice.status === InvoiceStatus.FALLO
+                          ? 'Reintentar SUNAT'
+                          : 'Emitir a SUNAT'}
+                      </button>
+                    </>
                   )}
 
                   {selectedInvoice.invoice_type !== InvoiceType.NOTA_CREDITO &&

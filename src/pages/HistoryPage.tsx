@@ -8,7 +8,7 @@ import { InvoiceStatus } from '../types';
 const POLL_INTERVAL_MS = 10_000; // 10 segundos
 
 const HistoryPage: React.FC = () => {
-  const { invoices, emitCreditNote, emitDraft, refreshAllData } = useAppData();
+  const { invoices, emitCreditNote, emitDraft, refreshAllData, activeSenderId } = useAppData();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const procesandoIds = invoices
@@ -29,7 +29,7 @@ const HistoryPage: React.FC = () => {
       await Promise.allSettled(
         procesandoIds.map(async (id) => {
           try {
-            const s = await invoiceService.getInvoiceStatus(id);
+            const s = await invoiceService.getInvoiceStatus(id, activeSenderId ?? undefined);
             if (s.status !== InvoiceStatus.PROCESANDO) changed = true;
           } catch { /* ignorar errores individuales */ }
         })
@@ -46,9 +46,9 @@ const HistoryPage: React.FC = () => {
         timerRef.current = null;
       }
     };
-  }, [procesandoIds.join(','), refreshAllData]); // eslint-disable-line
+  }, [procesandoIds.join(','), refreshAllData, activeSenderId]); // eslint-disable-line
 
-  return <History invoices={invoices} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} />;
+  return <History invoices={invoices} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} onRefresh={refreshAllData} />;
 };
 
 export default HistoryPage;

@@ -1,11 +1,12 @@
 // services/authService.ts
-import { apiClient, storageKeys } from './apiClient';
+import { apiClient, storageKeys, saveTokens } from './apiClient';
 import { AuthUser } from '../../types';
 
 const INACTIVITY_LIMIT_MS = 2 * 24 * 60 * 60 * 1000;
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   token_type: 'bearer' | string;
   expires_in: number;
   user: AuthUser;
@@ -56,6 +57,10 @@ const setToken = (token: string) => {
   localStorage.setItem(storageKeys.accessToken, token);
 };
 
+const setRefreshToken = (token: string) => {
+  localStorage.setItem(storageKeys.refreshToken, token);
+};
+
 const setStoredUser = (user: AuthUser | MeResponse) => {
   writeJson(storageKeys.user, user);
 };
@@ -100,7 +105,7 @@ export const authService = {
       password,
     });
 
-    setToken(response.access_token);
+    saveTokens(response.access_token, response.refresh_token);
     setStoredUser(response.user);
     touchActivity();
 

@@ -9,6 +9,7 @@ import {
   AlertCircle,
   X,
   AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { Product, UnitOfMeasure } from '../types';
 import { productSchema } from '../schemas/business';
@@ -19,9 +20,10 @@ interface ProductsProps {
   senderId: number | null;
   onSave: (product: Product) => void;
   onDelete: (id: number) => void;
+  onRefresh: () => void;
 }
 
-const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelete }) => {
+const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelete, onRefresh }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
@@ -96,6 +98,14 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
             showDropdownButton={false}
           />
         </div>
+
+        <button
+          onClick={onRefresh}
+          className="bg-white border border-slate-200 text-slate-400 p-3.5 rounded-2xl shadow-sm active:scale-95 transition-all hover:text-slate-600"
+          aria-label="Actualizar lista"
+        >
+          <RefreshCw size={18} />
+        </button>
 
         <button
           onClick={() => {
@@ -251,7 +261,7 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                   </label>
                   <select
                     name="unit"
-                    defaultValue={editingProduct?.unit || UnitOfMeasure.UNIDAD}
+                    defaultValue={editingProduct?.unit || UnitOfMeasure.KILOGRAMO}
                     className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 appearance-none uppercase"
                   >
                     {Object.values(UnitOfMeasure).map((unit) => (

@@ -26,19 +26,23 @@ export type DashboardSummary = {
   annulled_invoices: number;
 };
 
+const qs = (senderId?: number) => (senderId ? `?sender_id=${senderId}` : '');
+
 export const reportsService = {
-  async getSalesByMonth(year?: number): Promise<SalesByMonthItem[]> {
-    const query = year ? `?year=${encodeURIComponent(year)}` : '';
-    return apiClient.get<SalesByMonthItem[]>(`/reports/sales-by-month${query}`);
+  async getSalesByMonth(year?: number, senderId?: number): Promise<SalesByMonthItem[]> {
+    const base = qs(senderId);
+    const yearPart = year ? `${base ? '&' : '?'}year=${encodeURIComponent(year)}` : '';
+    return apiClient.get<SalesByMonthItem[]>(`/reports/sales-by-month${base}${yearPart}`);
   },
 
-  async getTopProducts(limit = 10): Promise<TopProductItem[]> {
+  async getTopProducts(limit = 10, senderId?: number): Promise<TopProductItem[]> {
+    const base = qs(senderId);
     return apiClient.get<TopProductItem[]>(
-      `/reports/top-products?limit=${encodeURIComponent(limit)}`
+      `/reports/top-products${base}${base ? '&' : '?'}limit=${encodeURIComponent(limit)}`
     );
   },
 
-  async getDashboardSummary(): Promise<DashboardSummary> {
-    return apiClient.get<DashboardSummary>('/reports/dashboard-summary');
+  async getDashboardSummary(senderId?: number): Promise<DashboardSummary> {
+    return apiClient.get<DashboardSummary>(`/reports/dashboard-summary${qs(senderId)}`);
   },
 };

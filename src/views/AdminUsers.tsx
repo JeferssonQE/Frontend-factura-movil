@@ -17,9 +17,13 @@ import {
   Sparkles,
   Trash2,
   AlertTriangle,
+  Building2,
+  Plus,
+  Minus,
 } from 'lucide-react';
-import { AdminUserRow, UserRole, UserPlan } from '../types';
+import { AdminUserRow, UserRole, UserPlan, Sender } from '../types';
 import { adminService } from '../services/business/adminService';
+import { contadorService, ContadorAssignment } from '../services/business/contadorService';
 
 // ─── props ──────────────────────────────────────────────────────────────────
 
@@ -36,9 +40,21 @@ const PLAN_META: Record<string, { bg: string; text: string; selectRing: string; 
 };
 
 const ROLE_META: Record<string, { bg: string; text: string; selectRing: string }> = {
-  admin:   { bg: 'bg-purple-50', text: 'text-purple-700', selectRing: 'focus:ring-purple-400' },
-  empresa: { bg: 'bg-blue-50',   text: 'text-blue-600',   selectRing: 'focus:ring-blue-400'   },
+  admin:    { bg: 'bg-purple-50',  text: 'text-purple-700', selectRing: 'focus:ring-purple-400' },
+  empresa:  { bg: 'bg-blue-50',    text: 'text-blue-600',   selectRing: 'focus:ring-blue-400'   },
+  contador: { bg: 'bg-emerald-50', text: 'text-emerald-700', selectRing: 'focus:ring-emerald-400' },
 };
+
+type AdminTab = 'usuarios' | 'contadores';
+
+interface ContadorAssignments {
+  [contadorId: string]: number[];
+}
+
+interface AssignModalState {
+  contadorId: string;
+  contadorName: string;
+}
 
 // ─── pure helpers ────────────────────────────────────────────────────────────
 
@@ -110,11 +126,19 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
 
   // ── state ─────────────────────────────────────────────────────────────────
 
+  const [activeTab,     setActiveTab]     = useState<AdminTab>('usuarios');
   const [users,         setUsers]         = useState<AdminUserRow[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState<string | null>(null);
   const [search,        setSearch]        = useState('');
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [assignments,   setAssignments]   = useState<ContadorAssignments>({});
+  const [assignModal,    setAssignModal]    = useState<AssignModalState | null>(null);
+  const [assignBusy,     setAssignBusy]     = useState(false);
+  const [assignError,    setAssignError]    = useState<string | null>(null);
+  const [allSenders,     setAllSenders]     = useState<Sender[]>([]);
+  const [allAssignments, setAllAssignments] = useState<ContadorAssignment[]>([]);
+  const [sendersLoading, setSendersLoading] = useState(false);
 
   const [showCreate,  setShowCreate]  = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
@@ -145,6 +169,32 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   };
 
   useEffect(() => { load(); }, []);
+
+  const loadSendersAndAssignments = async () => {
+    setSendersLoading(true);
+    try {
+      const [senders, rawAssignments] = await Promise.all([
+        contadorService.getAllSenders(),
+        contadorService.getAllAssignments(),
+      ]);
+      setAllSenders(senders);
+      setAllAssignments(rawAssignments);
+
+      const map: ContadorAssignments = {};
+      for (const a of rawAssignments) {
+        map[a.contador_user_id] = [...(map[a.contador_user_id] ?? []), a.sender_id];
+      }
+      setAssignments(map);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al cargar empresas');
+    } finally {
+      setSendersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'contadores') loadSendersAndAssignments();
+  }, [activeTab]);
 
   // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -266,6 +316,55 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setCreateForm((prev) => ({ ...prev, [field]: e.target.value }));
 
+  // ── contador handlers ─────────────────────────────────────────────────────
+
+  const handleOpenAssign = (contador: AdminUserRow) => {
+    setAssignError(null);
+    setAssignModal({
+      contadorId: contador.id,
+      contadorName: contador.name ?? contador.email,
+    });
+  };
+
+  const handleAssignSender = async (senderId: number) => {
+    if (!assignModal) return;
+    setAssignBusy(true);
+    setAssignError(null);
+    try {
+      await contadorService.assignSender(assignModal.contadorId, senderId);
+      setAssignments((prev) => ({
+        ...prev,
+        [assignModal.contadorId]: [...(prev[assignModal.contadorId] ?? []), senderId],
+      }));
+      setAllAssignments((prev) => [
+        ...prev,
+        { contador_user_id: assignModal.contadorId, sender_id: senderId },
+      ]);
+      setAssignModal(null);
+    } catch (e: unknown) {
+      setAssignError(e instanceof Error ? e.message : 'Error al asignar');
+    } finally {
+      setAssignBusy(false);
+    }
+  };
+
+  const handleRemoveSender = async (contadorId: string, senderId: number) => {
+    try {
+      await contadorService.removeSender(contadorId, senderId);
+      setAssignments((prev) => ({
+        ...prev,
+        [contadorId]: (prev[contadorId] ?? []).filter((id) => id !== senderId),
+      }));
+      setAllAssignments((prev) =>
+        prev.filter(
+          (a) => !(a.contador_user_id === contadorId && a.sender_id === senderId)
+        )
+      );
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error al quitar asignación');
+    }
+  };
+
   // ── derived values ────────────────────────────────────────────────────────
 
   const filtered = users.filter((u) => {
@@ -282,6 +381,8 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     inactive: users.filter((u) => !u.is_active).length,
   };
 
+  const contadores = users.filter((u) => u.role === UserRole.CONTADOR);
+
   const resetUserName =
     users.find((u) => u.id === resetUserId)?.name ??
     users.find((u) => u.id === resetUserId)?.email ??
@@ -296,6 +397,125 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
 
   return (
     <div className="space-y-5 pb-8">
+
+      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
+      <div className="flex gap-2 bg-slate-100 p-1 rounded-2xl">
+        <button
+          onClick={() => setActiveTab('usuarios')}
+          className={`flex-1 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+            activeTab === 'usuarios'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Empresas
+        </button>
+        <button
+          onClick={() => setActiveTab('contadores')}
+          className={`flex-1 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+            activeTab === 'contadores'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Contadores {contadores.length > 0 && `(${contadores.length})`}
+        </button>
+      </div>
+
+      {/* ── Contadores tab ───────────────────────────────────────────────── */}
+      {activeTab === 'contadores' && (
+        <div className="space-y-3">
+          {contadores.length === 0 && !loading && (
+            <div className="text-center py-14 bg-white rounded-3xl border border-dashed border-slate-200">
+              <div className="w-14 h-14 rounded-[20px] bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                <Users size={26} className="text-slate-300" />
+              </div>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                Sin contadores
+              </p>
+              <p className="text-[9px] text-slate-300 mt-1">
+                Cambia el rol de un usuario a "Contador" desde la pestaña Empresas.
+              </p>
+            </div>
+          )}
+
+          {contadores.map((contador) => {
+            const contadorAssignments = assignments[contador.id] ?? [];
+            return (
+              <div
+                key={contador.id}
+                className="bg-white rounded-[24px] border border-slate-100 shadow-sm"
+              >
+                <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center font-black text-[11px] text-emerald-700 shrink-0">
+                    {getInitials(contador)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight truncate">
+                      {contador.name || '—'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">{contador.email}</p>
+                  </div>
+                  <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0">
+                    Contador
+                  </span>
+                </div>
+
+                <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-2">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    Empresas asignadas ({contadorAssignments.length})
+                  </p>
+
+                  {contadorAssignments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {contadorAssignments.map((senderId) => {
+                        const senderInfo = allSenders.find((s) => s.id === senderId);
+                        return (
+                          <div
+                            key={senderId}
+                            className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2"
+                          >
+                            <Building2 size={13} className="text-slate-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-black text-slate-700 truncate">
+                                {senderInfo?.name ?? `Empresa #${senderId}`}
+                              </p>
+                              {senderInfo?.ruc && (
+                                <p className="text-[9px] text-slate-400">{senderInfo.ruc}</p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveSender(contador.id, senderId)}
+                              className="text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                              aria-label="Quitar asignación"
+                            >
+                              <Minus size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => handleOpenAssign(contador)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500 transition-colors"
+                  >
+                    <Plus size={13} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">
+                      Asignar empresa
+                    </span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Stats grid (only on usuarios tab) ───────────────────────────── */}
+      {activeTab === 'usuarios' && (
+      <>
 
       {/* ── Stats grid ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
@@ -447,6 +667,8 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                     className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-[11px] shrink-0 ${
                       user.role === UserRole.ADMIN
                         ? 'bg-purple-100 text-purple-700'
+                        : user.role === UserRole.CONTADOR
+                        ? 'bg-emerald-50 text-emerald-700'
                         : 'bg-blue-50 text-blue-600'
                     }`}
                     aria-hidden="true"
@@ -531,6 +753,7 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                     >
                       <option value="empresa">EMPRESA</option>
                       <option value="admin">ADMIN</option>
+                      <option value="contador">CONTADOR</option>
                     </select>
                     <ChevronDown
                       size={9}
@@ -587,6 +810,105 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
             );
           })}
         </div>
+      )}
+
+      </>
+      )}
+
+      {/* ── Assign sender modal ──────────────────────────────────────────── */}
+      {assignModal && (
+        <ModalShell onClose={() => setAssignModal(null)}>
+          <div className="flex items-center gap-3 mb-6 pr-8">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0">
+              <Building2 size={20} strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-black text-slate-800 tracking-tight uppercase leading-tight">
+                Asignar Empresa
+              </h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate max-w-[200px]">
+                {assignModal.contadorName}
+              </p>
+            </div>
+          </div>
+
+          {assignError && <ModalError message={assignError} />}
+
+          {(() => {
+            const alreadyMine = new Set(assignments[assignModal.contadorId] ?? []);
+            const assignedElsewhere = new Set(
+              allAssignments
+                .filter((a) => a.contador_user_id !== assignModal.contadorId)
+                .map((a) => a.sender_id)
+            );
+            const available = allSenders.filter(
+              (s) => !alreadyMine.has(s.id) && !assignedElsewhere.has(s.id)
+            );
+
+            return (
+              <div className="space-y-3">
+                {sendersLoading ? (
+                  <div className="py-8 flex flex-col items-center gap-3">
+                    <RefreshCw size={20} className="animate-spin text-slate-400" />
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                      Cargando empresas...
+                    </p>
+                  </div>
+                ) : available.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                      <Building2 size={20} className="text-slate-300" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      Sin empresas disponibles
+                    </p>
+                    <p className="text-[9px] text-slate-300 mt-1">
+                      Todas las empresas ya están asignadas a un contador.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
+                      Selecciona una empresa
+                    </p>
+                    <div className="space-y-2 max-h-64 overflow-y-auto -mx-1 px-1">
+                      {available.map((sender) => (
+                        <button
+                          key={sender.id}
+                          onClick={() => handleAssignSender(sender.id)}
+                          disabled={assignBusy}
+                          className="w-full flex items-center gap-3 bg-slate-50 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 rounded-2xl px-4 py-3 text-left transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                            <Building2 size={15} className="text-slate-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight truncate">
+                              {sender.name}
+                            </p>
+                            <p className="text-[9px] text-slate-400">{sender.ruc}</p>
+                          </div>
+                          {assignBusy ? (
+                            <RefreshCw size={13} className="animate-spin text-emerald-500 shrink-0" />
+                          ) : (
+                            <Plus size={13} className="text-slate-300 shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <button
+                  onClick={() => setAssignModal(null)}
+                  className="w-full bg-slate-100 text-slate-600 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-colors mt-1"
+                >
+                  Cancelar
+                </button>
+              </div>
+            );
+          })()}
+        </ModalShell>
       )}
 
       {/* ── Create user modal ────────────────────────────────────────────── */}

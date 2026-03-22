@@ -14,6 +14,9 @@ import ProfilePage from '../pages/ProfilePage';
 import AdminUsersPage from '../pages/AdminUsersPage';
 import AgentPage from '../pages/AgentPage';
 import FeedbackPage from '../pages/FeedbackPage';
+import AboutPage from '../pages/AboutPage';
+import ContadorSendersPage from '../pages/ContadorSendersPage';
+import ContadorRoute from './ContadorRoute';
 
 export default function AppRouter() {
   return (
@@ -37,6 +40,15 @@ export default function AppRouter() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/agent" element={<AgentPage />} />
           <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route
+            path="/contador/senders"
+            element={
+              <ContadorRoute>
+                <ContadorSendersPage />
+              </ContadorRoute>
+            }
+          />
           <Route
             path="/admin/users"
             element={

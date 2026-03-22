@@ -59,26 +59,30 @@ export type CreateCreditNotePayload = {
   sustento: string;
 };
 
+const qs = (params: Record<string, string | number | undefined>) => {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined);
+  return entries.length ? '?' + entries.map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join('&') : '';
+};
+
 export const invoiceService = {
-  async getInvoices(status?: InvoiceStatus): Promise<Invoice[]> {
-    const query = status ? `?status=${encodeURIComponent(status)}` : '';
-    return apiClient.get<Invoice[]>(`/invoices${query}`);
+  async getInvoices(status?: InvoiceStatus, senderId?: number): Promise<Invoice[]> {
+    return apiClient.get<Invoice[]>(`/invoices${qs({ status, sender_id: senderId })}`);
   },
 
-  async getInvoice(invoiceId: number): Promise<Invoice> {
-    return apiClient.get<Invoice>(`/invoices/${invoiceId}`);
+  async getInvoice(invoiceId: number, senderId?: number): Promise<Invoice> {
+    return apiClient.get<Invoice>(`/invoices/${invoiceId}${qs({ sender_id: senderId })}`);
   },
 
-  async createInvoice(payload: CreateInvoicePayload): Promise<Invoice> {
-    return apiClient.post<Invoice>('/invoices', payload);
+  async createInvoice(payload: CreateInvoicePayload, senderId?: number): Promise<Invoice> {
+    return apiClient.post<Invoice>(`/invoices${qs({ sender_id: senderId })}`, payload);
   },
 
-  async emitInvoice(invoiceId: number): Promise<EmitInvoiceResponse> {
-    return apiClient.put<EmitInvoiceResponse>(`/invoices/${invoiceId}/emit`);
+  async emitInvoice(invoiceId: number, senderId?: number): Promise<EmitInvoiceResponse> {
+    return apiClient.put<EmitInvoiceResponse>(`/invoices/${invoiceId}/emit${qs({ sender_id: senderId })}`);
   },
 
-  async getInvoiceStatus(invoiceId: number): Promise<InvoiceStatusResponse> {
-    return apiClient.get<InvoiceStatusResponse>(`/invoices/${invoiceId}/status`);
+  async getInvoiceStatus(invoiceId: number, senderId?: number): Promise<InvoiceStatusResponse> {
+    return apiClient.get<InvoiceStatusResponse>(`/invoices/${invoiceId}/status${qs({ sender_id: senderId })}`);
   },
 
   async getInvoicePdf(invoiceId: number): Promise<Blob> {
@@ -93,8 +97,9 @@ export const invoiceService = {
 
   async createCreditNote(
     invoiceId: number,
-    payload: CreateCreditNotePayload
+    payload: CreateCreditNotePayload,
+    senderId?: number,
   ): Promise<Invoice> {
-    return apiClient.post<Invoice>(`/invoices/${invoiceId}/credit-note`, payload);
+    return apiClient.post<Invoice>(`/invoices/${invoiceId}/credit-note${qs({ sender_id: senderId })}`, payload);
   },
 };

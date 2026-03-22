@@ -4,7 +4,7 @@ import Clients from '../views/Clients';
 import { useAppData } from '../context/AppDataContext';
 
 const ClientsPage: React.FC = () => {
-  const { clients, activeSenderId, saveClient, deleteClient } = useAppData();
+  const { clients, activeSenderId, saveClient, deleteClient, refreshAllData } = useAppData();
 
   return (
     <Clients
@@ -12,6 +12,7 @@ const ClientsPage: React.FC = () => {
       senderId={activeSenderId}
       onSave={saveClient}
       onDelete={deleteClient}
+      onRefresh={refreshAllData}
     />
   );
 };

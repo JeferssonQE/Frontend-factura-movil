@@ -9,20 +9,22 @@ export type ClientPayload = {
   phone?: string;
 };
 
+const qs = (senderId?: number) => (senderId ? `?sender_id=${senderId}` : '');
+
 export const clientsService = {
-  async getClients(): Promise<Client[]> {
-    return apiClient.get<Client[]>('/clients');
+  async getClients(senderId?: number): Promise<Client[]> {
+    return apiClient.get<Client[]>(`/clients${qs(senderId)}`);
   },
 
-  async createClient(payload: ClientPayload): Promise<Client> {
-    return apiClient.post<Client>('/clients', payload);
+  async createClient(payload: ClientPayload, senderId?: number): Promise<Client> {
+    return apiClient.post<Client>(`/clients${qs(senderId)}`, payload);
   },
 
-  async updateClient(clientId: number, payload: ClientPayload): Promise<Client> {
-    return apiClient.put<Client>(`/clients/${clientId}`, payload);
+  async updateClient(clientId: number, payload: ClientPayload, senderId?: number): Promise<Client> {
+    return apiClient.put<Client>(`/clients/${clientId}${qs(senderId)}`, payload);
   },
 
-  async deleteClient(clientId: number): Promise<void> {
-    await apiClient.delete<void>(`/clients/${clientId}`);
+  async deleteClient(clientId: number, senderId?: number): Promise<void> {
+    await apiClient.delete<void>(`/clients/${clientId}${qs(senderId)}`);
   },
 };

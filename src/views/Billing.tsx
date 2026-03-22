@@ -14,6 +14,7 @@ import {
 import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
 import { checkRateLimit, incrementUsage } from '../services/utils/rateLimiter';
 import { PDFService } from '../services/integrations/pdfService';
+import { invoiceService } from '../services/business/invoiceService';
 import ProductSearchSelector from '../components/ProductSearchSelector';
 import { invoiceEmissionSchema } from '../schemas/business';
 import {
@@ -32,6 +33,9 @@ import {
   AlertTriangle,
   MessageCircle,
   Loader2,
+  Download,
+  XCircle,
+  RefreshCw,
 } from 'lucide-react';
 
 interface BillingProps {
@@ -43,6 +47,7 @@ interface BillingProps {
   onSaveDraft: (invoice: Invoice) => Promise<Invoice | null>;
   onAddClient: (client: Client) => void;
   onSelectSender: () => void;
+  onSaveProduct?: (data: { description: string; unit: UnitOfMeasure; base_price: number; has_igv: boolean }) => Promise<void>;
 }
 
 interface BillingClientData {
@@ -61,6 +66,7 @@ const Billing: React.FC<BillingProps> = ({
   onSaveDraft,
   onAddClient,
   onSelectSender,
+  onSaveProduct,
 }) => {
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(InvoiceType.BOLETA);
   const [clientData, setClientData] = useState<BillingClientData>({
@@ -70,6 +76,7 @@ const Billing: React.FC<BillingProps> = ({
     invoice_date: new Date().toLocaleDateString('en-CA'),
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [savedItems, setSavedItems] = useState<Set<number>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingType, setProcessingType] = useState<'image' | 'audio' | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -82,8 +89,14 @@ const Billing: React.FC<BillingProps> = ({
   const [emissionStep, setEmissionStep] = useState(0);
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | 'timeout' | null>(null);
+  const [sunatMessage, setSunatMessage] = useState<string | null>(null);
+  const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  React.useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -311,9 +324,61 @@ const Billing: React.FC<BillingProps> = ({
     });
   };
 
-  const clearAll = () => {
-    if (!confirm('¿Deseas limpiar todo el formulario?')) return;
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  };
 
+  const POLL_INTERVAL_MS = 4_000;
+  const POLL_TIMEOUT_MS = 90_000;
+
+  const startPolling = (invoiceId: number) => {
+    stopPolling();
+    const startedAt = Date.now();
+    pollingRef.current = setInterval(async () => {
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        stopPolling();
+        setEmissionState('timeout');
+        return;
+      }
+      try {
+        const statusData = await invoiceService.getInvoiceStatus(invoiceId, sender?.id);
+        if (statusData.status === InvoiceStatus.EMITIDO) {
+          stopPolling();
+          setNumeroComprobante(statusData.numero_comprobante_sunat);
+          setSunatMessage(statusData.sunat_message);
+          setEmissionState('emitido');
+          try {
+            const updated = await invoiceService.getInvoice(invoiceId, sender?.id);
+            if (updated.pdf_base64) setPdfBase64(updated.pdf_base64);
+          } catch { /* PDF opcional */ }
+        } else if (statusData.status === InvoiceStatus.FALLO) {
+          stopPolling();
+          setSunatMessage(statusData.sunat_message);
+          setEmissionState('fallo');
+        }
+      } catch { /* mantener polling */ }
+    }, POLL_INTERVAL_MS);
+  };
+
+  const handleRetry = async () => {
+    if (!emissionSuccess?.id) return;
+    setEmissionState('processing');
+    setSunatMessage(null);
+    setNumeroComprobante(null);
+    try {
+      await invoiceService.emitInvoice(emissionSuccess.id);
+      startPolling(emissionSuccess.id);
+    } catch (e: any) {
+      setEmissionState('fallo');
+      setSunatMessage(e.message || 'Error al reintentar');
+    }
+  };
+
+  const resetForm = () => {
+    stopPolling();
     setClientData({
       name: '',
       document: '',
@@ -326,21 +391,69 @@ const Billing: React.FC<BillingProps> = ({
     setPdfBase64(null);
     setErrors([]);
     setEmissionStep(0);
+    setEmissionState(null);
+    setSunatMessage(null);
+    setNumeroComprobante(null);
+  };
+
+  const clearAll = () => {
+    if (!confirm('¿Deseas limpiar todo el formulario?')) return;
+    resetForm();
+  };
+
+  const removeItem = (index: number) => {
+    setSavedItems((prev) => {
+      const next = new Set<number>();
+      prev.forEach((savedIdx) => {
+        if (savedIdx === index) return;
+        next.add(savedIdx > index ? savedIdx - 1 : savedIdx);
+      });
+      return next;
+    });
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addItem = () => {
+    setSavedItems((prev) => {
+      const next = new Set<number>();
+      prev.forEach((i) => next.add(i + 1));
+      return next;
+    });
     setItems((prev) => [
-      ...prev,
       {
         product_id: null,
         description: '',
         quantity: 1,
-        unit: UnitOfMeasure.UNIDAD,
+        unit: UnitOfMeasure.KILOGRAMO,
         unit_price: 0,
         has_igv: true,
         total: 0,
       },
+      ...prev,
     ]);
+  };
+
+  const toggleSaveItem = (index: number) => {
+    setSavedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const saveMarkedProducts = async () => {
+    if (!onSaveProduct) return;
+    for (const index of savedItems) {
+      const item = items[index];
+      if (!item.description || !item.unit_price) continue;
+      await onSaveProduct({
+        description: item.description,
+        unit: item.unit,
+        base_price: item.unit_price,
+        has_igv: item.has_igv,
+      });
+    }
   };
 
   const getNextNumber = () => {
@@ -357,10 +470,11 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const handleOpenConfirm = () => {
+    const validItems = items.filter((item) => item.description.trim().length > 0);
     const result = invoiceEmissionSchema.safeParse({
       invoice_type: invoiceType,
       clientData,
-      items: items.map((item) => ({
+      items: validItems.map((item) => ({
         product_id: item.product_id,
         description: item.description,
         quantity: item.quantity,
@@ -381,8 +495,29 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const handleSaveDraft = async () => {
-    if (!sender || items.length === 0) return;
+    if (!sender) return;
 
+    const validItems = items.filter((item) => item.description.trim().length > 0);
+    const result = invoiceEmissionSchema.safeParse({
+      invoice_type: invoiceType,
+      clientData,
+      items: validItems.map((item) => ({
+        product_id: item.product_id,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        unit_price: item.unit_price,
+        has_igv: item.has_igv,
+      })),
+    });
+
+    if (!result.success) {
+      setErrors(result.error.issues.map((issue) => issue.message));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    setErrors([]);
     setIsSavingDraft(true);
     try {
       const series = invoiceType === InvoiceType.BOLETA ? 'B001' : 'F001';
@@ -413,8 +548,10 @@ const Billing: React.FC<BillingProps> = ({
       };
 
       await onSaveDraft(invoiceData);
+      saveMarkedProducts();
       setClientData({ name: '', document: '', phone: '', invoice_date: new Date().toLocaleDateString('en-CA') });
       setItems([]);
+      setSavedItems(new Set());
       setPreviewImage(null);
       setErrors([]);
     } finally {
@@ -459,6 +596,8 @@ const Billing: React.FC<BillingProps> = ({
 
       setEmissionStep(2);
       const createdInvoice = await onEmit(invoiceData);
+      saveMarkedProducts();
+      setSavedItems(new Set());
       setEmissionStep(3);
 
       const finalInvoice: Invoice = createdInvoice
@@ -466,6 +605,8 @@ const Billing: React.FC<BillingProps> = ({
         : { ...invoiceData, status: InvoiceStatus.PROCESANDO };
 
       setEmissionSuccess(finalInvoice);
+      setEmissionState('processing');
+      if (finalInvoice.id) startPolling(finalInvoice.id);
     } catch (error: any) {
       setErrors([error.message || 'Error al emitir documento']);
       setEmissionStep(0);
@@ -474,9 +615,19 @@ const Billing: React.FC<BillingProps> = ({
     }
   };
 
-  const handleWhatsAppShare = () => {
-    if (!emissionSuccess) return;
+  const handleWhatsAppShare = async () => {
+    if (!emissionSuccess || emissionState !== 'emitido') return;
+    if (pdfBase64) {
+      const filename = `${emissionSuccess.series}-${emissionSuccess.number}.pdf`;
+      const shared = await PDFService.shareNative(pdfBase64, filename, `Comprobante ${filename}`);
+      if (shared) return;
+    }
     PDFService.shareWhatsApp(emissionSuccess as any, clientData.phone, pdfBase64 || undefined);
+  };
+
+  const handleDownloadPdf = () => {
+    if (!pdfBase64 || !emissionSuccess) return;
+    PDFService.downloadPDF(pdfBase64, `${emissionSuccess.series}-${emissionSuccess.number}.pdf`);
   };
 
   const handleViewPdf = () => {
@@ -484,44 +635,143 @@ const Billing: React.FC<BillingProps> = ({
     PDFService.viewPDF(pdfBase64);
   };
 
-  if (emissionSuccess) {
+  if (emissionState !== null) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center animate-in zoom-in duration-500">
-        <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-8 shadow-xl shadow-emerald-50">
-          <CheckCircle2 size={56} strokeWidth={2.5} />
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center animate-in fade-in duration-500">
 
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2 uppercase tracking-tighter text-emerald-600">
-          ¡Documento Enviado!
-        </h2>
+        {/* ── PROCESANDO ── */}
+        {emissionState === 'processing' && (
+          <>
+            <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-8">
+              <Loader2 size={48} className="text-blue-500 animate-spin" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">
+              Validando en SUNAT
+            </h2>
+            {emissionSuccess && (
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                {emissionSuccess.series}-{emissionSuccess.number}
+              </p>
+            )}
+            <p className="text-slate-400 text-sm mb-12">Esto puede tardar unos segundos...</p>
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
+              FactuMovil AI • Validado SUNAT
+            </p>
+          </>
+        )}
 
-        <p className="text-slate-500 font-medium mb-12 text-sm leading-relaxed">
-          Documento{' '}
-          <span className="font-black text-slate-900">
-            {emissionSuccess.series}-{emissionSuccess.number}
-          </span>{' '}
-          enviado correctamente. Revisa el historial para ver el estado final.
-        </p>
+        {/* ── EMITIDO ── */}
+        {emissionState === 'emitido' && (
+          <>
+            <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-8 shadow-xl shadow-emerald-50">
+              <CheckCircle2 size={56} strokeWidth={2.5} />
+            </div>
+            <h2 className="text-3xl font-black uppercase tracking-tight mb-2 text-emerald-600">
+              ¡Emitido!
+            </h2>
+            {emissionSuccess && (
+              <p className="text-slate-500 font-medium text-sm mb-1">
+                <span className="font-black text-slate-900">
+                  {emissionSuccess.series}-{emissionSuccess.number}
+                </span>
+              </p>
+            )}
+            {numeroComprobante && (
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10">
+                Nº SUNAT: {numeroComprobante}
+              </p>
+            )}
+            {!numeroComprobante && <div className="mb-10" />}
 
-        <div className="w-full space-y-4 mb-10 max-w-xs">
-          <button
-            onClick={handleWhatsAppShare}
-            className="w-full bg-emerald-500 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-emerald-100 active:scale-95 transition-all"
-          >
-            <MessageCircle size={20} /> Compartir WhatsApp
-          </button>
+            <div className="w-full space-y-3 max-w-xs">
+              <button
+                onClick={handleWhatsAppShare}
+                className="w-full bg-emerald-500 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-emerald-100 active:scale-95 transition-all"
+              >
+                <MessageCircle size={20} />
+                {pdfBase64 ? 'Compartir PDF' : 'Compartir WhatsApp'}
+              </button>
 
-          <button
-            onClick={clearAll}
-            className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
-          >
-            <RotateCcw size={18} /> Nueva Venta
-          </button>
-        </div>
+              {pdfBase64 && (
+                <button
+                  onClick={handleDownloadPdf}
+                  className="w-full bg-blue-50 text-blue-600 border border-blue-100 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <Download size={18} /> Descargar PDF
+                </button>
+              )}
 
-        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-          FactuMovil AI • Validado SUNAT
-        </p>
+              <button
+                onClick={resetForm}
+                className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
+              >
+                <RotateCcw size={18} /> Nueva Venta
+              </button>
+            </div>
+
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-8">
+              FactuMovil AI • Validado SUNAT
+            </p>
+          </>
+        )}
+
+        {/* ── FALLO ── */}
+        {emissionState === 'fallo' && (
+          <>
+            <div className="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-8">
+              <XCircle size={56} strokeWidth={2} />
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-red-600">
+              Error en Emisión
+            </h2>
+            {sunatMessage && (
+              <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
+                {sunatMessage}
+              </p>
+            )}
+            {!sunatMessage && <div className="mb-10" />}
+
+            <div className="w-full space-y-3 max-w-xs">
+              <button
+                onClick={handleRetry}
+                className="w-full bg-red-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
+              >
+                <RefreshCw size={18} /> Reintentar
+              </button>
+              <button
+                onClick={resetForm}
+                className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
+              >
+                <RotateCcw size={18} /> Nueva Venta
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── TIMEOUT ── */}
+        {emissionState === 'timeout' && (
+          <>
+            <div className="w-24 h-24 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-8">
+              <AlertTriangle size={52} strokeWidth={2} />
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-amber-600">
+              Procesando en SUNAT
+            </h2>
+            <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
+              La emisión está tardando más de lo esperado. Revisa el historial para ver el resultado.
+            </p>
+
+            <div className="w-full space-y-3 max-w-xs">
+              <button
+                onClick={resetForm}
+                className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
+              >
+                <RotateCcw size={18} /> Nueva Venta
+              </button>
+            </div>
+          </>
+        )}
+
       </div>
     );
   }
@@ -669,61 +919,82 @@ const Billing: React.FC<BillingProps> = ({
                 <rect width="100%" height="100%" fill="url(#ai-grid)"/>
               </svg>
 
-              {/* Pulsing rings */}
-              <span className="absolute w-32 h-32 rounded-full border border-blue-400/25" style={{animation: 'aiRing 2.2s ease-out infinite'}} />
-              <span className="absolute w-24 h-24 rounded-full border border-blue-500/30" style={{animation: 'aiRing 2.2s ease-out infinite 0.55s'}} />
-              <span className="absolute w-16 h-16 rounded-full border border-blue-600/35" style={{animation: 'aiRing 2.2s ease-out infinite 1.1s'}} />
+              {/* AI Star — estilo Gemini con colores del sistema */}
+              <div className="relative z-10 mb-1 flex items-center justify-center" style={{width:120, height:120}}>
 
-              {/* Robot */}
-              <div
-                className="z-10 mb-3"
-                style={{animation: 'aiFloat 3.5s ease-in-out infinite'}}
-              >
-                <svg viewBox="0 0 56 64" className="w-14 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Antenna */}
-                  <rect x="26.5" y="1" width="3" height="7" rx="1.5" fill="#1e40af" opacity="0.9"/>
-                  <circle cx="28" cy="1.5" r="3" fill="#3b82f6"/>
-                  <circle cx="28" cy="1.5" r="1.5" fill="#93c5fd" style={{animation: 'antBlink 2s ease-in-out infinite'}}/>
+                {/* Halo exterior pulsante */}
+                <div style={{
+                  position:'absolute', inset:0,
+                  borderRadius:'50%',
+                  background:'radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.08) 50%, transparent 70%)',
+                  animation:'halo 3.5s ease-in-out infinite',
+                }}/>
 
-                  {/* Head */}
-                  <rect x="8" y="8" width="40" height="26" rx="10" fill="#0f172a"/>
-                  <rect x="9.5" y="9.5" width="37" height="23" rx="9" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.4"/>
+                {/* Estrella principal — 4 pétalos curvos */}
+                <svg viewBox="0 0 120 120" width="100" height="100" style={{
+                  position:'absolute',
+                  animation:'starSpin 10s linear infinite',
+                  filter:'drop-shadow(0 0 14px rgba(59,130,246,0.55)) drop-shadow(0 0 4px rgba(99,102,241,0.4))',
+                }}>
+                  <defs>
+                    <linearGradient id="sg1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%"   stopColor="#93c5fd"/>
+                      <stop offset="45%"  stopColor="#3b82f6"/>
+                      <stop offset="100%" stopColor="#1d4ed8"/>
+                    </linearGradient>
+                    <linearGradient id="sg2" x1="100%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%"   stopColor="#a5b4fc"/>
+                      <stop offset="45%"  stopColor="#6366f1"/>
+                      <stop offset="100%" stopColor="#3b82f6"/>
+                    </linearGradient>
+                    <radialGradient id="sg3" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%"   stopColor="#fff" stopOpacity="0.95"/>
+                      <stop offset="100%" stopColor="#bfdbfe" stopOpacity="0"/>
+                    </radialGradient>
+                  </defs>
 
-                  {/* Eyes */}
-                  <circle cx="20" cy="22" r="6" fill="#1d4ed8"/>
-                  <circle cx="36" cy="22" r="6" fill="#1d4ed8"/>
-                  <circle cx="20" cy="22" r="3.5" fill="#60a5fa" style={{animation: 'eyeBlink 3.5s ease-in-out infinite'}}/>
-                  <circle cx="36" cy="22" r="3.5" fill="#60a5fa" style={{animation: 'eyeBlink 3.5s ease-in-out infinite'}}/>
-                  <circle cx="21" cy="21" r="1.2" fill="white" opacity="0.9"/>
-                  <circle cx="37" cy="21" r="1.2" fill="white" opacity="0.9"/>
+                  {/* Pétalo vertical (arriba + abajo) */}
+                  <path d="M60 8 C63 34 63 34 60 60 C57 34 57 34 60 8Z" fill="url(#sg1)"/>
+                  <path d="M60 112 C63 86 63 86 60 60 C57 86 57 86 60 112Z" fill="url(#sg1)"/>
 
-                  {/* Mouth bar */}
-                  <rect x="17" y="29" width="22" height="3" rx="1.5" fill="#334155"/>
-                  <rect x="19" y="29.5" width="4" height="2" rx="1" fill="#3b82f6" style={{animation: 'mouthLight 1.4s ease-in-out infinite'}}/>
-                  <rect x="25" y="29.5" width="4" height="2" rx="1" fill="#3b82f6" style={{animation: 'mouthLight 1.4s ease-in-out infinite 0.35s'}}/>
-                  <rect x="31" y="29.5" width="4" height="2" rx="1" fill="#3b82f6" style={{animation: 'mouthLight 1.4s ease-in-out infinite 0.7s'}}/>
+                  {/* Pétalo horizontal (izq + der) */}
+                  <path d="M8 60 C34 63 34 63 60 60 C34 57 34 57 8 60Z" fill="url(#sg2)"/>
+                  <path d="M112 60 C86 63 86 63 60 60 C86 57 86 57 112 60Z" fill="url(#sg2)"/>
 
-                  {/* Body */}
-                  <rect x="12" y="36" width="32" height="22" rx="8" fill="#0f172a"/>
-                  <rect x="13.5" y="37.5" width="29" height="19" rx="7" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.35"/>
-
-                  {/* Chest light */}
-                  <circle cx="28" cy="47" r="5" fill="#1d4ed8"/>
-                  <circle cx="28" cy="47" r="3" fill="#3b82f6" style={{animation: 'chestPulse 2s ease-in-out infinite'}}/>
-                  <circle cx="28" cy="47" r="1.5" fill="#93c5fd"/>
-
-                  {/* Side vents */}
-                  <rect x="15" y="42" width="6" height="1.5" rx="0.75" fill="#334155"/>
-                  <rect x="15" y="45" width="6" height="1.5" rx="0.75" fill="#334155"/>
-                  <rect x="35" y="42" width="6" height="1.5" rx="0.75" fill="#334155"/>
-                  <rect x="35" y="45" width="6" height="1.5" rx="0.75" fill="#334155"/>
-
-                  {/* Arms */}
-                  <rect x="2" y="37" width="9" height="16" rx="4.5" fill="#0f172a" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.3"/>
-                  <rect x="45" y="37" width="9" height="16" rx="4.5" fill="#0f172a" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.3"/>
-                  <circle cx="6.5" cy="55" r="3" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.5"/>
-                  <circle cx="49.5" cy="55" r="3" fill="#1e293b" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.5"/>
+                  {/* Núcleo brillante */}
+                  <circle cx="60" cy="60" r="7" fill="url(#sg3)"/>
                 </svg>
+
+                {/* Estrella secundaria — 45° girada al revés, más pequeña */}
+                <svg viewBox="0 0 120 120" width="58" height="58" style={{
+                  position:'absolute',
+                  animation:'starSpin 7s linear infinite reverse',
+                  opacity:0.55,
+                  filter:'drop-shadow(0 0 6px rgba(99,102,241,0.5))',
+                }}>
+                  <path d="M60 22 C62 42 62 42 60 60 C58 42 58 42 60 22Z" fill="#a5b4fc"/>
+                  <path d="M60 98 C62 78 62 78 60 60 C58 78 58 78 60 98Z" fill="#a5b4fc"/>
+                  <path d="M22 60 C42 62 42 62 60 60 C42 58 42 58 22 60Z" fill="#818cf8"/>
+                  <path d="M98 60 C78 62 78 62 60 60 C78 58 78 58 98 60Z" fill="#818cf8"/>
+                </svg>
+
+                {/* Partículas flotantes */}
+                {([
+                  {size:7,  cx:18, cy:22, color:'#93c5fd', delay:'0s',    dur:'2.6s'},
+                  {size:5,  cx:96, cy:18, color:'#a5b4fc', delay:'0.9s',  dur:'3.1s'},
+                  {size:6,  cx:104,cy:80, color:'#60a5fa', delay:'1.7s',  dur:'2.3s'},
+                  {size:4,  cx:14, cy:88, color:'#818cf8', delay:'0.4s',  dur:'3.8s'},
+                  {size:5,  cx:58, cy:8,  color:'#bfdbfe', delay:'1.2s',  dur:'2.9s'},
+                ] as {size:number,cx:number,cy:number,color:string,delay:string,dur:string}[]).map((p, i) => (
+                  <svg key={i} viewBox="0 0 10 10" width={p.size} height={p.size} style={{
+                    position:'absolute',
+                    left: p.cx - p.size/2,
+                    top:  p.cy - p.size/2,
+                    animation:`particle ${p.dur} ease-in-out ${p.delay} infinite`,
+                  }}>
+                    <path d="M5 0 L5.5 4.5 L10 5 L5.5 5.5 L5 10 L4.5 5.5 L0 5 L4.5 4.5Z" fill={p.color}/>
+                  </svg>
+                ))}
               </div>
 
               <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] z-10">
@@ -734,29 +1005,18 @@ const Billing: React.FC<BillingProps> = ({
               </p>
 
               <style>{`
-                @keyframes aiRing {
-                  0%   { transform: scale(1);   opacity: 0.55; }
-                  100% { transform: scale(1.9);  opacity: 0;    }
+                @keyframes starSpin {
+                  from { transform: rotate(0deg); }
+                  to   { transform: rotate(360deg); }
                 }
-                @keyframes aiFloat {
-                  0%,100% { transform: translateY(0px); }
-                  50%     { transform: translateY(-6px); }
+                @keyframes halo {
+                  0%,100% { transform: scale(0.9); opacity: 0.6; }
+                  50%     { transform: scale(1.2); opacity: 1;   }
                 }
-                @keyframes eyeBlink {
-                  0%,90%,100% { transform: scaleY(1); }
-                  95%         { transform: scaleY(0.15); }
-                }
-                @keyframes antBlink {
-                  0%,40%,100% { opacity: 1; }
-                  70%         { opacity: 0.2; }
-                }
-                @keyframes mouthLight {
-                  0%,100% { opacity: 0.35; }
-                  50%     { opacity: 1; }
-                }
-                @keyframes chestPulse {
-                  0%,100% { r: 3; opacity: 0.8; }
-                  50%     { r: 4; opacity: 1;   }
+                @keyframes particle {
+                  0%,100% { opacity: 0;   transform: scale(0.3) rotate(0deg);   }
+                  30%     { opacity: 1;   transform: scale(1.1) rotate(20deg);  }
+                  65%     { opacity: 0.6; transform: scale(0.8) rotate(-10deg); }
                 }
               `}</style>
             </>
@@ -974,7 +1234,7 @@ const Billing: React.FC<BillingProps> = ({
                 </div>
 
                 <button
-                  onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                  onClick={() => removeItem(index)}
                   className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                 >
                   <Trash2 size={18} />
@@ -1023,7 +1283,7 @@ const Billing: React.FC<BillingProps> = ({
                   <input
                     type="number"
                     step="0.01"
-                    value={item.unit_price ? item.unit_price.toFixed(2) : ''}
+                    value={item.unit_price || ''}
                     onChange={(event) =>
                       updateItem(index, { unit_price: parseFloat(event.target.value) || 0 })
                     }
@@ -1039,7 +1299,7 @@ const Billing: React.FC<BillingProps> = ({
                   <input
                     type="number"
                     step="0.01"
-                    value={item.total ? item.total.toFixed(2) : ''}
+                    value={item.total || ''}
                     onChange={(event) =>
                       updateItem(index, { total: parseFloat(event.target.value) || 0 })
                     }
@@ -1049,14 +1309,14 @@ const Billing: React.FC<BillingProps> = ({
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <button
                   onClick={() => updateItem(index, { has_igv: true })}
                   className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${
                     item.has_igv ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'
                   }`}
                 >
-                  Con IGV 18%
+                  IGV 18%
                 </button>
 
                 <button
@@ -1067,6 +1327,21 @@ const Billing: React.FC<BillingProps> = ({
                 >
                   Exonerado
                 </button>
+
+                {onSaveProduct && (
+                  <label className={`flex items-center gap-1.5 shrink-0 cursor-pointer select-none ${
+                    !item.description || !item.unit_price ? 'opacity-40 pointer-events-none' : ''
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={savedItems.has(index)}
+                      disabled={!item.description || !item.unit_price}
+                      onChange={() => toggleSaveItem(index)}
+                      className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                    />
+                    <span className="text-[10px] font-black uppercase text-slate-500">Guardar</span>
+                  </label>
+                )}
               </div>
             </div>
           ))}

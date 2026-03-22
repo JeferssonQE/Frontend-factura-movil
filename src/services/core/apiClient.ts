@@ -4,6 +4,7 @@ const API_BASE_URL =
   'http://localhost:8000';
 
 const ACCESS_TOKEN_KEY = 'fm_access_token';
+const REFRESH_TOKEN_KEY = 'fm_refresh_token';
 const LAST_ACTIVITY_KEY = 'fm_last_activity_at';
 const USER_KEY = 'fm_user';
 
@@ -41,8 +42,61 @@ const buildHeaders = (includeJson = true): HeadersInit => {
 
 const clearStoredSession = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(LAST_ACTIVITY_KEY);
+};
+
+const getRefreshToken = (): string | null =>
+  localStorage.getItem(REFRESH_TOKEN_KEY);
+
+const saveTokens = (accessToken: string, refreshToken: string) => {
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+};
+
+let isRefreshing = false;
+let refreshQueue: Array<(token: string) => void> = [];
+
+const processRefreshQueue = (newToken: string) => {
+  refreshQueue.forEach((resolve) => resolve(newToken));
+  refreshQueue = [];
+};
+
+const tryRefreshToken = async (): Promise<string | null> => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  if (isRefreshing) {
+    return new Promise((resolve) => {
+      refreshQueue.push(resolve);
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) {
+      clearStoredSession();
+      return null;
+    }
+
+    const data = await response.json();
+    saveTokens(data.access_token, data.refresh_token);
+    processRefreshQueue(data.access_token);
+    return data.access_token;
+  } catch {
+    clearStoredSession();
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
 };
 
 const parseResponse = async (response: Response) => {
@@ -81,14 +135,12 @@ const handleErrorResponse = async (response: Response): Promise<never> => {
   throw new ApiError(message, response.status, payload);
 };
 
-const request = async <TResponse>(
+const requestWithRefresh = async <TResponse>(
   method: HttpMethod,
   path: string,
   body?: unknown,
   init?: RequestInit
 ): Promise<TResponse> => {
-  console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? body : '');
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
@@ -99,14 +151,50 @@ const request = async <TResponse>(
     ...init,
   });
 
-  if (!response.ok) {
-    console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
+  if (response.status !== 401) {
+    if (!response.ok) {
+      console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
+      return handleErrorResponse(response);
+    }
+    const data = await parseResponse(response);
+    console.log(`[API] ${method} ${path} → ${response.status}`, data);
+    return data as TResponse;
+  }
+
+  const newToken = await tryRefreshToken();
+  if (!newToken) {
     return handleErrorResponse(response);
   }
 
-  const data = await parseResponse(response);
-  console.log(`[API] ${method} ${path} → ${response.status}`, data);
+  const retryResponse = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      ...buildHeaders(body !== undefined),
+      Authorization: `Bearer ${newToken}`,
+      ...(init?.headers || {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...init,
+  });
+
+  if (!retryResponse.ok) {
+    console.error(`[API] ${method} ${path} → ${retryResponse.status}`, retryResponse.statusText);
+    return handleErrorResponse(retryResponse);
+  }
+
+  const data = await parseResponse(retryResponse);
+  console.log(`[API] ${method} ${path} → ${retryResponse.status}`, data);
   return data as TResponse;
+};
+
+const request = async <TResponse>(
+  method: HttpMethod,
+  path: string,
+  body?: unknown,
+  init?: RequestInit
+): Promise<TResponse> => {
+  console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? body : '');
+  return requestWithRefresh<TResponse>(method, path, body, init);
 };
 
 export const apiClient = {
@@ -141,6 +229,9 @@ export const apiClient = {
 
 export const storageKeys = {
   accessToken: ACCESS_TOKEN_KEY,
+  refreshToken: REFRESH_TOKEN_KEY,
   user: USER_KEY,
   lastActivityAt: LAST_ACTIVITY_KEY,
 };
+
+export { saveTokens };

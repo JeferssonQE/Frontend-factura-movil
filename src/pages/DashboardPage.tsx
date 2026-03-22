@@ -11,7 +11,7 @@ import {
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { invoices, activeSender, dataReady } = useAppData();
+  const { invoices, activeSender, activeSenderId, isContador, dataReady } = useAppData();
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [salesByMonth, setSalesByMonth] = useState<SalesByMonthItem[]>([]);
@@ -19,9 +19,10 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     if (!dataReady || !activeSender) return;
 
-    reportsService.getDashboardSummary().then(setSummary).catch(() => {});
-    reportsService.getSalesByMonth().then(setSalesByMonth).catch(() => {});
-  }, [dataReady, activeSender]);
+    const senderId = isContador ? activeSenderId ?? undefined : undefined;
+    reportsService.getDashboardSummary(senderId).then(setSummary).catch(() => {});
+    reportsService.getSalesByMonth(undefined, senderId).then(setSalesByMonth).catch(() => {});
+  }, [dataReady, activeSender, activeSenderId, isContador]);
 
   return (
     <Dashboard

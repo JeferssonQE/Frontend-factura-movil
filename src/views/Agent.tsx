@@ -1,23 +1,32 @@
 // views/Agent.tsx
 import React, { useEffect, useRef } from 'react';
-import { Send, Mic, X, CheckCircle, ArrowRight } from 'lucide-react';
+import { Send, Mic, X } from 'lucide-react';
 import { useAgent } from '../hooks/useAgent';
 import { ChatMessage } from '../services/integrations/agentService';
-import { InvoiceType } from '../types';
 
 // ---------------------------------------------------------------------------
-// Props
+// Quick-topic chips
 // ---------------------------------------------------------------------------
 
-interface AgentViewProps {
-  onNavigateToHistory: () => void;
-}
+const QUICK_TOPICS = [
+  'IGV',
+  'RUC',
+  'Regimenes',
+  'Detracciones',
+  'Portal SOL',
+  'Facturas',
+  'Notas de Credito',
+  'UIT 2025',
+  'Libros Electronicos',
+  'Multas SUNAT',
+  'Fraccionamiento',
+  'Renta 4ta Categoria',
+];
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-/** Three animated dots displayed while waiting for an agent response. */
 const LoadingDots: React.FC = () => (
   <div className="flex items-center gap-1.5 py-1 px-1">
     {[0, 150, 300].map((delay) => (
@@ -30,55 +39,7 @@ const LoadingDots: React.FC = () => (
   </div>
 );
 
-/** Action card shown inside a model bubble when a draft invoice was created. */
-interface DraftCardProps {
-  message: ChatMessage;
-  onNavigateToHistory: () => void;
-}
-
-const DraftCard: React.FC<DraftCardProps> = ({ message, onNavigateToHistory }) => {
-  const { invoice } = message.action!;
-
-  const typeLabel = invoice.invoice_type === InvoiceType.BOLETA ? 'BOLETA' : 'FACTURA';
-  const series = invoice.series ?? (invoice.invoice_type === InvoiceType.BOLETA ? 'B001' : 'F001');
-  const total = typeof invoice.total === 'number' ? invoice.total.toFixed(2) : '—';
-
-  return (
-    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 mt-2">
-      <div className="flex items-center gap-2 mb-2">
-        <CheckCircle size={16} className="text-emerald-500 shrink-0" />
-        <span className="text-[11px] font-black text-emerald-700 uppercase tracking-widest">
-          Borrador creado
-        </span>
-      </div>
-
-      <p className="text-xs text-emerald-800 font-semibold">
-        {typeLabel} · {series} · S/ {total}
-      </p>
-      {invoice.client_name && (
-        <p className="text-xs text-emerald-700 mt-0.5">
-          Cliente: {invoice.client_name}
-        </p>
-      )}
-
-      <button
-        onClick={onNavigateToHistory}
-        className="mt-2.5 flex items-center gap-1.5 text-[11px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-800 transition-colors"
-      >
-        Ver en Historial
-        <ArrowRight size={12} />
-      </button>
-    </div>
-  );
-};
-
-/** A single chat bubble (user or model). */
-interface MessageBubbleProps {
-  message: ChatMessage;
-  onNavigateToHistory: () => void;
-}
-
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onNavigateToHistory }) => {
+const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
   const isUser = message.role === 'user';
 
   if (isUser) {
@@ -97,17 +58,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onNavigateToHist
         {message.isLoading ? (
           <LoadingDots />
         ) : (
-          <>
-            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-              {message.text}
-            </p>
-            {message.action?.type === 'draft_created' && (
-              <DraftCard
-                message={message}
-                onNavigateToHistory={onNavigateToHistory}
-              />
-            )}
-          </>
+          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+            {message.text}
+          </p>
         )}
       </div>
     </div>
@@ -118,21 +71,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onNavigateToHist
 // Main view
 // ---------------------------------------------------------------------------
 
-const AgentView: React.FC<AgentViewProps> = ({ onNavigateToHistory }) => {
+const AgentView: React.FC = () => {
   const {
     messages,
     inputText,
     setInputText,
     isLoading,
-    isRecording,
     error,
     setError,
     sendMessage,
-    startRecording,
-    stopRecording,
   } = useAgent();
 
-  // Auto-scroll to latest message
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -140,31 +89,19 @@ const AgentView: React.FC<AgentViewProps> = ({ onNavigateToHistory }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // -------------------------------------------------------------------------
-  // Textarea auto-grow (up to 4 rows)
-  // -------------------------------------------------------------------------
-
   const handleTextareaInput = () => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    const lineHeight = 24; // px — matches text-sm line-height
-    const maxHeight = lineHeight * 4 + 24; // 4 rows + vertical padding
+    const maxHeight = 24 * 4 + 24;
     el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
   };
-
-  // -------------------------------------------------------------------------
-  // Submit
-  // -------------------------------------------------------------------------
 
   const handleSend = () => {
     if (!inputText.trim() || isLoading) return;
     sendMessage(inputText);
     setInputText('');
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -174,37 +111,18 @@ const AgentView: React.FC<AgentViewProps> = ({ onNavigateToHistory }) => {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Hold-to-record pointer events
-  // -------------------------------------------------------------------------
-
-  const handleMicPointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    startRecording();
+  const handleChipClick = (topic: string) => {
+    if (isLoading) return;
+    sendMessage(`¿Que es ${topic}?`);
   };
-
-  const handleMicPointerUp = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (isRecording) stopRecording();
-  };
-
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
 
   return (
-    // The Layout's <main> has px-4 pt-4 pb-32. We use -mx-4 -mt-4 to cancel
-    // horizontal and top padding, then let pb-32 still apply for bottom nav.
     <div className="flex flex-col -mx-4 -mt-4" style={{ height: 'calc(100% + 1rem)' }}>
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2 space-y-3">
         {messages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            message={msg}
-            onNavigateToHistory={onNavigateToHistory}
-          />
+          <MessageBubble key={msg.id} message={msg} />
         ))}
         <div ref={messagesEndRef} />
       </div>
@@ -223,15 +141,19 @@ const AgentView: React.FC<AgentViewProps> = ({ onNavigateToHistory }) => {
         </div>
       )}
 
-      {/* Recording indicator */}
-      {isRecording && (
-        <div className="mx-4 mb-1 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[11px] font-black text-red-500 uppercase tracking-widest">
-            Grabando...
-          </span>
-        </div>
-      )}
+      {/* Quick topics */}
+      <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-none">
+        {QUICK_TOPICS.map((topic) => (
+          <button
+            key={topic}
+            onClick={() => handleChipClick(topic)}
+            disabled={isLoading}
+            className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold hover:bg-violet-100 hover:text-violet-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {topic}
+          </button>
+        ))}
+      </div>
 
       {/* Input bar */}
       <div className="bg-white border-t border-slate-100 px-4 py-3 flex items-end gap-2">
@@ -242,25 +164,19 @@ const AgentView: React.FC<AgentViewProps> = ({ onNavigateToHistory }) => {
           onChange={(e) => setInputText(e.target.value)}
           onInput={handleTextareaInput}
           onKeyDown={handleKeyDown}
-          placeholder="Escribe tu consulta..."
+          placeholder="Ej: ¿Que es el IGV? ¿Cuando emitir una nota de credito?"
           disabled={isLoading}
           className="flex-1 resize-none rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all disabled:opacity-50"
           style={{ minHeight: '44px', maxHeight: '120px', overflowY: 'auto' }}
-          aria-label="Mensaje al agente SUNAT"
+          aria-label="Consulta sobre SUNAT"
         />
 
-        {/* Mic button — hold to record */}
+        {/* Mic button — disabled, coming soon */}
         <button
-          onPointerDown={handleMicPointerDown}
-          onPointerUp={handleMicPointerUp}
-          onPointerLeave={handleMicPointerUp}
-          disabled={isLoading && !isRecording}
-          aria-label={isRecording ? 'Detener grabación' : 'Mantener para grabar'}
-          className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all active:scale-90 select-none ${
-            isRecording
-              ? 'bg-red-500 text-white animate-pulse'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-          }`}
+          disabled
+          title="Proximamente"
+          aria-label="Proximamente"
+          className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-slate-100 text-slate-300 cursor-not-allowed"
         >
           <Mic size={20} />
         </button>
@@ -269,7 +185,7 @@ const AgentView: React.FC<AgentViewProps> = ({ onNavigateToHistory }) => {
         <button
           onClick={handleSend}
           disabled={isLoading || !inputText.trim()}
-          aria-label="Enviar mensaje"
+          aria-label="Enviar consulta"
           className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send size={18} />

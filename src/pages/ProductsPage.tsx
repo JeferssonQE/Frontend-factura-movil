@@ -4,7 +4,7 @@ import Products from '../views/Products';
 import { useAppData } from '../context/AppDataContext';
 
 const ProductsPage: React.FC = () => {
-  const { products, activeSenderId, saveProduct, deleteProduct } = useAppData();
+  const { products, activeSenderId, saveProduct, deleteProduct, refreshAllData } = useAppData();
 
   return (
     <Products
@@ -12,6 +12,7 @@ const ProductsPage: React.FC = () => {
       senderId={activeSenderId}
       onSave={saveProduct}
       onDelete={deleteProduct}
+      onRefresh={refreshAllData}
     />
   );
 };

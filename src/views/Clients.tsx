@@ -9,6 +9,7 @@ import {
   X,
   AlertCircle,
   Search,
+  RefreshCw,
 } from 'lucide-react';
 import { clientSchema } from '../schemas/business';
 import { Client } from '../types';
@@ -18,9 +19,10 @@ interface ClientsProps {
   senderId: number | null;
   onSave: (client: Client) => void;
   onDelete: (id: number) => void;
+  onRefresh: () => void;
 }
 
-const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete }) => {
+const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, onRefresh }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [search, setSearch] = useState('');
@@ -101,6 +103,14 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete }
             className="w-full bg-white border-none rounded-2xl py-3 pl-11 pr-4 shadow-sm text-sm focus:ring-2 focus:ring-blue-500 font-medium uppercase outline-none"
           />
         </div>
+
+        <button
+          onClick={onRefresh}
+          className="bg-white border border-slate-200 text-slate-400 p-3 rounded-2xl shadow-sm active:scale-95 transition-all hover:text-slate-600"
+          aria-label="Actualizar lista"
+        >
+          <RefreshCw size={18} />
+        </button>
 
         <button
           onClick={() => {

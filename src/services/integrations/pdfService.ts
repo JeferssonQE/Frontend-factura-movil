@@ -42,6 +42,35 @@ export class PDFService {
   }
   
   /**
+   * Convierte base64 a Blob
+   */
+  static base64ToBlob(base64: string, mimeType = 'application/pdf'): Blob {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Uint8Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Blob([byteNumbers], { type: mimeType });
+  }
+
+  /**
+   * Comparte el PDF usando la Web Share API nativa (móvil).
+   * Retorna true si tuvo éxito, false si no está disponible (usar fallback).
+   */
+  static async shareNative(base64: string, filename: string, title?: string): Promise<boolean> {
+    if (typeof navigator.share !== 'function') return false;
+    try {
+      const blob = this.base64ToBlob(base64);
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      if (navigator.canShare && !navigator.canShare({ files: [file] })) return false;
+      await navigator.share({ files: [file], title: title ?? filename });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Comparte por WhatsApp con instrucciones
    */
   static shareWhatsApp(invoice: any, clientPhone: string, pdfBase64?: string): void {
@@ -52,7 +81,7 @@ export class PDFService {
 • *Tipo:* ${invoice.type}
 • *Número:* ${invoice.series}-${invoice.number}
 • *Fecha:* ${invoice.date}
-• *Monto Total:* S/ ${invoice.total.toFixed(2)}
+• *Monto Total:* S/ ${Number(invoice.total).toFixed(2)}
 
 ${pdfBase64 ? '💾 *El PDF se descargará automáticamente.* Por favor adjúntelo a este chat cuando se lo solicite.' : '📱 Puede solicitar el PDF si lo necesita.'}
 

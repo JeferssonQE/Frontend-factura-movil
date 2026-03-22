@@ -9,20 +9,22 @@ export type ProductPayload = {
   has_igv: boolean;
 };
 
+const qs = (senderId?: number) => (senderId ? `?sender_id=${senderId}` : '');
+
 export const productsService = {
-  async getProducts(): Promise<Product[]> {
-    return apiClient.get<Product[]>('/products');
+  async getProducts(senderId?: number): Promise<Product[]> {
+    return apiClient.get<Product[]>(`/products${qs(senderId)}`);
   },
 
-  async createProduct(payload: ProductPayload): Promise<Product> {
-    return apiClient.post<Product>('/products', payload);
+  async createProduct(payload: ProductPayload, senderId?: number): Promise<Product> {
+    return apiClient.post<Product>(`/products${qs(senderId)}`, payload);
   },
 
-  async updateProduct(productId: number, payload: ProductPayload): Promise<Product> {
-    return apiClient.put<Product>(`/products/${productId}`, payload);
+  async updateProduct(productId: number, payload: ProductPayload, senderId?: number): Promise<Product> {
+    return apiClient.put<Product>(`/products/${productId}${qs(senderId)}`, payload);
   },
 
-  async deleteProduct(productId: number): Promise<void> {
-    await apiClient.delete<void>(`/products/${productId}`);
+  async deleteProduct(productId: number, senderId?: number): Promise<void> {
+    await apiClient.delete<void>(`/products/${productId}${qs(senderId)}`);
   },
 };

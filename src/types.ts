@@ -25,6 +25,7 @@ export enum InvoiceStatus {
 export enum UserRole {
   ADMIN = 'admin',
   EMPRESA = 'empresa',
+  CONTADOR = 'contador',
 }
 
 export enum UserPlan {
@@ -146,6 +147,7 @@ export interface Invoice {
   task_id: string | null;
   pdf_base64: string | null;
   sunat_message: string | null;
+  sunat_failed_step: string | null;
   referenced_invoice_id: number | null;
   credit_note_reason: CreditNoteReason | null;
   credit_note_sustento: string | null;

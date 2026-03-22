@@ -1,8 +1,11 @@
 // src/pages/FeedbackPage.tsx
 import React, { useState } from 'react';
-import { MessageCircle, Star, Send, RefreshCw, CheckCircle } from 'lucide-react';
+import { Star, Send, RefreshCw, CheckCircle, MessageCircle } from 'lucide-react';
+import { useAppData } from '../context/AppDataContext';
+import { feedbackService } from '../services/business/feedbackService';
 
 const FeedbackPage: React.FC = () => {
+  const { activeSenderId, showToast } = useAppData();
   const [rating, setRating]     = useState(0);
   const [hovered, setHovered]   = useState(0);
   const [name, setName]         = useState('');
@@ -13,10 +16,19 @@ const FeedbackPage: React.FC = () => {
   const handleSubmit = async () => {
     if (!message.trim()) return;
     setBusy(true);
-    // TODO: conectar con endpoint real
-    await new Promise((r) => setTimeout(r, 1000));
-    setBusy(false);
-    setSent(true);
+    try {
+      await feedbackService.submitFeedback({
+        sender_id: activeSenderId ?? undefined,
+        rating: rating || undefined,
+        nombre: name.trim() || undefined,
+        mensaje: message.trim(),
+      });
+      setSent(true);
+    } catch {
+      showToast('Error al enviar tu opinión. Intenta de nuevo.', 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (sent) {
@@ -48,8 +60,8 @@ const FeedbackPage: React.FC = () => {
           <MessageCircle size={22} className="text-blue-500" strokeWidth={2} />
         </div>
         <div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">Información y Opinión</h2>
-          <p className="text-[10px] text-slate-400 mt-0.5">Cuéntanos tu experiencia o escríbenos</p>
+          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">Tu opinión nos mejora :)</h2>
+          <p className="text-[10px] text-slate-400 mt-0.5">Cuéntanos cómo fue tu experiencia con FactuMovil</p>
         </div>
       </div>
 
