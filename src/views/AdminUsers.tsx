@@ -21,7 +21,7 @@ import {
   Plus,
   Minus,
 } from 'lucide-react';
-import { AdminUserRow, UserRole, UserPlan, Sender } from '../types';
+import { AdminUserRow, UserRole, UserPlan } from '../types';
 import { adminService } from '../services/business/adminService';
 import { contadorService, ContadorAssignment } from '../services/business/contadorService';
 
@@ -48,7 +48,7 @@ const ROLE_META: Record<string, { bg: string; text: string; selectRing: string }
 type AdminTab = 'usuarios' | 'contadores';
 
 interface ContadorAssignments {
-  [contadorId: string]: number[];
+  [contadorId: string]: string[];
 }
 
 interface AssignModalState {
@@ -136,9 +136,8 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   const [assignModal,    setAssignModal]    = useState<AssignModalState | null>(null);
   const [assignBusy,     setAssignBusy]     = useState(false);
   const [assignError,    setAssignError]    = useState<string | null>(null);
-  const [allSenders,     setAllSenders]     = useState<Sender[]>([]);
-  const [allAssignments, setAllAssignments] = useState<ContadorAssignment[]>([]);
-  const [sendersLoading, setSendersLoading] = useState(false);
+  const [allAssignments,   setAllAssignments]   = useState<ContadorAssignment[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
   const [showCreate,  setShowCreate]  = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
@@ -170,30 +169,25 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
 
   useEffect(() => { load(); }, []);
 
-  const loadSendersAndAssignments = async () => {
-    setSendersLoading(true);
+  const loadAssignments = async () => {
+    setAssignmentsLoading(true);
     try {
-      const [senders, rawAssignments] = await Promise.all([
-        contadorService.getAllSenders(),
-        contadorService.getAllAssignments(),
-      ]);
-      setAllSenders(senders);
+      const rawAssignments = await contadorService.getAllAssignments();
       setAllAssignments(rawAssignments);
-
       const map: ContadorAssignments = {};
       for (const a of rawAssignments) {
-        map[a.contador_user_id] = [...(map[a.contador_user_id] ?? []), a.sender_id];
+        map[a.contador_user_id] = [...(map[a.contador_user_id] ?? []), a.empresa_user_id];
       }
       setAssignments(map);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Error al cargar empresas');
+      setError(e instanceof Error ? e.message : 'Error al cargar asignaciones');
     } finally {
-      setSendersLoading(false);
+      setAssignmentsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'contadores') loadSendersAndAssignments();
+    if (activeTab === 'contadores') loadAssignments();
   }, [activeTab]);
 
   // ── helpers ───────────────────────────────────────────────────────────────
@@ -326,19 +320,19 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     });
   };
 
-  const handleAssignSender = async (senderId: number) => {
+  const handleAssignEmpresa = async (empresaUserId: string) => {
     if (!assignModal) return;
     setAssignBusy(true);
     setAssignError(null);
     try {
-      await contadorService.assignSender(assignModal.contadorId, senderId);
+      await contadorService.assignEmpresa(assignModal.contadorId, empresaUserId);
       setAssignments((prev) => ({
         ...prev,
-        [assignModal.contadorId]: [...(prev[assignModal.contadorId] ?? []), senderId],
+        [assignModal.contadorId]: [...(prev[assignModal.contadorId] ?? []), empresaUserId],
       }));
       setAllAssignments((prev) => [
         ...prev,
-        { contador_user_id: assignModal.contadorId, sender_id: senderId },
+        { contador_user_id: assignModal.contadorId, empresa_user_id: empresaUserId },
       ]);
       setAssignModal(null);
     } catch (e: unknown) {
@@ -348,16 +342,16 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     }
   };
 
-  const handleRemoveSender = async (contadorId: string, senderId: number) => {
+  const handleRemoveEmpresa = async (contadorId: string, empresaUserId: string) => {
     try {
-      await contadorService.removeSender(contadorId, senderId);
+      await contadorService.removeEmpresa(contadorId, empresaUserId);
       setAssignments((prev) => ({
         ...prev,
-        [contadorId]: (prev[contadorId] ?? []).filter((id) => id !== senderId),
+        [contadorId]: (prev[contadorId] ?? []).filter((id) => id !== empresaUserId),
       }));
       setAllAssignments((prev) =>
         prev.filter(
-          (a) => !(a.contador_user_id === contadorId && a.sender_id === senderId)
+          (a) => !(a.contador_user_id === contadorId && a.empresa_user_id === empresaUserId)
         )
       );
     } catch (e: unknown) {
@@ -468,24 +462,24 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
 
                   {contadorAssignments.length > 0 && (
                     <div className="space-y-1.5">
-                      {contadorAssignments.map((senderId) => {
-                        const senderInfo = allSenders.find((s) => s.id === senderId);
+                      {contadorAssignments.map((empresaId) => {
+                        const empresaInfo = users.find((u) => u.id === empresaId);
                         return (
                           <div
-                            key={senderId}
+                            key={empresaId}
                             className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2"
                           >
                             <Building2 size={13} className="text-slate-400 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-[10px] font-black text-slate-700 truncate">
-                                {senderInfo?.name ?? `Empresa #${senderId}`}
+                                {empresaInfo?.name ?? empresaInfo?.email ?? `Empresa ${empresaId.slice(0, 8)}...`}
                               </p>
-                              {senderInfo?.ruc && (
-                                <p className="text-[9px] text-slate-400">{senderInfo.ruc}</p>
+                              {empresaInfo?.email && empresaInfo?.name && (
+                                <p className="text-[9px] text-slate-400 truncate">{empresaInfo.email}</p>
                               )}
                             </div>
                             <button
-                              onClick={() => handleRemoveSender(contador.id, senderId)}
+                              onClick={() => handleRemoveEmpresa(contador.id, empresaId)}
                               className="text-slate-300 hover:text-red-500 transition-colors shrink-0"
                               aria-label="Quitar asignación"
                             >
@@ -839,19 +833,19 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
             const assignedElsewhere = new Set(
               allAssignments
                 .filter((a) => a.contador_user_id !== assignModal.contadorId)
-                .map((a) => a.sender_id)
+                .map((a) => a.empresa_user_id)
             );
-            const available = allSenders.filter(
-              (s) => !alreadyMine.has(s.id) && !assignedElsewhere.has(s.id)
+            const available = users.filter(
+              (u) => u.role === UserRole.EMPRESA && !alreadyMine.has(u.id) && !assignedElsewhere.has(u.id)
             );
 
             return (
               <div className="space-y-3">
-                {sendersLoading ? (
+                {assignmentsLoading ? (
                   <div className="py-8 flex flex-col items-center gap-3">
                     <RefreshCw size={20} className="animate-spin text-slate-400" />
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                      Cargando empresas...
+                      Cargando...
                     </p>
                   </div>
                 ) : available.length === 0 ? (
@@ -863,30 +857,30 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                       Sin empresas disponibles
                     </p>
                     <p className="text-[9px] text-slate-300 mt-1">
-                      Todas las empresas ya están asignadas a un contador.
+                      Todas las cuentas de empresa ya están asignadas.
                     </p>
                   </div>
                 ) : (
                   <>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
-                      Selecciona una empresa
+                      Selecciona una cuenta empresa
                     </p>
                     <div className="space-y-2 max-h-64 overflow-y-auto -mx-1 px-1">
-                      {available.map((sender) => (
+                      {available.map((empresa) => (
                         <button
-                          key={sender.id}
-                          onClick={() => handleAssignSender(sender.id)}
+                          key={empresa.id}
+                          onClick={() => handleAssignEmpresa(empresa.id)}
                           disabled={assignBusy}
                           className="w-full flex items-center gap-3 bg-slate-50 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 rounded-2xl px-4 py-3 text-left transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
                         >
-                          <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                            <Building2 size={15} className="text-slate-500" />
+                          <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0 font-black text-[10px] text-blue-600">
+                            {getInitials(empresa)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight truncate">
-                              {sender.name}
+                              {empresa.name || '—'}
                             </p>
-                            <p className="text-[9px] text-slate-400">{sender.ruc}</p>
+                            <p className="text-[9px] text-slate-400 truncate">{empresa.email}</p>
                           </div>
                           {assignBusy ? (
                             <RefreshCw size={13} className="animate-spin text-emerald-500 shrink-0" />

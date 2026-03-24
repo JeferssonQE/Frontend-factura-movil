@@ -52,7 +52,7 @@ type AppDataContextValue = {
 
   refreshAllData: () => Promise<void>;
   changeSender: (senderId: number) => Promise<void>;
-  selectSenderAsContador: (senderId: number) => Promise<void>;
+  selectSenderAsContador: (senderId: number, empresaSenders?: Sender[]) => Promise<void>;
 
   saveSender: (input: SenderUpsertInput) => Promise<void>;
   deleteSender: (id: number) => Promise<void>;
@@ -123,18 +123,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshAllData = useCallback(async () => {
     try {
-      if (user?.role === UserRole.CONTADOR) {
-        const loadedSenders = await contadorService.getMyAssignedSenders();
-        setSenders(loadedSenders);
-
-        if (loadedSenders.length > 0) {
-          const current = activeSenderIdRef.current;
-          const stillValid = current && loadedSenders.some((s) => s.id === current);
-          const nextId = stillValid ? current : loadedSenders[0].id;
-          setActiveSenderId(nextId);
-          await loadSenderData(nextId);
+      if (user?.role === UserRole.CONTADOR || user?.role === UserRole.ADMIN) {
+        const current = activeSenderIdRef.current;
+        if (current) {
+          await loadSenderData(current);
         } else {
-          setActiveSenderId(null);
           setProducts([]);
           setClients([]);
           setInvoices([]);
@@ -164,10 +157,12 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [loadSenderData, user?.role]);
 
   const selectSenderAsContador = useCallback(
-    async (senderId: number) => {
+    async (senderId: number, empresaSenders?: Sender[]) => {
+      if (empresaSenders) setSenders(empresaSenders);
       setActiveSenderId(senderId);
       await loadSenderData(senderId);
-      const name = senders.find((s) => s.id === senderId)?.name ?? '';
+      const pool = empresaSenders ?? senders;
+      const name = pool.find((s) => s.id === senderId)?.name ?? '';
       showToast(`Operando como: ${name}`);
     },
     [loadSenderData, senders, showToast]
