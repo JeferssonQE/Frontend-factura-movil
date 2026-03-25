@@ -1,17 +1,18 @@
-import React from 'react';
-import { Building2, ArrowRight, CheckCircle2, RefreshCw, ChevronRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Building2, CheckCircle2, RefreshCw, ChevronRight, Save, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Sender, AuthUser, AdminUserRow } from '../types';
+import { SenderFormData } from '../services/business/contadorService';
 
 interface ContadorSendersProps {
   user: AuthUser;
   empresas: AdminUserRow[];
-  selectedEmpresaId: string | null;
-  senders: Sender[];
-  activeSenderId: number | null;
   loading: boolean;
-  sendersLoading: boolean;
+  selectedEmpresaId: string | null;
+  sender: Sender | null;
+  senderLoading: boolean;
+  saving: boolean;
   onSelectEmpresa: (id: string) => void;
-  onSelectSender: (id: number) => void;
+  onSaveSender: (data: Partial<SenderFormData>) => Promise<void>;
 }
 
 const getInitials = (u: AdminUserRow): string => {
@@ -29,15 +30,41 @@ const getInitials = (u: AdminUserRow): string => {
 const ContadorSenders: React.FC<ContadorSendersProps> = ({
   user,
   empresas,
-  selectedEmpresaId,
-  senders,
-  activeSenderId,
   loading,
-  sendersLoading,
+  selectedEmpresaId,
+  sender,
+  senderLoading,
+  saving,
   onSelectEmpresa,
-  onSelectSender,
+  onSaveSender,
 }) => {
   const firstName = user.name?.split(' ')[0] ?? 'Contador';
+
+  const [name, setName] = useState('');
+  const [ruc, setRuc] = useState('');
+  const [sunatUser, setSunatUser] = useState('');
+  const [sunatPass, setSunatPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+
+  useEffect(() => {
+    setName(sender?.name ?? '');
+    setRuc(sender?.ruc ?? '');
+    setSunatUser('');
+    setSunatPass('');
+    setShowPass(false);
+  }, [sender, selectedEmpresaId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const data: Partial<SenderFormData> = {};
+    if (name) data.name = name;
+    if (ruc) data.ruc = ruc;
+    if (sunatUser && sunatPass) {
+      data.sunat_user = sunatUser;
+      data.sunat_pass = sunatPass;
+    }
+    await onSaveSender(data);
+  };
 
   if (loading) {
     return (
@@ -71,8 +98,6 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
   }
 
   const selectedEmpresa = empresas.find((e) => e.id === selectedEmpresaId) ?? null;
-  const activeSender = senders.find((s) => s.id === activeSenderId) ?? null;
-  const otherSenders = senders.filter((s) => s.id !== activeSenderId);
 
   return (
     <div className="space-y-5 pb-8">
@@ -143,137 +168,105 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
         </div>
       </div>
 
-      {/* Step 2: Senders de la empresa seleccionada */}
+      {/* Formulario de edición del emisor */}
       {selectedEmpresa && (
         <div>
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
-            2 · Elige el emisor de {selectedEmpresa.name || selectedEmpresa.email}
+            Configurar emisor · {selectedEmpresa.name || selectedEmpresa.email}
           </p>
 
-          {sendersLoading ? (
+          {senderLoading ? (
             <div className="bg-white rounded-[22px] border border-slate-100 shadow-sm py-10 flex flex-col items-center gap-3">
               <RefreshCw size={20} className="animate-spin text-slate-400" />
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                Cargando emisores...
-              </p>
-            </div>
-          ) : senders.length === 0 ? (
-            <div className="bg-white rounded-[22px] border border-dashed border-slate-200 py-10 flex flex-col items-center gap-3 text-center px-4">
-              <div className="w-12 h-12 rounded-[18px] bg-slate-100 flex items-center justify-center">
-                <Building2 size={20} className="text-slate-300" />
-              </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Sin emisores registrados
-              </p>
-              <p className="text-[9px] text-slate-300">
-                Esta empresa aún no tiene empresas emisoras configuradas.
+                Cargando...
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {activeSender && (
-                <div className="bg-slate-900 rounded-[28px] p-5 shadow-xl shadow-slate-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <CheckCircle2 size={13} className="text-emerald-400" strokeWidth={3} />
-                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">
-                      Operando ahora
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-3 mb-5">
-                    <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
-                      <Building2 size={20} className="text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-white font-black text-[14px] uppercase tracking-tight leading-tight truncate">
-                        {activeSender.name}
-                      </p>
-                      <p className="text-white/50 text-[10px] font-medium mt-0.5">
-                        RUC: {activeSender.ruc}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => onSelectSender(activeSender.id)}
-                    className="w-full bg-white text-slate-900 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                  >
-                    Operar ahora
-                    <ArrowRight size={14} strokeWidth={3} />
-                  </button>
+            <form onSubmit={handleSubmit} className="bg-white rounded-[22px] border border-slate-100 shadow-sm p-5 space-y-4">
+              {sender?.has_sunat_credentials && (
+                <div className="flex items-center gap-2 bg-emerald-50 rounded-2xl px-3 py-2.5">
+                  <ShieldCheck size={13} className="text-emerald-500 shrink-0" strokeWidth={3} />
+                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">
+                    Credenciales SUNAT configuradas
+                  </span>
                 </div>
               )}
 
-              {otherSenders.length > 0 && (
-                <div className="space-y-2.5">
-                  {activeSender && (
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
-                      Cambiar emisor
-                    </p>
-                  )}
-                  {otherSenders.map((sender) => (
-                    <div
-                      key={sender.id}
-                      className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-4 flex items-center gap-3"
-                    >
-                      <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center shrink-0">
-                        <Building2 size={18} className="text-slate-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight truncate">
-                          {sender.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">RUC: {sender.ruc}</p>
-                      </div>
-                      <button
-                        onClick={() => onSelectSender(sender.id)}
-                        className="shrink-0 bg-slate-900 text-white px-4 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-transform"
-                      >
-                        Entrar
-                        <ArrowRight size={11} strokeWidth={3} />
-                      </button>
-                    </div>
-                  ))}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+                    Razón Social
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={sender?.name || 'Nombre de la empresa'}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                  />
                 </div>
-              )}
 
-              {!activeSender && senders.length > 0 && (
-                <div className="space-y-2.5">
-                  {senders.map((sender) => (
-                    <div
-                      key={sender.id}
-                      className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-4 flex items-center gap-3"
-                    >
-                      <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center shrink-0">
-                        <Building2 size={18} className="text-slate-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight truncate">
-                          {sender.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">RUC: {sender.ruc}</p>
-                      </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+                    RUC
+                  </label>
+                  <input
+                    type="text"
+                    value={ruc}
+                    onChange={(e) => setRuc(e.target.value)}
+                    placeholder={sender?.ruc || '20123456789'}
+                    maxLength={11}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                  />
+                </div>
+
+                <div className="pt-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                    Credenciales SUNAT
+                  </p>
+                  <div className="space-y-2.5">
+                    <input
+                      type="text"
+                      value={sunatUser}
+                      onChange={(e) => setSunatUser(e.target.value)}
+                      placeholder="Usuario SUNAT"
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                    />
+                    <div className="relative">
+                      <input
+                        type={showPass ? 'text' : 'password'}
+                        value={sunatPass}
+                        onChange={(e) => setSunatPass(e.target.value)}
+                        placeholder="Clave SOL"
+                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 pr-12 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                      />
                       <button
-                        onClick={() => onSelectSender(sender.id)}
-                        className="shrink-0 bg-slate-900 text-white px-4 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-transform"
+                        type="button"
+                        onClick={() => setShowPass((v) => !v)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                       >
-                        Entrar
-                        <ArrowRight size={11} strokeWidth={3} />
+                        {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full bg-slate-900 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
+              >
+                {saving ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Save size={13} strokeWidth={3} />
+                )}
+                {saving ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </form>
           )}
-        </div>
-      )}
-
-      {/* Prompt if no empresa selected */}
-      {!selectedEmpresa && (
-        <div className="bg-slate-50 rounded-[22px] border border-dashed border-slate-200 py-8 flex flex-col items-center gap-2 text-center">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-            Selecciona una empresa arriba
-          </p>
-          <p className="text-[9px] text-slate-300">para ver sus emisores disponibles</p>
         </div>
       )}
     </div>

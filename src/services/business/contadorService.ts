@@ -8,13 +8,24 @@ export type ContadorAssignment = {
   empresa_email?: string | null;
 };
 
+export type SenderFormData = {
+  name: string;
+  ruc: string;
+  sunat_user: string;
+  sunat_pass: string;
+};
+
 export const contadorService = {
   async getMyAssignedEmpresas(): Promise<AdminUserRow[]> {
     return apiClient.get<AdminUserRow[]>('/contadores/me/empresas');
   },
 
-  async getSendersForEmpresa(empresaUserId: string): Promise<Sender[]> {
-    return apiClient.get<Sender[]>(`/contadores/me/empresas/${empresaUserId}/senders`);
+  async getEmpresaSender(empresaUserId: string): Promise<Sender | null> {
+    return apiClient.get<Sender | null>(`/contadores/me/empresas/${empresaUserId}/sender`);
+  },
+
+  async updateEmpresaSender(empresaUserId: string, data: Partial<SenderFormData>): Promise<Sender> {
+    return apiClient.patch<Sender>(`/contadores/me/empresas/${empresaUserId}/sender`, data);
   },
 
   async getContadores(): Promise<AdminUserRow[]> {
@@ -31,9 +42,5 @@ export const contadorService = {
 
   async removeEmpresa(contadorUserId: string, empresaUserId: string): Promise<void> {
     await apiClient.delete<void>(`/contadores/${contadorUserId}/empresas/${empresaUserId}`);
-  },
-
-  async updateSender(senderId: number, data: { name?: string; ruc?: string; sunat_user?: string; sunat_pass?: string }): Promise<void> {
-    await apiClient.patch<void>(`/contadores/me/senders/${senderId}`, data);
   },
 };

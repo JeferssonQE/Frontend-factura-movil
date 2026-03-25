@@ -1,19 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import ContadorSenders from '../views/ContadorSenders';
-import { contadorService } from '../services/business/contadorService';
+import { contadorService, SenderFormData } from '../services/business/contadorService';
 import { AdminUserRow, Sender } from '../types';
 
 const ContadorSendersPage: React.FC = () => {
-  const { user, activeSenderId, selectSenderAsContador } = useAppData();
-  const navigate = useNavigate();
+  const { user, showToast } = useAppData();
 
   const [empresas, setEmpresas] = useState<AdminUserRow[]>([]);
   const [empresasLoading, setEmpresasLoading] = useState(true);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
-  const [senders, setSenders] = useState<Sender[]>([]);
-  const [sendersLoading, setSendersLoading] = useState(false);
+  const [sender, setSender] = useState<Sender | null>(null);
+  const [senderLoading, setSenderLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     contadorService.getMyAssignedEmpresas()
@@ -24,22 +23,32 @@ const ContadorSendersPage: React.FC = () => {
 
   const handleSelectEmpresa = useCallback(async (empresaId: string) => {
     setSelectedEmpresaId(empresaId);
-    setSendersLoading(true);
+    setSender(null);
+    setSenderLoading(true);
     try {
-      const loaded = await contadorService.getSendersForEmpresa(empresaId);
-      setSenders(loaded);
+      const loaded = await contadorService.getEmpresaSender(empresaId);
+      setSender(loaded);
     } catch (e) {
       console.error(e);
-      setSenders([]);
     } finally {
-      setSendersLoading(false);
+      setSenderLoading(false);
     }
   }, []);
 
-  const handleSelectSender = useCallback(async (senderId: number) => {
-    await selectSenderAsContador(senderId, senders);
-    navigate('/dashboard');
-  }, [selectSenderAsContador, senders, navigate]);
+  const handleSaveSender = useCallback(async (data: Partial<SenderFormData>) => {
+    if (!selectedEmpresaId) return;
+    setSaving(true);
+    try {
+      const updated = await contadorService.updateEmpresaSender(selectedEmpresaId, data);
+      setSender(updated);
+      showToast('Emisor actualizado correctamente', 'success');
+    } catch (e) {
+      console.error(e);
+      showToast('Error al guardar el emisor', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedEmpresaId, showToast]);
 
   if (!user) return null;
 
@@ -47,13 +56,13 @@ const ContadorSendersPage: React.FC = () => {
     <ContadorSenders
       user={user}
       empresas={empresas}
-      selectedEmpresaId={selectedEmpresaId}
-      senders={senders}
-      activeSenderId={activeSenderId}
       loading={empresasLoading}
-      sendersLoading={sendersLoading}
+      selectedEmpresaId={selectedEmpresaId}
+      sender={sender}
+      senderLoading={senderLoading}
+      saving={saving}
       onSelectEmpresa={handleSelectEmpresa}
-      onSelectSender={handleSelectSender}
+      onSaveSender={handleSaveSender}
     />
   );
 };
