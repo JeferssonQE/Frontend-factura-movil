@@ -2,7 +2,7 @@
 import { apiClient, storageKeys, saveTokens } from './apiClient';
 import { AuthUser } from '../../types';
 
-const INACTIVITY_LIMIT_MS = 2 * 24 * 60 * 60 * 1000;
+const INACTIVITY_LIMIT_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface LoginResponse {
   access_token: string;

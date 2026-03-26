@@ -369,7 +369,7 @@ const Billing: React.FC<BillingProps> = ({
     setSunatMessage(null);
     setNumeroComprobante(null);
     try {
-      await invoiceService.emitInvoice(emissionSuccess.id);
+      await invoiceService.emitInvoice(emissionSuccess.id, sender?.id);
       startPolling(emissionSuccess.id);
     } catch (e: any) {
       setEmissionState('fallo');

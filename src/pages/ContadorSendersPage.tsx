@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import ContadorSenders from '../views/ContadorSenders';
 import { contadorService, SenderFormData } from '../services/business/contadorService';
 import { AdminUserRow, Sender } from '../types';
 
 const ContadorSendersPage: React.FC = () => {
-  const { user, showToast } = useAppData();
+  const { user, showToast, selectSenderAsContador } = useAppData();
+  const navigate = useNavigate();
 
   const [empresas, setEmpresas] = useState<AdminUserRow[]>([]);
   const [empresasLoading, setEmpresasLoading] = useState(true);
@@ -35,7 +37,7 @@ const ContadorSendersPage: React.FC = () => {
     }
   }, []);
 
-  const handleSaveSender = useCallback(async (data: Partial<SenderFormData>) => {
+  const handleSaveSender = useCallback(async (data: SenderFormData) => {
     if (!selectedEmpresaId) return;
     setSaving(true);
     try {
@@ -50,6 +52,11 @@ const ContadorSendersPage: React.FC = () => {
     }
   }, [selectedEmpresaId, showToast]);
 
+  const handleOperar = useCallback((sender: Sender) => {
+    selectSenderAsContador(sender.id, [sender]);
+    navigate('/billing');
+  }, [selectSenderAsContador, navigate]);
+
   if (!user) return null;
 
   return (
@@ -63,6 +70,7 @@ const ContadorSendersPage: React.FC = () => {
       saving={saving}
       onSelectEmpresa={handleSelectEmpresa}
       onSaveSender={handleSaveSender}
+      onOperar={handleOperar}
     />
   );
 };

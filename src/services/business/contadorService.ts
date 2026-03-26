@@ -25,7 +25,11 @@ export const contadorService = {
   },
 
   async updateEmpresaSender(empresaUserId: string, data: Partial<SenderFormData>): Promise<Sender> {
-    return apiClient.patch<Sender>(`/contadores/me/empresas/${empresaUserId}/sender`, data);
+    return apiClient.post<Sender>(`/contadores/me/empresas/${empresaUserId}/sender`, data);
+  },
+
+  async updateSender(empresaUserId: string, data: Partial<SenderFormData>): Promise<Sender> {
+    return apiClient.post<Sender>(`/contadores/me/empresas/${empresaUserId}/sender`, data);
   },
 
   async getContadores(): Promise<AdminUserRow[]> {

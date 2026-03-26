@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, CheckCircle2, RefreshCw, ChevronRight, Save, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Building2, CheckCircle2, RefreshCw, ChevronRight, Save, Eye, EyeOff, ShieldCheck, Play } from 'lucide-react';
 import { Sender, AuthUser, AdminUserRow } from '../types';
 import { SenderFormData } from '../services/business/contadorService';
 
@@ -12,7 +12,8 @@ interface ContadorSendersProps {
   senderLoading: boolean;
   saving: boolean;
   onSelectEmpresa: (id: string) => void;
-  onSaveSender: (data: Partial<SenderFormData>) => Promise<void>;
+  onSaveSender: (data: SenderFormData) => Promise<void>;
+  onOperar: (sender: Sender) => void;
 }
 
 const getInitials = (u: AdminUserRow): string => {
@@ -37,6 +38,7 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
   saving,
   onSelectEmpresa,
   onSaveSender,
+  onOperar,
 }) => {
   const firstName = user.name?.split(' ')[0] ?? 'Contador';
 
@@ -45,6 +47,7 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
   const [sunatUser, setSunatUser] = useState('');
   const [sunatPass, setSunatPass] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setName(sender?.name ?? '');
@@ -52,17 +55,28 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
     setSunatUser('');
     setSunatPass('');
     setShowPass(false);
+    setErrors({});
   }, [sender, selectedEmpresaId]);
+
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    if (!name.trim()) next.name = 'La razón social es requerida';
+    if (!ruc.trim()) {
+      next.ruc = 'El RUC es requerido';
+    } else if (!/^\d{11}$/.test(ruc.trim())) {
+      next.ruc = 'El RUC debe tener exactamente 11 dígitos numéricos';
+    }
+    if ((sunatUser && !sunatPass) || (!sunatUser && sunatPass)) {
+      next.credentials = 'Debes ingresar usuario y clave SUNAT juntos';
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data: Partial<SenderFormData> = {};
-    if (name) data.name = name;
-    if (ruc) data.ruc = ruc;
-    if (sunatUser && sunatPass) {
-      data.sunat_user = sunatUser;
-      data.sunat_pass = sunatPass;
-    }
+    if (!validate()) return;
+    const data: SenderFormData = { name: name.trim(), ruc: ruc.trim(), sunat_user: sunatUser, sunat_pass: sunatPass };
     await onSaveSender(data);
   };
 
@@ -201,10 +215,11 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: '' })); }}
                     placeholder={sender?.name || 'Nombre de la empresa'}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                    className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.name ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
                   />
+                  {errors.name && <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.name}</p>}
                 </div>
 
                 <div>
@@ -214,11 +229,12 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
                   <input
                     type="text"
                     value={ruc}
-                    onChange={(e) => setRuc(e.target.value)}
+                    onChange={(e) => { setRuc(e.target.value.replace(/\D/g, '')); setErrors((p) => ({ ...p, ruc: '' })); }}
                     placeholder={sender?.ruc || '20123456789'}
                     maxLength={11}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                    className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.ruc ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
                   />
+                  {errors.ruc && <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.ruc}</p>}
                 </div>
 
                 <div className="pt-1">
@@ -229,17 +245,19 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
                     <input
                       type="text"
                       value={sunatUser}
-                      onChange={(e) => setSunatUser(e.target.value)}
+                      onChange={(e) => { setSunatUser(e.target.value); setErrors((p) => ({ ...p, credentials: '' })); }}
                       placeholder="Usuario SUNAT"
-                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                      autoComplete="off"
+                      className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.credentials ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
                     />
                     <div className="relative">
                       <input
                         type={showPass ? 'text' : 'password'}
                         value={sunatPass}
-                        onChange={(e) => setSunatPass(e.target.value)}
+                        onChange={(e) => { setSunatPass(e.target.value); setErrors((p) => ({ ...p, credentials: '' })); }}
                         placeholder="Clave SOL"
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 pr-12 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:border-slate-300 focus:bg-white transition-colors"
+                        autoComplete="new-password"
+                        className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 pr-12 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.credentials ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
                       />
                       <button
                         type="button"
@@ -249,9 +267,27 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
                         {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
+                    {errors.credentials && <p className="text-[9px] text-red-500 font-semibold px-1">{errors.credentials}</p>}
                   </div>
                 </div>
               </div>
+
+              {sender && (
+                <button
+                  type="button"
+                  onClick={() => onOperar(sender)}
+                  className="w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                >
+                  <Play size={13} strokeWidth={3} />
+                  Operar como esta empresa
+                </button>
+              )}
+
+              {!sender && (
+                <p className="text-[9px] text-slate-400 font-semibold text-center px-2">
+                  Guarda el emisor primero para poder operar como esta empresa.
+                </p>
+              )}
 
               <button
                 type="submit"

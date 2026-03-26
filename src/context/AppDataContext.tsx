@@ -127,6 +127,26 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         const current = activeSenderIdRef.current;
         if (current) {
           await loadSenderData(current);
+        } else if (user?.role === UserRole.CONTADOR) {
+          const saved = localStorage.getItem('fm_contador_active_sender');
+          if (saved) {
+            try {
+              const { senderId, sender } = JSON.parse(saved);
+              setSenders([sender]);
+              setActiveSenderId(senderId);
+              activeSenderIdRef.current = senderId;
+              await loadSenderData(senderId);
+            } catch {
+              localStorage.removeItem('fm_contador_active_sender');
+              setProducts([]);
+              setClients([]);
+              setInvoices([]);
+            }
+          } else {
+            setProducts([]);
+            setClients([]);
+            setInvoices([]);
+          }
         } else {
           setProducts([]);
           setClients([]);
@@ -162,7 +182,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       setActiveSenderId(senderId);
       await loadSenderData(senderId);
       const pool = empresaSenders ?? senders;
-      const name = pool.find((s) => s.id === senderId)?.name ?? '';
+      const sender = pool.find((s) => s.id === senderId);
+      const name = sender?.name ?? '';
+      if (sender) {
+        localStorage.setItem('fm_contador_active_sender', JSON.stringify({ senderId, sender }));
+      }
       showToast(`Operando como: ${name}`);
     },
     [loadSenderData, senders, showToast]
@@ -182,7 +206,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     async (input: SenderUpsertInput) => {
       if (isContador) {
         if (!activeSender) return;
-        await contadorService.updateSender(activeSender.id, {
+        await contadorService.updateEmpresaSender(activeSender.user_id, {
           name: input.name,
           ruc: input.ruc,
           sunat_user: input.sunat_user,
@@ -467,6 +491,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = useCallback(() => {
     authService.logout();
+    localStorage.removeItem('fm_contador_active_sender');
     setUser(null);
     setSenders([]);
     setProducts([]);
