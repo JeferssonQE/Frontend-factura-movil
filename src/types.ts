@@ -20,6 +20,7 @@ export enum InvoiceStatus {
   EMITIDO = 'EMITIDO',
   ANULADO = 'ANULADO',
   FALLO = 'FALLO',
+  ELIMINADO = 'ELIMINADO',
 }
 
 export enum UserRole {

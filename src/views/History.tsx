@@ -21,6 +21,7 @@ import {
   FileX,
   AlertTriangle,
   HelpCircle,
+  Trash2,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
@@ -29,6 +30,7 @@ interface HistoryProps {
   invoices: Invoice[];
   onEmitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => void;
   onEmitDraft: (invoiceId: number) => Promise<void>;
+  onDeleteInvoice: (invoiceId: number) => Promise<void>;
   onRefresh: () => void;
 }
 
@@ -82,6 +84,7 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
     [InvoiceStatus.FALLO]: 'text-red-700 bg-red-100/60 border-red-200',
     [InvoiceStatus.PROCESANDO]: 'text-amber-700 bg-amber-100/60 border-amber-200',
     [InvoiceStatus.BORRADOR]: 'text-slate-400 bg-slate-50 border-slate-100',
+    [InvoiceStatus.ELIMINADO]: 'text-rose-400 bg-rose-50 border-rose-100 line-through',
   };
 
   return (
@@ -94,12 +97,13 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
   );
 };
 
-const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDraft, onRefresh }) => {
+const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDraft, onDeleteInvoice, onRefresh }) => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showReasonSelect, setShowReasonSelect] = useState(false);
   const [isEmittingDraft, setIsEmittingDraft] = useState(false);
+  const [isDeletingInvoice, setIsDeletingInvoice] = useState(false);
 
   const filtered = invoices.filter((invoice) => {
     const matchesSearch =
@@ -563,6 +567,27 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                           : 'Emitir a SUNAT'}
                       </button>
                     </>
+                  )}
+
+                  {(selectedInvoice.status === InvoiceStatus.BORRADOR ||
+                    selectedInvoice.status === InvoiceStatus.FALLO) && (
+                    <button
+                      onClick={async () => {
+                        setIsDeletingInvoice(true);
+                        await onDeleteInvoice(selectedInvoice.id);
+                        setIsDeletingInvoice(false);
+                        setSelectedInvoice(null);
+                      }}
+                      disabled={isDeletingInvoice}
+                      className="w-full bg-rose-50 text-rose-600 border border-rose-100 h-14 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-rose-100 active:scale-95 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isDeletingInvoice ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                      {isDeletingInvoice ? 'Eliminando...' : 'Eliminar documento'}
+                    </button>
                   )}
 
                   {selectedInvoice.invoice_type !== InvoiceType.NOTA_CREDITO &&

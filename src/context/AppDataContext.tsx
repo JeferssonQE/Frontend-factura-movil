@@ -67,6 +67,7 @@ type AppDataContextValue = {
   persistInvoice: (invoice: Invoice) => Promise<Invoice | null>;
   saveDraft: (invoice: Invoice) => Promise<Invoice | null>;
   emitDraft: (invoiceId: number) => Promise<void>;
+  deleteInvoice: (invoiceId: number) => Promise<void>;
   emitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => Promise<void>;
 
   logout: () => void;
@@ -452,6 +453,20 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     [refreshAllData, showToast, isContador]
   );
 
+  const deleteInvoice = useCallback(
+    async (invoiceId: number): Promise<void> => {
+      try {
+        await invoiceService.deleteInvoice(invoiceId);
+        await refreshAllData();
+        showToast('DOCUMENTO ELIMINADO');
+      } catch (error: any) {
+        console.error('Error eliminando invoice:', error);
+        showToast(error.message || 'ERROR AL ELIMINAR', 'error');
+      }
+    },
+    [refreshAllData, showToast]
+  );
+
   const CREDIT_NOTE_SUSTENTO: Record<string, string> = {
     '01': 'Anulacion de la Operacion',
     '02': 'Anulacion por Error en el RUC',
@@ -589,6 +604,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       persistInvoice,
       saveDraft,
       emitDraft,
+      deleteInvoice,
       emitCreditNote,
 
       logout,
@@ -621,6 +637,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       persistInvoice,
       saveDraft,
       emitDraft,
+      deleteInvoice,
       emitCreditNote,
       logout,
     ]

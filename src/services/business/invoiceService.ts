@@ -102,4 +102,8 @@ export const invoiceService = {
   ): Promise<Invoice> {
     return apiClient.post<Invoice>(`/invoices/${invoiceId}/credit-note${qs({ sender_id: senderId })}`, payload);
   },
+
+  async deleteInvoice(invoiceId: number): Promise<void> {
+    return apiClient.delete<void>(`/invoices/${invoiceId}`);
+  },
 };
