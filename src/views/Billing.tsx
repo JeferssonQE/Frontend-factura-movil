@@ -1270,7 +1270,7 @@ const Billing: React.FC<BillingProps> = ({
                   >
                     {Object.values(UnitOfMeasure).map((unit) => (
                       <option key={unit} value={unit}>
-                        {unit}
+                        {unit === 'KILOGRAMO' ? 'KILOG.' : unit}
                       </option>
                     ))}
                   </select>
@@ -1282,12 +1282,16 @@ const Billing: React.FC<BillingProps> = ({
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="0.001"
                     value={item.unit_price || ''}
                     onChange={(event) =>
                       updateItem(index, { unit_price: parseFloat(event.target.value) || 0 })
                     }
-                    placeholder="0.00"
+                    onBlur={(event) => {
+                      const val = parseFloat(event.target.value) || 0;
+                      updateItem(index, { unit_price: parseFloat(val.toFixed(4)) });
+                    }}
+                    placeholder="0.000"
                     className="w-full bg-slate-50 rounded-xl px-2 py-3 text-sm font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
@@ -1298,12 +1302,16 @@ const Billing: React.FC<BillingProps> = ({
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="0.001"
                     value={item.total || ''}
                     onChange={(event) =>
                       updateItem(index, { total: parseFloat(event.target.value) || 0 })
                     }
-                    placeholder="0.00"
+                    onBlur={(event) => {
+                      const val = parseFloat(event.target.value) || 0;
+                      updateItem(index, { total: parseFloat(val.toFixed(3)) });
+                    }}
+                    placeholder="0.000"
                     className="w-full bg-blue-50 border-2 border-blue-200 rounded-xl px-2 py-2.5 text-sm font-black text-blue-600 text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>

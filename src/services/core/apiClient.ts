@@ -122,6 +122,7 @@ const handleErrorResponse = async (response: Response): Promise<never> => {
 
   if (response.status === 401) {
     clearStoredSession();
+    window.location.href = '/login';
   }
 
   let message = `Request failed with status ${response.status}`;
