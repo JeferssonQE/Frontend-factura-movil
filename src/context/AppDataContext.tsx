@@ -456,7 +456,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const deleteInvoice = useCallback(
     async (invoiceId: number): Promise<void> => {
       try {
-        await invoiceService.deleteInvoice(invoiceId);
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        await invoiceService.deleteInvoice(invoiceId, senderId);
         await refreshAllData();
         showToast('DOCUMENTO ELIMINADO');
       } catch (error: any) {
@@ -464,7 +465,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(error.message || 'ERROR AL ELIMINAR', 'error');
       }
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast, isContador]
   );
 
   const CREDIT_NOTE_SUSTENTO: Record<string, string> = {

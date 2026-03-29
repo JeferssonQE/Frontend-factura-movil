@@ -139,7 +139,7 @@ export interface Invoice {
   invoice_type: InvoiceType;
   series: string;
   number: string;
-  numero_comprobante_sunat: string | null;
+  nro_comprobante_sunat: string | null;
   invoice_date: string;
   subtotal: number;
   igv: number;

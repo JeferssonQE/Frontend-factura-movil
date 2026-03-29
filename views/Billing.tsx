@@ -383,7 +383,7 @@ const Billing: React.FC<BillingProps> = ({
         invoice_type: invoiceType,
         series,
         number: nextNumber,
-        numero_comprobante_sunat: null,
+        nro_comprobante_sunat: null,
         invoice_date: clientData.invoice_date,
         subtotal: gravada + exonerada,
         igv: igvTotal,

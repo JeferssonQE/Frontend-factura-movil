@@ -347,7 +347,7 @@ const Billing: React.FC<BillingProps> = ({
         const statusData = await invoiceService.getInvoiceStatus(invoiceId, sender?.id);
         if (statusData.status === InvoiceStatus.EMITIDO) {
           stopPolling();
-          setNumeroComprobante(statusData.numero_comprobante_sunat);
+          setNumeroComprobante(statusData.nro_comprobante_sunat);
           setSunatMessage(statusData.sunat_message);
           setEmissionState('emitido');
           try {
@@ -532,7 +532,7 @@ const Billing: React.FC<BillingProps> = ({
         invoice_type: invoiceType,
         series,
         number: nextNumber,
-        numero_comprobante_sunat: null,
+        nro_comprobante_sunat: null,
         invoice_date: clientData.invoice_date,
         subtotal: gravada + exonerada,
         igv: igvTotal,
@@ -579,7 +579,7 @@ const Billing: React.FC<BillingProps> = ({
         invoice_type: invoiceType,
         series,
         number: nextNumber,
-        numero_comprobante_sunat: null,
+        nro_comprobante_sunat: null,
         invoice_date: clientData.invoice_date,
         subtotal: gravada + exonerada,
         igv: igvTotal,

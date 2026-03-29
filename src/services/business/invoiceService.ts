@@ -38,7 +38,7 @@ export type InvoiceStatusResponse = {
   task_id: string | null;
   sunat_message: string | null;
   pdf_available: boolean;
-  numero_comprobante_sunat: string | null;
+  nro_comprobante_sunat: string | null;
   series: string;
   number: string;
   total: string;
@@ -46,7 +46,7 @@ export type InvoiceStatusResponse = {
 
 export type InvoiceNumeroComprobanteResponse = {
   invoice_id: number;
-  numero_comprobante_sunat: string | null;
+  nro_comprobante_sunat: string | null;
   series: string;
   number: string;
   status: InvoiceStatus;
@@ -103,7 +103,7 @@ export const invoiceService = {
     return apiClient.post<Invoice>(`/invoices/${invoiceId}/credit-note${qs({ sender_id: senderId })}`, payload);
   },
 
-  async deleteInvoice(invoiceId: number): Promise<void> {
-    return apiClient.delete<void>(`/invoices/${invoiceId}`);
+  async deleteInvoice(invoiceId: number, senderId?: number): Promise<void> {
+    return apiClient.delete<void>(`/invoices/${invoiceId}${qs({ sender_id: senderId })}`);
   },
 };

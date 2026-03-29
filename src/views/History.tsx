@@ -459,7 +459,7 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                 </div>
               ) : (
                 <div className="flex flex-col gap-3 pt-2 px-2">
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 justify-between">
                     <button
                       onClick={() => {
                         if (selectedInvoice?.pdf_base64) {
@@ -468,21 +468,23 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                           alert('PDF no disponible para visualizar');
                         }
                       }}
-                      className={`flex-1 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all ${
-                        selectedInvoice?.pdf_base64
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                      }`}
                       disabled={!selectedInvoice?.pdf_base64}
+                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
+                        selectedInvoice?.pdf_base64
+                          ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-200'
+                          : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
+                      }`}
                     >
-                      <FileText size={18} /> Ver PDF Oficial
+                      <FileText size={20} />
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Ver PDF</span>
                     </button>
 
                     <button
                       onClick={() => window.print()}
-                      className="flex-1 bg-slate-100 text-slate-700 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-slate-200 active:scale-95 transition-all"
+                      className="flex-1 h-20 bg-slate-100 text-slate-700 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:bg-slate-200 active:scale-95 transition-all border border-transparent"
                     >
-                      <Printer size={18} /> Imprimir
+                      <Printer size={20} />
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Imprimir</span>
                     </button>
 
                     <button
@@ -496,13 +498,15 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                           alert('PDF no disponible para este documento');
                         }
                       }}
-                      className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-sm active:scale-95 transition-all border ${
+                      disabled={!selectedInvoice?.pdf_base64}
+                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
                         selectedInvoice?.pdf_base64
-                          ? 'bg-blue-50 text-blue-600 border-blue-100/50 active:bg-blue-100'
-                          : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                          ? 'bg-slate-100 text-slate-700 border-transparent active:bg-slate-200'
+                          : 'bg-slate-50 text-slate-300 border-transparent cursor-not-allowed'
                       }`}
                     >
                       <Download size={20} />
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Descargar</span>
                     </button>
 
                     <button
@@ -516,14 +520,15 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                         if (shared) return;
                         PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoice.pdf_base64);
                       }}
-                      className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-sm active:scale-95 transition-all border ${
+                      disabled={!selectedInvoice?.pdf_base64}
+                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
                         selectedInvoice?.pdf_base64
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 active:bg-emerald-100'
                           : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
                       }`}
-                      disabled={!selectedInvoice?.pdf_base64}
                     >
                       <Share2 size={20} />
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Compartir</span>
                     </button>
                   </div>
 

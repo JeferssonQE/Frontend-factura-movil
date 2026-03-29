@@ -193,8 +193,11 @@ const request = async <TResponse>(
   body?: unknown,
   init?: RequestInit
 ): Promise<TResponse> => {
+  const t0 = performance.now();
   console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? body : '');
-  return requestWithRefresh<TResponse>(method, path, body, init);
+  const result = await requestWithRefresh<TResponse>(method, path, body, init);
+  console.log(`[API] ${method} ${path} ⏱ ${(performance.now() - t0).toFixed(0)}ms`);
+  return result;
 };
 
 export const apiClient = {
