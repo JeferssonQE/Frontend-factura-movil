@@ -1,5 +1,5 @@
 // views/History.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   FileText,
@@ -25,9 +25,11 @@ import {
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
+import { invoiceService } from '../services/business/invoiceService';
 
 interface HistoryProps {
   invoices: Invoice[];
+  activeSenderId?: number | null;
   onEmitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => void;
   onEmitDraft: (invoiceId: number) => Promise<void>;
   onDeleteInvoice: (invoiceId: number) => Promise<void>;
@@ -97,13 +99,25 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
   );
 };
 
-const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDraft, onDeleteInvoice, onRefresh }) => {
+const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCreditNote, onEmitDraft, onDeleteInvoice, onRefresh }) => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedInvoicePdf, setSelectedInvoicePdf] = useState<string | null>(null);
   const [showReasonSelect, setShowReasonSelect] = useState(false);
   const [isEmittingDraft, setIsEmittingDraft] = useState(false);
   const [isDeletingInvoice, setIsDeletingInvoice] = useState(false);
+
+  useEffect(() => {
+    if (!selectedInvoice) {
+      setSelectedInvoicePdf(null);
+      return;
+    }
+    invoiceService
+      .getInvoice(selectedInvoice.id, activeSenderId ?? undefined)
+      .then((inv) => setSelectedInvoicePdf(inv.pdf_base64 ?? null))
+      .catch(() => setSelectedInvoicePdf(null));
+  }, [selectedInvoice?.id]);
 
   const filtered = invoices.filter((invoice) => {
     const matchesSearch =
@@ -462,15 +476,15 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
                   <div className="flex gap-2 justify-between">
                     <button
                       onClick={() => {
-                        if (selectedInvoice?.pdf_base64) {
-                          PDFService.viewPDF(selectedInvoice.pdf_base64);
+                        if (selectedInvoicePdf) {
+                          PDFService.viewPDF(selectedInvoicePdf!);
                         } else {
                           alert('PDF no disponible para visualizar');
                         }
                       }}
-                      disabled={!selectedInvoice?.pdf_base64}
+                      disabled={!selectedInvoicePdf}
                       className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        selectedInvoice?.pdf_base64
+                        selectedInvoicePdf
                           ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-200'
                           : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
                       }`}
@@ -489,18 +503,18 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
 
                     <button
                       onClick={() => {
-                        if (selectedInvoice?.pdf_base64) {
+                        if (selectedInvoicePdf) {
                           PDFService.downloadPDF(
-                            selectedInvoice.pdf_base64,
+                            selectedInvoicePdf!,
                             `${selectedInvoice.series}-${selectedInvoice.number}.pdf`
                           );
                         } else {
                           alert('PDF no disponible para este documento');
                         }
                       }}
-                      disabled={!selectedInvoice?.pdf_base64}
+                      disabled={!selectedInvoicePdf}
                       className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        selectedInvoice?.pdf_base64
+                        selectedInvoicePdf
                           ? 'bg-slate-100 text-slate-700 border-transparent active:bg-slate-200'
                           : 'bg-slate-50 text-slate-300 border-transparent cursor-not-allowed'
                       }`}
@@ -511,18 +525,18 @@ const History: React.FC<HistoryProps> = ({ invoices, onEmitCreditNote, onEmitDra
 
                     <button
                       onClick={async () => {
-                        if (!selectedInvoice?.pdf_base64) {
+                        if (!selectedInvoicePdf) {
                           alert('PDF no disponible para compartir');
                           return;
                         }
                         const filename = `${selectedInvoice.series}-${selectedInvoice.number}.pdf`;
-                        const shared = await PDFService.shareNative(selectedInvoice.pdf_base64, filename, `Comprobante ${filename}`);
+                        const shared = await PDFService.shareNative(selectedInvoicePdf!, filename, `Comprobante ${filename}`);
                         if (shared) return;
-                        PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoice.pdf_base64);
+                        PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoicePdf!);
                       }}
-                      disabled={!selectedInvoice?.pdf_base64}
+                      disabled={!selectedInvoicePdf}
                       className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        selectedInvoice?.pdf_base64
+                        selectedInvoicePdf
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-100 active:bg-emerald-100'
                           : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
                       }`}

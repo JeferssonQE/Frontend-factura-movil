@@ -48,7 +48,7 @@ const HistoryPage: React.FC = () => {
     };
   }, [procesandoIds.join(','), refreshAllData, activeSenderId]); // eslint-disable-line
 
-  return <History invoices={invoices} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} onDeleteInvoice={deleteInvoice} onRefresh={refreshAllData} />;
+  return <History invoices={invoices} activeSenderId={activeSenderId} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} onDeleteInvoice={deleteInvoice} onRefresh={refreshAllData} />;
 };
 
 export default HistoryPage;
