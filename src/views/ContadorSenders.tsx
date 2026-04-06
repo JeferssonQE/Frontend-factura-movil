@@ -82,13 +82,25 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="w-16 h-16 rounded-[24px] bg-slate-100 flex items-center justify-center">
-          <RefreshCw className="animate-spin text-slate-400" size={26} />
-        </div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          Cargando empresas...
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <img
+          src="/logo-icon.svg"
+          alt=""
+          className="w-20 h-20"
+          style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}
+        />
+        <p className="text-[10px] font-medium text-blue-600 uppercase tracking-[4px]">
+          Cargando empresas
         </p>
+        <div className="flex gap-1.5 mt-0.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="block w-1 h-1 rounded-full bg-blue-500"
+              style={{ animation: `fm-dot 3s ease-in-out ${i * 0.55}s infinite` }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -190,10 +202,15 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
           </p>
 
           {senderLoading ? (
-            <div className="bg-white rounded-[22px] border border-slate-100 shadow-sm py-10 flex flex-col items-center gap-3">
-              <RefreshCw size={20} className="animate-spin text-slate-400" />
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                Cargando...
+            <div className="bg-white rounded-[22px] border border-slate-100 shadow-sm py-10 flex flex-col items-center gap-2">
+              <img
+                src="/logo-icon.svg"
+                alt=""
+                className="w-14 h-14"
+                style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}
+              />
+              <p className="text-[9px] font-medium text-blue-600 uppercase tracking-[3px]">
+                Cargando emisor
               </p>
             </div>
           ) : (

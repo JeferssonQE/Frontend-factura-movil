@@ -83,7 +83,7 @@ const Layout: React.FC<LayoutProps> = ({
         <div className="p-8 border-b flex flex-col gap-4 bg-slate-900 text-white">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <img src="/logo-icon.svg" alt="FactuMovil AI" className="w-10 h-10 rounded-2xl" />
+              <img src="/pwa-512.png" alt="FactuMovil AI" className="w-10 h-10 rounded-2xl" />
               <span className="text-white font-black text-sm tracking-tight italic">FactuMovil</span>
             </div>
             <button
@@ -231,7 +231,7 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
 
         {activeTab === 'dashboard' ? (
-          <img src="/logo-icon.svg" alt="FactuMovil AI" className="h-9 w-9 rounded-xl" />
+          <img src="/pwa-512.png" alt="FactuMovil AI" className="h-9 w-9 rounded-xl" />
         ) : (
           <h1 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">
             {title}
