@@ -154,11 +154,11 @@ const requestWithRefresh = async <TResponse>(
 
   if (response.status !== 401) {
     if (!response.ok) {
-      console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
+      if (import.meta.env.DEV) console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
       return handleErrorResponse(response);
     }
     const data = await parseResponse(response);
-    console.log(`[API] ${method} ${path} → ${response.status}`, data);
+    if (import.meta.env.DEV) console.log(`[API] ${method} ${path} → ${response.status}`, data);
     return data as TResponse;
   }
 
@@ -179,12 +179,12 @@ const requestWithRefresh = async <TResponse>(
   });
 
   if (!retryResponse.ok) {
-    console.error(`[API] ${method} ${path} → ${retryResponse.status}`, retryResponse.statusText);
+    if (import.meta.env.DEV) console.error(`[API] ${method} ${path} → ${retryResponse.status}`, retryResponse.statusText);
     return handleErrorResponse(retryResponse);
   }
 
   const data = await parseResponse(retryResponse);
-  console.log(`[API] ${method} ${path} → ${retryResponse.status}`, data);
+  if (import.meta.env.DEV) console.log(`[API] ${method} ${path} → ${retryResponse.status}`, data);
   return data as TResponse;
 };
 
@@ -194,6 +194,8 @@ const request = async <TResponse>(
   body?: unknown,
   init?: RequestInit
 ): Promise<TResponse> => {
+  if (!import.meta.env.DEV) return requestWithRefresh<TResponse>(method, path, body, init);
+
   const t0 = performance.now();
   console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? body : '');
   const result = await requestWithRefresh<TResponse>(method, path, body, init);

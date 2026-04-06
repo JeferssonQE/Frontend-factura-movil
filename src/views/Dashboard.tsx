@@ -1,5 +1,5 @@
 // views/Dashboard.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,55 +11,36 @@ import {
   Cell,
 } from 'recharts';
 import { TrendingUp, FileText, ShoppingBag, Target, Zap } from 'lucide-react';
-import { Invoice, Sender, InvoiceStatus, InvoiceType } from '../types';
+import { Invoice, Sender, InvoiceType } from '../types';
 import { StatusBadge } from './History';
-import { DashboardSummary, SalesByMonthItem } from '../services/business/reportsService';
+import { DashboardSummary, IgvSummary, SalesByMonthItem } from '../services/business/reportsService';
 
 interface DashboardProps {
   invoices: Invoice[];
   activeSender: Sender | null;
   summary: DashboardSummary | null;
   salesByMonth: SalesByMonthItem[];
+  igvSummary: IgvSummary | null;
   onEmit: () => void;
   onHistory: () => void;
 }
+
+type ActiveCard = 'igv' | 'total' | null;
 
 const Dashboard: React.FC<DashboardProps> = ({
   invoices,
   activeSender,
   summary,
   salesByMonth,
+  igvSummary,
   onEmit,
   onHistory,
 }) => {
-  // Fallback local cuando la API todavía no respondió
-  const totalSales = Number(summary?.total_sales ?? invoices.reduce((s, i) => s + Number(i.total), 0));
-  const totalTickets = summary?.total_invoices ?? invoices.length;
-  const avgSales = totalTickets > 0 ? totalSales / totalTickets : 0;
+  const [activeCard, setActiveCard] = useState<ActiveCard>(null);
 
-  const stats = [
-    {
-      label: 'Ingresos',
-      value: `S/ ${totalSales.toFixed(2)}`,
-      icon: Target,
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-500/10',
-    },
-    {
-      label: 'Tickets',
-      value: totalTickets,
-      icon: FileText,
-      color: 'text-blue-500',
-      bg: 'bg-blue-500/10',
-    },
-    {
-      label: 'Promedio',
-      value: `S/ ${avgSales.toFixed(2)}`,
-      icon: Zap,
-      color: 'text-amber-500',
-      bg: 'bg-amber-500/10',
-    },
-  ];
+  const handleCardClick = (card: ActiveCard) => {
+    setActiveCard(prev => (prev === card ? null : card));
+  };
 
   // Datos para el gráfico: preferir API, caer en local
   const chartData =
@@ -120,23 +101,83 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-3">
-        {stats.map((stat, i) => (
-          <div
-            key={i}
-            className="bg-white p-5 rounded-[32px] shadow-sm border border-slate-100 flex flex-col items-center text-center hover:border-blue-100 transition-colors"
-          >
-            <div
-              className={`${stat.bg} ${stat.color} w-10 h-10 rounded-xl flex items-center justify-center mb-3`}
-            >
-              <stat.icon size={20} strokeWidth={2.5} />
-            </div>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-              {stat.label}
-            </p>
-            <p className="text-xs font-black text-slate-900 tracking-tight">{stat.value}</p>
+        <div className="bg-white p-5 rounded-[32px] shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <div className="bg-blue-500/10 text-blue-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
+            <FileText size={20} strokeWidth={2.5} />
           </div>
-        ))}
+          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
+            Tickets<br />del mes
+          </p>
+          <p className="text-xs font-black text-slate-900 tracking-tight">
+            {igvSummary?.invoice_count ?? 0}
+          </p>
+        </div>
+
+        <div
+          onClick={() => handleCardClick('igv')}
+          className={`bg-white p-5 rounded-[32px] shadow-sm border transition-all cursor-pointer flex flex-col items-center text-center ${
+            activeCard === 'igv' ? 'border-blue-500 shadow-blue-100' : 'border-slate-100 hover:border-blue-100'
+          }`}
+        >
+          <div className="bg-violet-500/10 text-violet-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
+            <Zap size={20} strokeWidth={2.5} />
+          </div>
+          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
+            IGV<br />del mes
+          </p>
+          <p className="text-xs font-black text-slate-900 tracking-tight">
+            {igvSummary ? `S/ ${igvSummary.total_igv.toFixed(2)}` : '—'}
+          </p>
+        </div>
+
+        <div
+          onClick={() => handleCardClick('total')}
+          className={`bg-white p-5 rounded-[32px] shadow-sm border transition-all cursor-pointer flex flex-col items-center text-center ${
+            activeCard === 'total' ? 'border-blue-500 shadow-blue-100' : 'border-slate-100 hover:border-blue-100'
+          }`}
+        >
+          <div className="bg-emerald-500/10 text-emerald-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
+            <Target size={20} strokeWidth={2.5} />
+          </div>
+          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
+            Total<br />ventas
+          </p>
+          <p className="text-xs font-black text-slate-900 tracking-tight">
+            {igvSummary ? `S/ ${igvSummary.total_ventas.toFixed(2)}` : '—'}
+          </p>
+        </div>
       </div>
+
+      {/* Detail panel */}
+      {activeCard === 'igv' && igvSummary && (
+        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 space-y-1">
+          <div className="flex justify-between items-center py-2 border-b border-slate-50">
+            <span className="text-[10px] font-semibold text-slate-400">Base imponible</span>
+            <span className="text-[11px] font-black text-slate-700">S/ {igvSummary.total_sin_igv.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-slate-50">
+            <span className="text-[10px] font-semibold text-slate-400">IGV 18%</span>
+            <span className="text-[11px] font-black text-blue-600">S/ {igvSummary.total_igv.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="text-[10px] font-black text-slate-600">Total facturado</span>
+            <span className="text-[13px] font-black text-slate-900">S/ {igvSummary.total_ventas.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+
+      {activeCard === 'total' && salesByMonth.length > 0 && (
+        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 space-y-1">
+          {salesByMonth.slice(-4).map((item) => (
+            <div key={item.month} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+              <span className="text-[10px] font-semibold text-slate-400">
+                {new Date(item.month).toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}
+              </span>
+              <span className="text-[11px] font-black text-slate-700">S/ {Number(item.total_sales).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* SUNAT status row */}
       {summary && (

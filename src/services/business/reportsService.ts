@@ -26,6 +26,15 @@ export type DashboardSummary = {
   annulled_invoices: number;
 };
 
+export type IgvSummary = {
+  date_from: string;
+  date_to: string;
+  invoice_count: number;
+  total_sin_igv: number;
+  total_igv: number;
+  total_ventas: number;
+};
+
 const qs = (senderId?: number) => (senderId ? `?sender_id=${senderId}` : '');
 
 export const reportsService = {
@@ -44,5 +53,13 @@ export const reportsService = {
 
   async getDashboardSummary(senderId?: number): Promise<DashboardSummary> {
     return apiClient.get<DashboardSummary>(`/reports/dashboard-summary${qs(senderId)}`);
+  },
+
+  async getIgvSummary(dateFrom: string, dateTo: string, senderId?: number): Promise<IgvSummary> {
+    const base = qs(senderId);
+    const sep = base ? '&' : '?';
+    return apiClient.get<IgvSummary>(
+      `/reports/igv-summary${base}${sep}date_from=${dateFrom}&date_to=${dateTo}`
+    );
   },
 };

@@ -104,6 +104,7 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
   const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedInvoicePdf, setSelectedInvoicePdf] = useState<string | null>(null);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [showReasonSelect, setShowReasonSelect] = useState(false);
   const [isEmittingDraft, setIsEmittingDraft] = useState(false);
   const [isDeletingInvoice, setIsDeletingInvoice] = useState(false);
@@ -113,10 +114,12 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
       setSelectedInvoicePdf(null);
       return;
     }
+    setIsPdfLoading(true);
     invoiceService
       .getInvoice(selectedInvoice.id, activeSenderId ?? undefined)
       .then((inv) => setSelectedInvoicePdf(inv.pdf_base64 ?? null))
-      .catch(() => setSelectedInvoicePdf(null));
+      .catch(() => setSelectedInvoicePdf(null))
+      .finally(() => setIsPdfLoading(false));
   }, [selectedInvoice?.id]);
 
   const filtered = invoices.filter((invoice) => {
@@ -476,28 +479,31 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
                   <div className="flex gap-2 justify-between">
                     <button
                       onClick={() => {
-                        if (selectedInvoicePdf) {
-                          PDFService.viewPDF(selectedInvoicePdf!);
-                        } else {
-                          alert('PDF no disponible para visualizar');
-                        }
+                        if (selectedInvoicePdf) PDFService.viewPDF(selectedInvoicePdf!);
                       }}
-                      disabled={!selectedInvoicePdf}
+                      disabled={isPdfLoading || !selectedInvoicePdf}
                       className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        selectedInvoicePdf
+                        isPdfLoading
+                          ? 'bg-blue-600/60 text-white border-transparent cursor-wait'
+                          : selectedInvoicePdf
                           ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-200'
                           : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
                       }`}
                     >
-                      <FileText size={20} />
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Ver PDF</span>
+                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <FileText size={20} />}
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
+                        {isPdfLoading ? 'Cargando' : 'Ver PDF'}
+                      </span>
                     </button>
 
                     <button
                       onClick={() => window.print()}
-                      className="flex-1 h-20 bg-slate-100 text-slate-700 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:bg-slate-200 active:scale-95 transition-all border border-transparent"
+                      disabled={isPdfLoading}
+                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border border-transparent ${
+                        isPdfLoading ? 'bg-slate-50 text-slate-300 cursor-wait' : 'bg-slate-100 text-slate-700 active:bg-slate-200'
+                      }`}
                     >
-                      <Printer size={20} />
+                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <Printer size={20} />}
                       <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Imprimir</span>
                     </button>
 
@@ -508,40 +514,39 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
                             selectedInvoicePdf!,
                             `${selectedInvoice.series}-${selectedInvoice.number}.pdf`
                           );
-                        } else {
-                          alert('PDF no disponible para este documento');
                         }
                       }}
-                      disabled={!selectedInvoicePdf}
+                      disabled={isPdfLoading || !selectedInvoicePdf}
                       className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        selectedInvoicePdf
+                        isPdfLoading
+                          ? 'bg-slate-50 text-slate-300 border-transparent cursor-wait'
+                          : selectedInvoicePdf
                           ? 'bg-slate-100 text-slate-700 border-transparent active:bg-slate-200'
                           : 'bg-slate-50 text-slate-300 border-transparent cursor-not-allowed'
                       }`}
                     >
-                      <Download size={20} />
+                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
                       <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Descargar</span>
                     </button>
 
                     <button
                       onClick={async () => {
-                        if (!selectedInvoicePdf) {
-                          alert('PDF no disponible para compartir');
-                          return;
-                        }
+                        if (!selectedInvoicePdf) return;
                         const filename = `${selectedInvoice.series}-${selectedInvoice.number}.pdf`;
                         const shared = await PDFService.shareNative(selectedInvoicePdf!, filename, `Comprobante ${filename}`);
                         if (shared) return;
                         PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoicePdf!);
                       }}
-                      disabled={!selectedInvoicePdf}
+                      disabled={isPdfLoading || !selectedInvoicePdf}
                       className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        selectedInvoicePdf
+                        isPdfLoading
+                          ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-wait'
+                          : selectedInvoicePdf
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-100 active:bg-emerald-100'
                           : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
                       }`}
                     >
-                      <Share2 size={20} />
+                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
                       <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Compartir</span>
                     </button>
                   </div>
