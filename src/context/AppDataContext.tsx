@@ -45,6 +45,7 @@ type AppDataContextValue = {
   isContador: boolean;
 
   login: (email: string, password: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 
   senders: Sender[];
   activeSenderId: number | null;
@@ -128,6 +129,12 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     setClients(loadedClients);
     setInvoices(loadedInvoices);
   }, []);
+
+  const refreshProducts = useCallback(async () => {
+    const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+    const loadedProducts = await productsService.getProducts(senderId);
+    setProducts(loadedProducts);
+  }, [isContador]);
 
   const refreshAllData = useCallback(async () => {
     try {
@@ -270,13 +277,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
           );
         }
 
-        await refreshAllData();
+        await refreshProducts();
         showToast('PRODUCTO GUARDADO');
       } catch (error: any) {
         showToast(error.message || 'ERROR', 'error');
       }
     },
-    [products, refreshAllData, showToast, isContador]
+    [products, refreshProducts, showToast, isContador]
   );
 
   const saveProductSilent = useCallback(
@@ -512,6 +519,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(response.user as AuthUser);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const me = await authService.getMe();
+    setUser((me as AuthUser) ?? null);
+  }, []);
+
   const logout = useCallback(() => {
     authService.logout();
     localStorage.removeItem('fm_contador_active_sender');
@@ -595,6 +607,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       showToast,
 
       login,
+      refreshUser,
       refreshAllData,
       changeSender,
       selectSenderAsContador,
@@ -632,6 +645,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       invoices,
       showToast,
       login,
+      refreshUser,
       refreshAllData,
       changeSender,
       selectSenderAsContador,

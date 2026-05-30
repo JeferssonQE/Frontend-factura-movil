@@ -18,7 +18,7 @@ import ProductSearchSelector from '../components/ProductSearchSelector';
 interface ProductsProps {
   products: Product[];
   senderId: number | null;
-  onSave: (product: Product) => void;
+  onSave: (product: Product) => Promise<void>;
   onDelete: (id: number) => void;
   onRefresh: () => void;
 }
@@ -28,6 +28,8 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
   const [hasIgv, setHasIgv] = useState(true);
+  const [salePrice, setSalePrice] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
@@ -39,13 +41,21 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
 
   useEffect(() => {
     if (editingProduct) {
+      const base = Number(editingProduct.base_price);
+      const total = editingProduct.has_igv ? base * 1.18 : base;
       setHasIgv(editingProduct.has_igv);
+      setSalePrice(total > 0 ? total.toFixed(2) : '');
       return;
     }
-    setHasIgv(true);
+    setHasIgv(false);
+    setSalePrice('');
   }, [editingProduct, isModalOpen]);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const salePriceNumber = parseFloat(salePrice) || 0;
+  const basePrice = hasIgv ? Math.round((salePriceNumber / 1.18) * 100) / 100 : salePriceNumber;
+  const igvAmount = Math.max(0, salePriceNumber - basePrice);
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError(null);
 
@@ -57,7 +67,7 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
     const result = productSchema.safeParse({
       description: (formData.get('description') as string).trim(),
       unit: formData.get('unit') as UnitOfMeasure,
-      base_price: parseFloat(formData.get('base_price') as string),
+      base_price: basePrice,
       has_igv: hasIgv,
     });
 
@@ -75,9 +85,14 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
       has_igv: result.data.has_igv,
     };
 
-    onSave(product);
-    setIsModalOpen(false);
-    setEditingProduct(null);
+    setIsSaving(true);
+    try {
+      await onSave(product);
+      setIsModalOpen(false);
+      setEditingProduct(null);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = () => {
@@ -254,38 +269,40 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                    Unidad
-                  </label>
-                  <select
-                    name="unit"
-                    defaultValue={editingProduct?.unit || UnitOfMeasure.KILOGRAMO}
-                    className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 appearance-none uppercase"
-                  >
-                    {Object.values(UnitOfMeasure).map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                  Unidad
+                </label>
+                <select
+                  name="unit"
+                  defaultValue={editingProduct?.unit || UnitOfMeasure.KILOGRAMO}
+                  className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 appearance-none uppercase"
+                >
+                  {Object.values(UnitOfMeasure).map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                    Precio Base (S/)
-                  </label>
-                  <input
-                    name="base_price"
-                    type="number"
-                    step="0.01"
-                    defaultValue={editingProduct?.base_price}
-                    required
-                    className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-blue-600 focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                  Precio de Venta (S/)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={salePrice}
+                  onChange={(event) => setSalePrice(event.target.value)}
+                  required
+                  className="w-full bg-slate-50 border-none rounded-2xl p-4 text-lg font-black text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                />
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 ml-1">
+                  Lo que cobras al cliente
+                </p>
               </div>
 
               <div
@@ -322,12 +339,39 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                 </div>
               </div>
 
+              <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  Desglose para SUNAT
+                </p>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    Valor de venta
+                  </span>
+                  <span className="text-xs font-black text-slate-700">S/ {basePrice.toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    {hasIgv ? 'IGV (18%)' : 'IGV (exonerado)'}
+                  </span>
+                  <span className="text-xs font-black text-slate-700">S/ {igvAmount.toFixed(2)}</span>
+                </div>
+
+                <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
+                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Total</span>
+                  <span className="text-sm font-black text-blue-600">S/ {salePriceNumber.toFixed(2)}</span>
+                </div>
+              </div>
+
               <div className="flex gap-3 pt-6">
                 <button
                   type="submit"
-                  className="flex-1 py-4 bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all"
+                  disabled={isSaving}
+                  className="flex-1 py-4 bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
                 >
-                  Guardar Producto
+                  {isSaving && <RefreshCw size={14} className="animate-spin" />}
+                  {isSaving ? 'Guardando…' : 'Guardar Producto'}
                 </button>
               </div>
             </form>
