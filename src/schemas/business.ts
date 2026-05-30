@@ -17,6 +17,16 @@ const creditNoteReasonEnum = z.enum(
   Object.values(CreditNoteReason) as [CreditNoteReason, ...CreditNoteReason[]]
 );
 
+const MAX_BACKDATED_DAYS = 2;
+
+// SUNAT permite emitir con fecha desde hoy hasta MAX_BACKDATED_DAYS atras.
+const isWithinEmissionWindow = (dateStr: string): boolean => {
+  const today = new Date().toLocaleDateString('en-CA');
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() - MAX_BACKDATED_DAYS);
+  return dateStr >= minDate.toLocaleDateString('en-CA') && dateStr <= today;
+};
+
 // ==================== SENDERS ====================
 export const senderSchema = z.object({
   name: z
@@ -133,7 +143,8 @@ export const invoiceClientDataSchema = z.object({
   invoice_date: z
     .string()
     .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')
+    .refine(isWithinEmissionWindow, 'La fecha debe estar entre hoy y 2 días atrás'),
 });
 
 export type InvoiceClientData = z.infer<typeof invoiceClientDataSchema>;

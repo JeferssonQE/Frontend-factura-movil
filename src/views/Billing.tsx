@@ -122,6 +122,13 @@ const Billing: React.FC<BillingProps> = ({
     return dateStr;
   };
 
+  const maxInvoiceDate = new Date().toLocaleDateString('en-CA');
+  const minInvoiceDate = (() => {
+    const limit = new Date();
+    limit.setDate(limit.getDate() - 2);
+    return limit.toLocaleDateString('en-CA');
+  })();
+
   const mapUnit = (unit: string): UnitOfMeasure => {
     const normalized = unit?.toUpperCase();
     if (Object.values(UnitOfMeasure).includes(normalized as UnitOfMeasure)) {
@@ -1166,6 +1173,8 @@ const Billing: React.FC<BillingProps> = ({
             <input
               type="date"
               value={clientData.invoice_date}
+              min={minInvoiceDate}
+              max={maxInvoiceDate}
               onChange={(event) =>
                 setClientData((prev) => ({ ...prev, invoice_date: event.target.value }))
               }
