@@ -39,7 +39,7 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
   return (
     <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">
       <img
-        src="/logo-icon.svg"
+        src="/logo-icon.png"
         alt="FactuMovil AI"
         className="w-24 h-24"
         style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}

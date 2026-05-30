@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.ico', 'robots.txt', 'logo-icon.svg'],
+          includeAssets: ['favicon.ico', 'robots.txt', 'logo-icon.png'],
           manifest: {
             name: 'FactuMovil AI',
             short_name: 'FactuMovil',
@@ -29,18 +29,6 @@ export default defineConfig(({ mode }) => {
             start_url: '/',
             orientation: 'portrait-primary',
             icons: [
-              {
-                src: 'logo-icon.svg',
-                sizes: 'any',
-                type: 'image/svg+xml',
-                purpose: 'any'
-              },
-              {
-                src: 'logo-icon.svg',
-                sizes: 'any',
-                type: 'image/svg+xml',
-                purpose: 'maskable'
-              },
               {
                 src: 'pwa-192.png',
                 sizes: '192x192',

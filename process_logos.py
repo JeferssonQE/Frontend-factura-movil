@@ -8,7 +8,7 @@ Genera, en public/:
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 PUBLIC = Path(__file__).parent / "public"
 
@@ -77,9 +77,13 @@ def remove_canvas_and_box(filename: str) -> Image.Image:
         ImageDraw.floodfill(img, seed, (0, 0, 0, 0), thresh=60)
 
     arr = np.asarray(img).astype(np.float32)
-    navy = np.array([2, 13, 37])
-    box_alpha = _alpha_from_distance(arr, navy, 35.0, 90.0)
-    arr[..., 3] = np.minimum(arr[..., 3], box_alpha)
+    brightness = arr[..., :3].max(axis=-1)
+    keep = np.clip((brightness - 150.0) / (205.0 - 150.0), 0.0, 1.0) * 255.0
+    alpha = np.minimum(arr[..., 3], keep).astype(np.uint8)
+
+    # Erosionar el alpha mata el anillo fino del borde de la caja sin afectar el texto.
+    eroded = Image.fromarray(alpha, "L").filter(ImageFilter.MinFilter(7))
+    arr[..., 3] = np.minimum(alpha, np.asarray(eroded))
     return Image.fromarray(arr.astype(np.uint8), "RGBA")
 
 

@@ -84,7 +84,7 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <img
-          src="/logo-icon.svg"
+          src="/logo-icon.png"
           alt=""
           className="w-20 h-20"
           style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}
@@ -204,7 +204,7 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
           {senderLoading ? (
             <div className="bg-white rounded-[22px] border border-slate-100 shadow-sm py-10 flex flex-col items-center gap-2">
               <img
-                src="/logo-icon.svg"
+                src="/logo-icon.png"
                 alt=""
                 className="w-14 h-14"
                 style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}

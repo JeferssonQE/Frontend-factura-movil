@@ -9,7 +9,7 @@ const AboutPage: React.FC = () => {
 
       {/* Hero logo */}
       <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex items-center justify-center p-6">
-        <img src="/logo-banner.svg" alt="FactuMovil AI" className="w-full h-auto" />
+        <img src="/logo-horizontal-dark.png" alt="FactuMovil AI" className="w-full h-auto" />
       </div>
 
       {/* Quiénes somos */}
