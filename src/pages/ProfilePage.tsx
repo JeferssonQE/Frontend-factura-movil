@@ -6,7 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeSender, saveSender, deleteSender, logout, isAdmin, isContador } = useAppData();
+  const { user, activeSender, saveSender, logout, isAdmin, isContador } = useAppData();
 
   const handleLogout = () => {
     logout();
@@ -20,11 +20,6 @@ const ProfilePage: React.FC = () => {
       isAdmin={isAdmin}
       isContador={isContador}
       onSaveSender={saveSender}
-      onDeleteSender={() => {
-        if (activeSender) {
-          deleteSender(activeSender.id);
-        }
-      }}
       onGoToAdmin={() => navigate('/admin/users')}
       onChangeSender={() => navigate('/contador/senders')}
       onLogout={handleLogout}

@@ -11,7 +11,6 @@ import {
   UserCircle,
   ChevronLeft,
   ShieldCheck,
-  Bot,
   MessageCircle,
   Building2,
   ArrowLeftRight,
@@ -141,25 +140,6 @@ const Layout: React.FC<LayoutProps> = ({
               <span className="text-[11px] uppercase font-black tracking-widest">{link.label}</span>
             </button>
           ))}
-
-          {/* Agente SUNAT IA — destacado */}
-          <div className="h-px bg-slate-100 my-4 mx-4" />
-          <button
-            onClick={() => handleLinkClick('agent')}
-            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all relative overflow-hidden ${
-              activeTab === 'agent'
-                ? 'bg-violet-600 text-white font-black shadow-lg shadow-violet-200'
-                : 'bg-gradient-to-r from-violet-50 to-blue-50 text-violet-600 hover:from-violet-100 hover:to-blue-100 font-black'
-            }`}
-          >
-            <Bot size={20} />
-            <span className="text-[11px] uppercase font-black tracking-widest">Agente SUNAT IA</span>
-            {activeTab !== 'agent' && (
-              <span className="ml-auto text-[8px] font-black bg-violet-500 text-white px-2 py-0.5 rounded-full uppercase tracking-widest shrink-0">
-                Próximamente
-              </span>
-            )}
-          </button>
 
           {/* Opiniones */}
           <button

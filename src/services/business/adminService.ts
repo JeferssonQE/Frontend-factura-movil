@@ -1,11 +1,18 @@
 // services/business/adminService.ts
 import { apiClient } from '../core/apiClient';
-import { AdminUserRow, UserRole, UserPlan } from '../../types';
+import { AdminUserRow, Sender, UserRole, UserPlan } from '../../types';
+
+export type UpdateCompanyPayload = {
+  razon_social: string;
+  ruc: string;
+};
 
 export type CreateUserPayload = {
   email: string;
   password: string;
   name: string;
+  razon_social: string;
+  ruc: string;
 };
 
 export type UserStatusResponse = {
@@ -16,6 +23,14 @@ export type UserStatusResponse = {
 export const adminService = {
   async listUsers(): Promise<AdminUserRow[]> {
     return apiClient.get<AdminUserRow[]>('/admin/users');
+  },
+
+  async listSenders(): Promise<Sender[]> {
+    return apiClient.get<Sender[]>('/admin/users/senders');
+  },
+
+  async updateCompany(userId: string, payload: UpdateCompanyPayload): Promise<Sender> {
+    return apiClient.put<Sender>(`/admin/users/${userId}/company`, payload);
   },
 
   async createUser(payload: CreateUserPayload): Promise<AdminUserRow> {

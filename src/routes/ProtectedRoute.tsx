@@ -23,5 +23,9 @@ export default function ProtectedRoute({
     return <LoadingScreen />;
   }
 
+  if (user.must_change_password && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return <>{children}</>;
 }

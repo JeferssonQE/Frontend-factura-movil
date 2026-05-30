@@ -42,20 +42,36 @@ const Dashboard: React.FC<DashboardProps> = ({
     setActiveCard(prev => (prev === card ? null : card));
   };
 
-  // Datos para el gráfico: preferir API, caer en local
+  const formatMonthLabel = (monthIso: string): string =>
+    new Date(`${monthIso.slice(0, 10)}T00:00:00`).toLocaleDateString('es-PE', {
+      month: 'short',
+      year: '2-digit',
+    });
+
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+
+  // Datos para el gráfico: preferir API (orden cronológico), caer en local
   const chartData =
     salesByMonth.length > 0
-      ? salesByMonth.slice(-7).map((item) => ({
-          name: item.month,
-          total: Number(item.total_sales),
-        }))
+      ? [...salesByMonth]
+          .sort((a, b) => a.month.localeCompare(b.month))
+          .slice(-7)
+          .map((item) => ({
+            name: formatMonthLabel(item.month),
+            total: Number(item.total_sales),
+            isCurrent: item.month.slice(0, 7) === currentMonthKey,
+          }))
       : invoices.slice(-7).map((inv) => ({
           name: new Date(inv.invoice_date).toLocaleDateString('es-PE', {
             day: '2-digit',
             month: 'short',
           }),
           total: Number(inv.total),
+          isCurrent: false,
         }));
+
+  const currentBarIndex = chartData.findIndex((point) => point.isCurrent);
+  const highlightIndex = currentBarIndex === -1 ? chartData.length - 1 : currentBarIndex;
 
   return (
     <div className="space-y-6 pb-6">
@@ -226,6 +242,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <YAxis hide />
                 <Tooltip
                   cursor={{ fill: '#f8fafc' }}
+                  formatter={(value) => [`S/ ${Number(value).toFixed(2)}`, 'Ventas']}
                   contentStyle={{
                     borderRadius: '16px',
                     border: 'none',
@@ -234,11 +251,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                     fontWeight: '900',
                   }}
                 />
-                <Bar dataKey="total" radius={[8, 8, 8, 8]} barSize={32}>
+                <Bar dataKey="total" radius={[8, 8, 0, 0]} barSize={32}>
                   {chartData.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={index === chartData.length - 1 ? '#4f46e5' : '#e2e8f0'}
+                      fill={index === highlightIndex ? '#4f46e5' : '#e2e8f0'}
                     />
                   ))}
                 </Bar>

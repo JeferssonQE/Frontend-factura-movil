@@ -278,8 +278,8 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
 
       {selectedInvoice && (
         <div className="fixed inset-0 bg-slate-900/40 z-[200] backdrop-blur-sm flex items-end animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md mx-auto rounded-t-[48px] p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto max-h-[90vh]">
-            <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-6" />
+          <div id="ticket-print" className="bg-white w-full max-w-md mx-auto rounded-t-[48px] p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto max-h-[90vh]">
+            <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-6 print:hidden" />
 
             <div className="flex justify-between items-center mb-6 px-2">
               <div>
@@ -299,7 +299,7 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
                   setSelectedInvoice(null);
                   setShowReasonSelect(false);
                 }}
-                className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors"
+                className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors print:hidden"
               >
                 <X size={20} />
               </button>
@@ -445,7 +445,7 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
               })()}
 
               {showReasonSelect ? (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 px-2">
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 px-2 print:hidden">
                   <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest text-center">
                     Motivo de Nota de Crédito
                   </p>
@@ -475,7 +475,7 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 pt-2 px-2">
+                <div className="flex flex-col gap-3 pt-2 px-2 print:hidden">
                   <div className="flex gap-2 justify-between">
                     <button
                       onClick={() => {

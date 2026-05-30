@@ -11,8 +11,8 @@ import HistoryPage from '../pages/HistoryPage';
 import ProductsPage from '../pages/ProductsPage';
 import ClientsPage from '../pages/ClientsPage';
 import ProfilePage from '../pages/ProfilePage';
+import OnboardingPage from '../pages/OnboardingPage';
 import AdminUsersPage from '../pages/AdminUsersPage';
-import AgentPage from '../pages/AgentPage';
 import FeedbackPage from '../pages/FeedbackPage';
 import AboutPage from '../pages/AboutPage';
 import ContadorSendersPage from '../pages/ContadorSendersPage';
@@ -23,6 +23,15 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           element={
@@ -38,7 +47,6 @@ export default function AppRouter() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/agent" element={<AgentPage />} />
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route

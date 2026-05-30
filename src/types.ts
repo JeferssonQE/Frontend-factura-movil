@@ -50,6 +50,7 @@ export interface AuthUser {
   role: UserRole;
   is_active: boolean;
   plan: UserPlan | string;
+  must_change_password?: boolean;
 }
 
 export interface UserProfile {

@@ -19,6 +19,7 @@ export interface MeResponse {
   role: AuthUser['role'];
   is_active: boolean;
   plan: AuthUser['plan'];
+  must_change_password?: boolean;
   trial_ends_at?: string | null;
   created_at?: string;
   updated_at?: string;

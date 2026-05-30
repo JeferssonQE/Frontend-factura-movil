@@ -14,14 +14,14 @@ import {
   ChevronDown,
   UserCheck,
   UserX,
-  Sparkles,
   Trash2,
   AlertTriangle,
   Building2,
   Plus,
   Minus,
+  Pencil,
 } from 'lucide-react';
-import { AdminUserRow, UserRole, UserPlan } from '../types';
+import { AdminUserRow, Sender, UserRole, UserPlan } from '../types';
 import { adminService } from '../services/business/adminService';
 import { contadorService, ContadorAssignment } from '../services/business/contadorService';
 
@@ -142,9 +142,15 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   const [showCreate,  setShowCreate]  = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
 
-  const [createForm,  setCreateForm]  = useState({ name: '', email: '', password: '' });
+  const [createForm,  setCreateForm]  = useState({ razon_social: '', ruc: '', name: '', email: '', password: '' });
   const [createError, setCreateError] = useState<string | null>(null);
   const [createBusy,  setCreateBusy]  = useState(false);
+
+  const [senders,     setSenders]     = useState<Record<string, Sender>>({});
+  const [editUserId,  setEditUserId]  = useState<string | null>(null);
+  const [editForm,    setEditForm]    = useState({ razon_social: '', ruc: '' });
+  const [editError,   setEditError]   = useState<string | null>(null);
+  const [editBusy,    setEditBusy]    = useState(false);
 
   const [newPassword, setNewPassword] = useState('');
   const [resetError,  setResetError]  = useState<string | null>(null);
@@ -159,7 +165,12 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     setLoading(true);
     setError(null);
     try {
-      setUsers(await adminService.listUsers());
+      const [userList, senderList] = await Promise.all([
+        adminService.listUsers(),
+        adminService.listSenders(),
+      ]);
+      setUsers(userList);
+      setSenders(Object.fromEntries(senderList.map((s) => [s.user_id, s])));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al cargar usuarios');
     } finally {
@@ -236,33 +247,76 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     }
   };
 
+  const EMPTY_CREATE_FORM = { razon_social: '', ruc: '', name: '', email: '', password: '' };
+
   const handleOpenCreate = () => {
     setCreateError(null);
-    setCreateForm({ name: '', email: '', password: '' });
+    setCreateForm(EMPTY_CREATE_FORM);
     setShowCreate(true);
+  };
+
+  const generateTempPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    const password = Array.from({ length: 10 }, () =>
+      chars[Math.floor(Math.random() * chars.length)]
+    ).join('');
+    setCreateForm((prev) => ({ ...prev, password }));
   };
 
   const handleCreateUser = async () => {
     setCreateError(null);
-    const { name, email, password } = createForm;
-    if (!name.trim() || !email.trim() || password.length < 8) {
-      setCreateError('Completa todos los campos. La contraseña debe tener al menos 8 caracteres.');
+    const { razon_social, ruc, name, email, password } = createForm;
+    if (!razon_social.trim() || ruc.length !== 11 || !name.trim() || !email.trim() || password.length < 8) {
+      setCreateError('Completa todos los campos. RUC de 11 dígitos y contraseña de al menos 8 caracteres.');
       return;
     }
     setCreateBusy(true);
     try {
       const newUser = await adminService.createUser({
+        razon_social: razon_social.trim().toUpperCase(),
+        ruc,
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
       });
       setUsers((prev) => [newUser, ...prev]);
       setShowCreate(false);
-      setCreateForm({ name: '', email: '', password: '' });
+      setCreateForm(EMPTY_CREATE_FORM);
     } catch (e: unknown) {
-      setCreateError(e instanceof Error ? e.message : 'Error al crear usuario');
+      setCreateError(e instanceof Error ? e.message : 'Error al crear empresa');
     } finally {
       setCreateBusy(false);
+    }
+  };
+
+  const handleOpenEdit = (user: AdminUserRow) => {
+    const sender = senders[user.id];
+    if (!sender) return;
+    setEditError(null);
+    setEditForm({ razon_social: sender.name, ruc: sender.ruc });
+    setEditUserId(user.id);
+  };
+
+  const handleUpdateCompany = async () => {
+    if (!editUserId) return;
+    setEditError(null);
+    const { razon_social, ruc } = editForm;
+    if (!razon_social.trim() || ruc.length !== 11) {
+      setEditError('Completa la razón social y un RUC de 11 dígitos.');
+      return;
+    }
+    setEditBusy(true);
+    try {
+      const updated = await adminService.updateCompany(editUserId, {
+        razon_social: razon_social.trim().toUpperCase(),
+        ruc,
+      });
+      setSenders((prev) => ({ ...prev, [editUserId]: updated }));
+      setEditUserId(null);
+    } catch (e: unknown) {
+      setEditError(e instanceof Error ? e.message : 'Error al actualizar empresa');
+    } finally {
+      setEditBusy(false);
     }
   };
 
@@ -380,6 +434,11 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   const resetUserName =
     users.find((u) => u.id === resetUserId)?.name ??
     users.find((u) => u.id === resetUserId)?.email ??
+    '';
+
+  const editUserName =
+    users.find((u) => u.id === editUserId)?.name ??
+    users.find((u) => u.id === editUserId)?.email ??
     '';
 
   const deleteUserName =
@@ -640,6 +699,8 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
             const isBusy  = !!actionLoading[user.id];
             const planMeta = PLAN_META[user.plan]  ?? PLAN_META.free;
             const roleMeta = ROLE_META[user.role]  ?? ROLE_META.empresa;
+            const sender  = senders[user.id];
+            const canEditCompany = user.role === UserRole.EMPRESA && !!sender;
 
             return (
               <div
@@ -686,6 +747,14 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                       )}
                     </div>
                     <p className="text-[10px] text-slate-400 truncate leading-tight mt-0.5">{user.email}</p>
+                    {sender && (
+                      <p className="text-[9px] text-slate-500 truncate leading-tight mt-1 flex items-center gap-1">
+                        <Building2 size={10} className="text-slate-400 shrink-0" />
+                        <span className="font-bold truncate">{sender.name}</span>
+                        <span className="text-slate-300">·</span>
+                        <span className="text-slate-400">{sender.ruc}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Status badge */}
@@ -776,6 +845,19 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                       : <ToggleLeft  className="text-slate-300"   size={28} />
                     }
                   </button>
+
+                  {/* Edit company */}
+                  {canEditCompany && (
+                    <button
+                      onClick={() => handleOpenEdit(user)}
+                      disabled={isBusy}
+                      title="Editar empresa"
+                      aria-label={`Editar empresa de ${user.name || user.email}`}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:text-blue-500 hover:bg-blue-50 disabled:opacity-30 transition-colors"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                  )}
 
                   {/* Reset password */}
                   <button
@@ -910,11 +992,11 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
         <ModalShell onClose={() => setShowCreate(false)}>
           <div className="flex items-center gap-3 mb-6 pr-8">
             <div className="p-3 bg-slate-900 text-white rounded-2xl shrink-0">
-              <Sparkles size={20} strokeWidth={2} />
+              <Building2 size={20} strokeWidth={2} />
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-black text-slate-800 tracking-tight uppercase leading-tight">
-                Nuevo Usuario
+                Nueva Empresa
               </h3>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
                 Plan FREE · Rol Empresa
@@ -925,7 +1007,37 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
           {createError && <ModalError message={createError} />}
 
           <div className="space-y-3">
-            <FormField label="Nombre">
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest ml-1">
+              Datos de la empresa
+            </p>
+
+            <FormField label="Razón Social">
+              <input
+                type="text"
+                value={createForm.razon_social}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, razon_social: e.target.value.toUpperCase() }))}
+                className={inputClass}
+                placeholder="MI EMPRESA SAC"
+              />
+            </FormField>
+
+            <FormField label="RUC (11 dígitos)">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={createForm.ruc}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
+                className={inputClass}
+                placeholder="20123456789"
+                maxLength={11}
+              />
+            </FormField>
+
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest ml-1 pt-2">
+              Acceso del usuario
+            </p>
+
+            <FormField label="Nombre de contacto">
               <input
                 type="text"
                 value={createForm.name}
@@ -947,18 +1059,34 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
               />
             </FormField>
 
-            <FormField label="Contraseña (mín. 8 caracteres)">
-              <input
-                type="password"
-                value={createForm.password}
-                onChange={handleCreateFormChange('password')}
-                className={inputClass}
-                placeholder="••••••••"
-                autoComplete="new-password"
-              />
+            <FormField label="Contraseña temporal (mín. 8)">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={createForm.password}
+                  onChange={handleCreateFormChange('password')}
+                  className={inputClass}
+                  placeholder="••••••••"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={generateTempPassword}
+                  className="shrink-0 px-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-colors"
+                >
+                  Generar
+                </button>
+              </div>
             </FormField>
 
-            <div className="flex gap-3 pt-3">
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 flex items-start gap-2">
+              <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={14} />
+              <p className="text-[9px] text-blue-700 font-bold leading-relaxed">
+                El usuario deberá cambiar esta contraseña al iniciar sesión.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowCreate(false)}
                 className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-colors"
@@ -974,7 +1102,72 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                   ? <RefreshCw size={13} className="animate-spin" />
                   : <UserPlus  size={13} />
                 }
-                {createBusy ? 'Creando...' : 'Crear Usuario'}
+                {createBusy ? 'Creando...' : 'Crear Empresa'}
+              </button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {/* ── Edit company modal ───────────────────────────────────────────── */}
+      {editUserId && (
+        <ModalShell onClose={() => setEditUserId(null)}>
+          <div className="flex items-center gap-3 mb-6 pr-8">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shrink-0">
+              <Building2 size={20} strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-black text-slate-800 tracking-tight uppercase leading-tight">
+                Editar Empresa
+              </h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate max-w-[200px]">
+                {editUserName}
+              </p>
+            </div>
+          </div>
+
+          {editError && <ModalError message={editError} />}
+
+          <div className="space-y-3">
+            <FormField label="Razón Social">
+              <input
+                type="text"
+                value={editForm.razon_social}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, razon_social: e.target.value.toUpperCase() }))}
+                className={inputClass}
+                placeholder="MI EMPRESA SAC"
+              />
+            </FormField>
+
+            <FormField label="RUC (11 dígitos)">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={editForm.ruc}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
+                className={inputClass}
+                placeholder="20123456789"
+                maxLength={11}
+              />
+            </FormField>
+
+            <div className="flex gap-3 pt-3">
+              <button
+                onClick={() => setEditUserId(null)}
+                className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdateCompany}
+                disabled={editBusy}
+                className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              >
+                {editBusy
+                  ? <RefreshCw size={13} className="animate-spin" />
+                  : <Pencil size={13} />
+                }
+                {editBusy ? 'Guardando...' : 'Guardar Cambios'}
               </button>
             </div>
           </div>
