@@ -2,6 +2,13 @@
 
 @import "tailwindcss";
 
+/* Ocultar el icono nativo de revelar/limpiar contrasena (Edge/IE).
+   Usamos nuestro propio toggle de ojo, evita el ojo duplicado. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {
   width: 8px;
@@ -55,5 +62,31 @@
 @media (max-width: 768px) {
   ::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* ── Impresion de ticket ──
+   Solo se imprime #ticket-print (el comprobante); el resto de la app
+   (backdrop, botones, navegacion) queda fuera de la hoja. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #ticket-print,
+  #ticket-print * {
+    visibility: visible;
+  }
+
+  #ticket-print {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    margin: 0 auto;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    box-shadow: none;
   }
 }
