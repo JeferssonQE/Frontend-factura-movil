@@ -22,10 +22,26 @@ import {
   AlertTriangle,
   HelpCircle,
   Trash2,
+  MessageCircle,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
 import { invoiceService } from '../services/business/invoiceService';
+
+const NOTA_CREDITO_ENABLED = false; // en debug — reactivar cuando el flujo de NC esté estable
+
+const SOPORTE_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP ?? '51963376546';
+
+const buildSoporteWhatsappUrl = (invoice: Invoice): string => {
+  const mensaje = [
+    'Hola, necesito anular un comprobante:',
+    `• Documento: ${invoice.series}-${invoice.number} (ID ${invoice.id})`,
+    `• Cliente: ${invoice.client_name}`,
+    `• Total: S/ ${Number(invoice.total).toFixed(2)}`,
+    `• Fecha: ${invoice.invoice_date}`,
+  ].join('\n');
+  return `https://wa.me/${SOPORTE_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
+};
 
 interface HistoryProps {
   invoices: Invoice[];
@@ -167,7 +183,7 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
 
         <div className="overflow-x-auto hide-scrollbar -mx-2 px-2">
           <div className="flex gap-2 p-1.5 bg-slate-100/50 rounded-[24px] min-w-max">
-            {['ALL', 'BOLETA', 'FACTURA', 'NOTA_CREDITO'].map((type) => (
+            {['ALL', 'BOLETA', 'FACTURA', ...(NOTA_CREDITO_ENABLED ? ['NOTA_CREDITO'] : [])].map((type) => (
               <button
                 key={type}
                 onClick={() => setFilterType(type as 'ALL' | InvoiceType)}
@@ -615,14 +631,24 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
                   )}
 
                   {selectedInvoice.invoice_type !== InvoiceType.NOTA_CREDITO &&
-                    selectedInvoice.status === InvoiceStatus.EMITIDO && (
+                    selectedInvoice.status === InvoiceStatus.EMITIDO &&
+                    (NOTA_CREDITO_ENABLED ? (
                       <button
                         onClick={() => setShowReasonSelect(true)}
                         className="w-full bg-amber-50 text-amber-700 border border-amber-100 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-amber-100 active:scale-95 transition-all shadow-sm"
                       >
                         <CornerUpLeft size={18} /> Emitir Nota de Crédito
                       </button>
-                    )}
+                    ) : (
+                      <a
+                        href={buildSoporteWhatsappUrl(selectedInvoice)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-emerald-50 text-emerald-700 border border-emerald-100 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-emerald-100 active:scale-95 transition-all shadow-sm"
+                      >
+                        <MessageCircle size={18} /> Solicitar anulación
+                      </a>
+                    ))}
                 </div>
               )}
             </div>
