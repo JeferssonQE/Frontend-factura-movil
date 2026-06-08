@@ -1,5 +1,5 @@
 // views/History.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   FileText,
@@ -23,6 +23,9 @@ import {
   HelpCircle,
   Trash2,
   MessageCircle,
+  UserX,
+  CalendarX,
+  Calculator,
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
@@ -66,11 +69,53 @@ const FAILED_STEP_CONFIG: Record<string, FailedStepConfig> = {
     isWarning: false,
     icon: <KeyRound size={14} />,
   },
+  buscar_emision: {
+    label: 'No se pudo abrir el formulario SUNAT',
+    hint: 'El portal SUNAT no respondió al iniciar la emisión. Reintente en unos segundos.',
+    isWarning: false,
+    icon: <Search size={14} />,
+  },
+  abrir_busqueda: {
+    label: 'No se pudo abrir el formulario SUNAT',
+    hint: 'El portal SUNAT no respondió al iniciar la emisión. Reintente en unos segundos.',
+    isWarning: false,
+    icon: <Search size={14} />,
+  },
+  cliente: {
+    label: 'No se pudo cargar el cliente',
+    hint: 'Verifique el documento (DNI/RUC) del cliente y reintente.',
+    isWarning: false,
+    icon: <UserX size={14} />,
+  },
+  fecha: {
+    label: 'Error con la fecha de emisión',
+    hint: 'SUNAT no aceptó la fecha del comprobante. Reintente.',
+    isWarning: false,
+    icon: <CalendarX size={14} />,
+  },
   agregar_producto: {
     label: 'Error al cargar los productos',
     hint: 'Uno o más productos no pudieron cargarse en el portal SUNAT.',
     isWarning: false,
     icon: <PackageX size={14} />,
+  },
+  productos: {
+    label: 'Error al cargar los productos',
+    hint: 'Uno o más productos no pudieron cargarse en el portal SUNAT.',
+    isWarning: false,
+    icon: <PackageX size={14} />,
+  },
+  validar_total: {
+    label: 'El total no coincide con SUNAT',
+    hint: 'El monto calculado no coincide con el del portal. Revise los importes y reintente.',
+    isWarning: false,
+    icon: <Calculator size={14} />,
+  },
+  obtener_numero: {
+    label: 'Emitido — número no recibido',
+    hint: 'El comprobante pudo haberse emitido en SUNAT. Verifique en el portal antes de reintentar.',
+    isWarning: true,
+    icon: <AlertTriangle size={14} />,
   },
   completar_emision: {
     label: 'Error al confirmar en SUNAT',
@@ -92,8 +137,11 @@ const FAILED_STEP_CONFIG: Record<string, FailedStepConfig> = {
   },
 };
 
+const normalizeFailedStep = (step: string | null | undefined): string =>
+  (step ?? '').replace(/^(boleta|factura)_/, '');
+
 const getFailedStepConfig = (step: string | null | undefined): FailedStepConfig =>
-  FAILED_STEP_CONFIG[step ?? ''] ?? FAILED_STEP_CONFIG['desconocido'];
+  FAILED_STEP_CONFIG[normalizeFailedStep(step)] ?? FAILED_STEP_CONFIG['desconocido'];
 
 export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
   const styles: Record<InvoiceStatus, string> = {
@@ -110,6 +158,7 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
       className={`flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-tighter ${styles[status]}`}
     >
       {status === InvoiceStatus.EMITIDO && <CheckCircle2 size={10} />}
+      {status === InvoiceStatus.PROCESANDO && <Loader2 size={10} className="animate-spin" />}
       {status}
     </div>
   );
@@ -124,6 +173,16 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
   const [showReasonSelect, setShowReasonSelect] = useState(false);
   const [isEmittingDraft, setIsEmittingDraft] = useState(false);
   const [isDeletingInvoice, setIsDeletingInvoice] = useState(false);
+
+  const hasProcessing = invoices.some((invoice) => invoice.status === InvoiceStatus.PROCESANDO);
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+
+  useEffect(() => {
+    if (!hasProcessing) return;
+    const intervalId = window.setInterval(() => onRefreshRef.current(), 8000);
+    return () => window.clearInterval(intervalId);
+  }, [hasProcessing]);
 
   useEffect(() => {
     if (!selectedInvoice) {
