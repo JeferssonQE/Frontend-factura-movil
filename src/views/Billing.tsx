@@ -12,7 +12,7 @@ import {
   InvoiceStatus,
 } from '../types';
 import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
-import { checkRateLimit, incrementUsage } from '../services/utils/rateLimiter';
+import { ApiError } from '../services/core/apiClient';
 import { PDFService } from '../services/integrations/pdfService';
 import { invoiceService } from '../services/business/invoiceService';
 import ProductSearchSelector from '../components/ProductSearchSelector';
@@ -37,6 +37,14 @@ import {
   XCircle,
   RefreshCw,
 } from 'lucide-react';
+
+const notifyIfRateLimited = (error: unknown): void => {
+  if (error instanceof ApiError && error.status === 429) {
+    alert(
+      '⚠️ Has alcanzado el límite diario de extracciones con IA. Intenta mañana o ingresa los datos manualmente.'
+    );
+  }
+};
 
 interface BillingProps {
   sender: Sender | null;
@@ -198,16 +206,6 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const startRecording = async () => {
-    const userId = sender?.user_id || 'anonymous';
-    const { allowed } = checkRateLimit(userId);
-
-    if (!allowed) {
-      alert(
-        '⚠️ Has alcanzado el límite diario de 5 extracciones con IA. Intenta mañana o ingresa los datos manualmente.'
-      );
-      return;
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -230,19 +228,15 @@ const Billing: React.FC<BillingProps> = ({
           setIsProcessing(true);
           setProcessingType('audio');
 
-          const result = await processInvoiceAudio(
-            base64Audio,
-            'audio/webm',
-            products.filter((product) => product.sender_id === sender?.id)
-          );
-
-          if (result) {
-            fillFormWithResult(result);
-            incrementUsage(userId);
+          try {
+            const result = await processInvoiceAudio(base64Audio, 'audio/webm');
+            if (result) fillFormWithResult(result);
+          } catch (error) {
+            notifyIfRateLimited(error);
+          } finally {
+            setIsProcessing(false);
+            setProcessingType(null);
           }
-
-          setIsProcessing(false);
-          setProcessingType(null);
         };
 
         reader.readAsDataURL(audioBlob);
@@ -268,16 +262,6 @@ const Billing: React.FC<BillingProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const userId = sender?.user_id || 'anonymous';
-    const { allowed } = checkRateLimit(userId);
-
-    if (!allowed) {
-      alert(
-        '⚠️ Has alcanzado el límite diario de 5 extracciones con IA. Intenta mañana o ingresa los datos manualmente.'
-      );
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
@@ -287,18 +271,15 @@ const Billing: React.FC<BillingProps> = ({
         setIsProcessing(true);
         setProcessingType('image');
 
-        const result = await processInvoiceImage(
-          base64,
-          products.filter((product) => product.sender_id === sender?.id)
-        );
-
-        if (result) {
-          fillFormWithResult(result);
-          incrementUsage(userId);
+        try {
+          const result = await processInvoiceImage(base64);
+          if (result) fillFormWithResult(result);
+        } catch (error) {
+          notifyIfRateLimited(error);
+        } finally {
+          setIsProcessing(false);
+          setProcessingType(null);
         }
-
-        setIsProcessing(false);
-        setProcessingType(null);
       }, 100);
     };
 
@@ -1056,7 +1037,7 @@ const Billing: React.FC<BillingProps> = ({
                 onClick={() => fileInputRef.current?.click()}
                 className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all"
               >
-                <Camera size={18} /> Cámara
+                <Camera size={18} /> Foto
               </button>
 
               <button
@@ -1080,7 +1061,6 @@ const Billing: React.FC<BillingProps> = ({
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={handleScan}
         />
