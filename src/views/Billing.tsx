@@ -36,14 +36,19 @@ import {
   Download,
   XCircle,
   RefreshCw,
+  ArrowRight,
 } from 'lucide-react';
 
-const notifyIfRateLimited = (error: unknown): void => {
-  if (error instanceof ApiError && error.status === 429) {
-    alert(
-      '⚠️ Has alcanzado el límite diario de extracciones con IA. Intenta mañana o ingresa los datos manualmente.'
-    );
+const iaErrorMessage = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    if (error.status === 429)
+      return 'Límite diario de extracciones con IA alcanzado. Intenta mañana o ingresa los datos manualmente.';
+    if (error.status === 400) return 'Selecciona una empresa antes de usar la IA.';
+    if (error.status === 502)
+      return 'La IA no pudo procesar el documento. Intenta de nuevo o ingresa los datos manualmente.';
+    return error.message;
   }
+  return 'Ocurrió un error al procesar con IA. Intenta de nuevo.';
 };
 
 interface BillingProps {
@@ -55,6 +60,7 @@ interface BillingProps {
   onSaveDraft: (invoice: Invoice) => Promise<Invoice | null>;
   onAddClient: (client: Client) => void;
   onSelectSender: () => void;
+  onKeepEmitting?: () => void;
   onSaveProduct?: (data: { description: string; unit: UnitOfMeasure; base_price: number; has_igv: boolean }) => Promise<void>;
 }
 
@@ -75,6 +81,7 @@ const Billing: React.FC<BillingProps> = ({
   onAddClient,
   onSelectSender,
   onSaveProduct,
+  onKeepEmitting,
 }) => {
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(InvoiceType.BOLETA);
   const [clientData, setClientData] = useState<BillingClientData>({
@@ -229,10 +236,10 @@ const Billing: React.FC<BillingProps> = ({
           setProcessingType('audio');
 
           try {
-            const result = await processInvoiceAudio(base64Audio, 'audio/webm');
+            const result = await processInvoiceAudio(base64Audio, 'audio/webm', sender?.id);
             if (result) fillFormWithResult(result);
           } catch (error) {
-            notifyIfRateLimited(error);
+            setIaWarning(iaErrorMessage(error));
           } finally {
             setIsProcessing(false);
             setProcessingType(null);
@@ -272,10 +279,10 @@ const Billing: React.FC<BillingProps> = ({
         setProcessingType('image');
 
         try {
-          const result = await processInvoiceImage(base64);
+          const result = await processInvoiceImage(base64, sender?.id);
           if (result) fillFormWithResult(result);
         } catch (error) {
-          notifyIfRateLimited(error);
+          setIaWarning(iaErrorMessage(error));
         } finally {
           setIsProcessing(false);
           setProcessingType(null);
@@ -349,6 +356,11 @@ const Billing: React.FC<BillingProps> = ({
         }
       } catch { /* mantener polling */ }
     }, POLL_INTERVAL_MS);
+  };
+
+  const handleKeepEmitting = () => {
+    resetForm();
+    onKeepEmitting?.();
   };
 
   const handleRetry = async () => {
@@ -529,6 +541,7 @@ const Billing: React.FC<BillingProps> = ({
         task_id: null,
         pdf_base64: null,
         sunat_message: null,
+        sunat_failed_step: null,
         referenced_invoice_id: null,
         credit_note_reason: null,
         credit_note_sustento: null,
@@ -576,6 +589,7 @@ const Billing: React.FC<BillingProps> = ({
         task_id: null,
         pdf_base64: null,
         sunat_message: null,
+        sunat_failed_step: null,
         referenced_invoice_id: null,
         credit_note_reason: null,
         credit_note_sustento: null,
@@ -641,8 +655,21 @@ const Billing: React.FC<BillingProps> = ({
                 {emissionSuccess.series}-{emissionSuccess.number}
               </p>
             )}
-            <p className="text-slate-400 text-sm mb-12">Esto puede tardar unos segundos...</p>
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
+            <p className="text-slate-400 text-sm mb-10">Esto puede tardar unos segundos...</p>
+
+            <div className="w-full max-w-xs">
+              <button
+                onClick={handleKeepEmitting}
+                className="w-full bg-blue-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-100 active:scale-95 transition-all"
+              >
+                Seguir emitiendo <ArrowRight size={18} />
+              </button>
+              <p className="text-[10px] font-bold text-slate-400 mt-3 leading-snug">
+                Se procesa solo en segundo plano. Mira el resultado en Historial.
+              </p>
+            </div>
+
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-10">
               FactuMovil AI • Validado SUNAT
             </p>
           </>
