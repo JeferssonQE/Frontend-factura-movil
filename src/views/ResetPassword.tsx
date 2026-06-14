@@ -82,9 +82,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       {/* Logo */}
       <div className="mb-8 text-center">
-        <div className="w-20 h-20 bg-slate-900 rounded-[28px] flex items-center justify-center mx-auto mb-4 shadow-xl">
-          <span className="text-3xl">📱</span>
-        </div>
+        <img src="/logo-icon.png" alt="FactuMovil AI" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
         <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">FactuMovil AI</h1>
         <p className="text-[10px] text-slate-400 mt-1">Cambiar Contraseña</p>
       </div>
