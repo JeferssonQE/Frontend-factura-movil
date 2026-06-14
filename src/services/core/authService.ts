@@ -12,6 +12,12 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
+export interface ChangePasswordResponse {
+  message: string;
+  access_token: string;
+  refresh_token: string;
+}
+
 export interface MeResponse {
   id: string;
   email: string;
@@ -140,7 +146,12 @@ export const authService = {
   isSessionExpiredByInactivity,
 
   async updatePassword(newPassword: string): Promise<void> {
-    await apiClient.post('/auth/change-password', { new_password: newPassword });
+    const response = await apiClient.post<ChangePasswordResponse>('/auth/change-password', {
+      new_password: newPassword,
+    });
+
+    saveTokens(response.access_token, response.refresh_token);
+    touchActivity();
   },
 
   async bootstrapSession(): Promise<MeResponse | null> {
