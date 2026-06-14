@@ -6,13 +6,12 @@ import {
   Pencil,
   Users,
   AlertTriangle,
-  X,
   AlertCircle,
   Search,
   RefreshCw,
 } from 'lucide-react';
-import { clientSchema } from '../schemas/business';
 import { Client } from '../types';
+import ClientFormModal from '../components/ClientFormModal';
 
 interface ClientsProps {
   clients: Client[];
@@ -27,7 +26,6 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, 
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const filteredClients = clients.filter(
     (client) =>
@@ -37,40 +35,7 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, 
         (client.ruc || '').includes(search))
   );
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    setFormError(null);
-
-    if (!senderId) {
-      setFormError('Primero configura tu empresa en la sección Perfil.');
-      return;
-    }
-
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
-
-    const result = clientSchema.safeParse({
-      name: (formData.get('name') as string).trim(),
-      dni: (formData.get('dni') as string).trim(),
-      ruc: (formData.get('ruc') as string).trim(),
-      phone: (formData.get('phone') as string).trim(),
-    });
-
-    if (!result.success) {
-      setFormError(result.error.issues[0].message);
-      return;
-    }
-
-    const client: Client = {
-      id: editingClient?.id || Date.now(),
-      sender_id: senderId,
-      name: result.data.name,
-      dni: result.data.dni || null,
-      ruc: result.data.ruc || null,
-      phone: result.data.phone || null,
-    };
-
-    onSave(client);
+  const closeModal = () => {
     setIsModalOpen(false);
     setEditingClient(null);
   };
@@ -115,7 +80,6 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, 
         <button
           onClick={() => {
             setEditingClient(null);
-            setFormError(null);
             setIsModalOpen(true);
           }}
           className="bg-blue-600 text-white p-3 rounded-2xl shadow-lg active:scale-95 transition-transform"
@@ -163,7 +127,6 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, 
               <div className="flex gap-1 ml-4">
                 <button
                   onClick={() => {
-                    setFormError(null);
                     setEditingClient(client);
                     setIsModalOpen(true);
                   }}
@@ -219,92 +182,12 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, 
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-                  <UserPlus size={24} />
-                </div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">
-                  {editingClient ? 'Editar' : 'Nuevo'} Cliente
-                </h3>
-              </div>
-
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-300">
-                <X size={20} />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 mb-6">
-                <AlertCircle className="text-red-500" size={20} />
-                <p className="text-red-700 text-xs font-black uppercase">{formError}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                  Razón Social o Nombre
-                </label>
-                <input
-                  name="name"
-                  defaultValue={editingClient?.name}
-                  required
-                  className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 uppercase focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                    DNI (8 dígitos)
-                  </label>
-                  <input
-                    name="dni"
-                    defaultValue={editingClient?.dni || ''}
-                    className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 outline-none"
-                    placeholder="Opcional"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                    RUC (11 dígitos)
-                  </label>
-                  <input
-                    name="ruc"
-                    defaultValue={editingClient?.ruc || ''}
-                    className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 outline-none"
-                    placeholder="Opcional"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                  Celular / Teléfono
-                </label>
-                <input
-                  name="phone"
-                  defaultValue={editingClient?.phone || ''}
-                  className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 outline-none"
-                  placeholder="999888777"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-6">
-                <button
-                  type="submit"
-                  className="flex-1 py-4 bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl active:scale-90 transition-all"
-                >
-                  Guardar Cliente
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ClientFormModal
+          editingClient={editingClient}
+          senderId={senderId}
+          onSave={onSave}
+          onClose={closeModal}
+        />
       )}
     </div>
   );

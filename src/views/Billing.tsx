@@ -1,5 +1,5 @@
 // views/Billing.tsx
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Sender,
   Product,
@@ -15,6 +15,8 @@ import { processInvoiceImage, processInvoiceAudio } from '../services/integratio
 import { ApiError } from '../services/core/apiClient';
 import { PDFService } from '../services/integrations/pdfService';
 import { invoiceService } from '../services/business/invoiceService';
+import { lookupService } from '../services/business/lookupService';
+import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import ProductSearchSelector from '../components/ProductSearchSelector';
 import { invoiceEmissionSchema } from '../schemas/business';
 import {
@@ -38,6 +40,10 @@ import {
   RefreshCw,
   ArrowRight,
 } from 'lucide-react';
+
+const DNI_LENGTH = 8;
+const RUC_LENGTH = 11;
+const onlyDigits = (value: string): string => value.replace(/\D/g, '');
 
 const iaErrorMessage = (error: unknown): string => {
   if (error instanceof ApiError) {
@@ -114,6 +120,29 @@ const Billing: React.FC<BillingProps> = ({
   React.useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  const [isLookingUpDocument, setIsLookingUpDocument] = useState(false);
+
+  const handleDniMatch = useCallback(async (value: string) => {
+    setIsLookingUpDocument(true);
+    const result = await lookupService.lookupDni(value);
+    setIsLookingUpDocument(false);
+    if (result?.nombre_completo) {
+      setClientData((prev) => ({ ...prev, name: result.nombre_completo }));
+    }
+  }, []);
+
+  const handleRucMatch = useCallback(async (value: string) => {
+    setIsLookingUpDocument(true);
+    const result = await lookupService.lookupRuc(value);
+    setIsLookingUpDocument(false);
+    if (result?.razon_social) {
+      setClientData((prev) => ({ ...prev, name: result.razon_social }));
+    }
+  }, []);
+
+  useDebouncedLookup(clientData.document, DNI_LENGTH, handleDniMatch);
+  useDebouncedLookup(clientData.document, RUC_LENGTH, handleRucMatch);
 
   const gravada = items
     .filter((item) => item.has_igv)
@@ -1168,14 +1197,24 @@ const Billing: React.FC<BillingProps> = ({
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <input
-              value={clientData.document}
-              onChange={(event) =>
-                setClientData((prev) => ({ ...prev, document: event.target.value }))
-              }
-              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 placeholder:text-slate-300"
-              placeholder="DNI / RUC"
-            />
+            <div className="relative">
+              <input
+                value={clientData.document}
+                onChange={(event) =>
+                  setClientData((prev) => ({ ...prev, document: onlyDigits(event.target.value) }))
+                }
+                inputMode="numeric"
+                maxLength={RUC_LENGTH}
+                className="w-full bg-slate-50 border-none rounded-2xl p-4 pr-10 text-sm font-black text-slate-800 placeholder:text-slate-300"
+                placeholder="DNI / RUC"
+              />
+              {isLookingUpDocument && (
+                <Loader2
+                  size={16}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin"
+                />
+              )}
+            </div>
 
             <input
               type="date"
