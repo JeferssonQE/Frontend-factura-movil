@@ -117,10 +117,18 @@ const parseResponse = async (response: Response) => {
   return response.arrayBuffer();
 };
 
-const handleErrorResponse = async (response: Response): Promise<never> => {
+const AUTH_PATHS_WITHOUT_REDIRECT = ['/auth/login', '/auth/refresh'];
+
+const handleErrorResponse = async (
+  response: Response,
+  path: string
+): Promise<never> => {
   const payload = await parseResponse(response).catch(() => null);
 
-  if (response.status === 401) {
+  const isSessionExpiry =
+    response.status === 401 && !AUTH_PATHS_WITHOUT_REDIRECT.includes(path);
+
+  if (isSessionExpiry) {
     clearStoredSession();
     window.location.href = '/login';
   }
@@ -155,7 +163,7 @@ const requestWithRefresh = async <TResponse>(
   if (response.status !== 401) {
     if (!response.ok) {
       if (import.meta.env.DEV) console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
-      return handleErrorResponse(response);
+      return handleErrorResponse(response, path);
     }
     const data = await parseResponse(response);
     if (import.meta.env.DEV) console.log(`[API] ${method} ${path} → ${response.status}`, data);
@@ -164,7 +172,7 @@ const requestWithRefresh = async <TResponse>(
 
   const newToken = await tryRefreshToken();
   if (!newToken) {
-    return handleErrorResponse(response);
+    return handleErrorResponse(response, path);
   }
 
   const retryResponse = await fetch(`${API_BASE_URL}${path}`, {
@@ -180,7 +188,7 @@ const requestWithRefresh = async <TResponse>(
 
   if (!retryResponse.ok) {
     if (import.meta.env.DEV) console.error(`[API] ${method} ${path} → ${retryResponse.status}`, retryResponse.statusText);
-    return handleErrorResponse(retryResponse);
+    return handleErrorResponse(retryResponse, path);
   }
 
   const data = await parseResponse(retryResponse);
