@@ -15,6 +15,17 @@ export type CreateUserPayload = {
   ruc: string;
 };
 
+export type CreateContadorPayload = {
+  email: string;
+  password: string;
+  name: string;
+};
+
+export type UpdateContadorPayload = {
+  name: string;
+  email: string;
+};
+
 export type UserStatusResponse = {
   message: string;
   user: AdminUserRow;
@@ -35,6 +46,14 @@ export const adminService = {
 
   async createUser(payload: CreateUserPayload): Promise<AdminUserRow> {
     return apiClient.post<AdminUserRow>('/admin/users', payload);
+  },
+
+  async createContador(payload: CreateContadorPayload): Promise<AdminUserRow> {
+    return apiClient.post<AdminUserRow>('/admin/users/contador', payload);
+  },
+
+  async updateContador(userId: string, payload: UpdateContadorPayload): Promise<AdminUserRow> {
+    return apiClient.put<AdminUserRow>(`/admin/users/${userId}/contador`, payload);
   },
 
   async activateUser(userId: string): Promise<UserStatusResponse> {

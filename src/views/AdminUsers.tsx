@@ -70,6 +70,13 @@ const getInitials = (user: AdminUserRow): string => {
     .toUpperCase();
 };
 
+const randomTempPassword = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
+
+const isValidEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 // ─── sub-components ──────────────────────────────────────────────────────────
 
 interface ModalShellProps {
@@ -145,6 +152,16 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   const [createForm,  setCreateForm]  = useState({ razon_social: '', ruc: '', name: '', email: '', password: '' });
   const [createError, setCreateError] = useState<string | null>(null);
   const [createBusy,  setCreateBusy]  = useState(false);
+
+  const [showCreateContador, setShowCreateContador] = useState(false);
+  const [contadorForm,  setContadorForm]  = useState({ name: '', email: '', password: '' });
+  const [contadorError, setContadorError] = useState<string | null>(null);
+  const [contadorBusy,  setContadorBusy]  = useState(false);
+
+  const [editContadorId,    setEditContadorId]    = useState<string | null>(null);
+  const [editContadorForm,  setEditContadorForm]  = useState({ name: '', email: '' });
+  const [editContadorError, setEditContadorError] = useState<string | null>(null);
+  const [editContadorBusy,  setEditContadorBusy]  = useState(false);
 
   const [senders,     setSenders]     = useState<Record<string, Sender>>({});
   const [editUserId,  setEditUserId]  = useState<string | null>(null);
@@ -256,11 +273,7 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   };
 
   const generateTempPassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    const password = Array.from({ length: 10 }, () =>
-      chars[Math.floor(Math.random() * chars.length)]
-    ).join('');
-    setCreateForm((prev) => ({ ...prev, password }));
+    setCreateForm((prev) => ({ ...prev, password: randomTempPassword() }));
   };
 
   const handleCreateUser = async () => {
@@ -268,6 +281,10 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     const { razon_social, ruc, name, email, password } = createForm;
     if (!razon_social.trim() || ruc.length !== 11 || !name.trim() || !email.trim() || password.length < 8) {
       setCreateError('Completa todos los campos. RUC de 11 dígitos y contraseña de al menos 8 caracteres.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setCreateError('Ingresa un email válido (ejemplo: nombre@correo.com).');
       return;
     }
     setCreateBusy(true);
@@ -413,6 +430,75 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     }
   };
 
+  const EMPTY_CONTADOR_FORM = { name: '', email: '', password: '' };
+
+  const handleOpenCreateContador = () => {
+    setContadorError(null);
+    setContadorForm(EMPTY_CONTADOR_FORM);
+    setShowCreateContador(true);
+  };
+
+  const handleCreateContador = async () => {
+    setContadorError(null);
+    const { name, email, password } = contadorForm;
+    if (!name.trim() || !email.trim() || password.length < 8) {
+      setContadorError('Completa nombre, email y una contraseña de al menos 8 caracteres.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setContadorError('Ingresa un email válido (ejemplo: nombre@correo.com).');
+      return;
+    }
+    setContadorBusy(true);
+    try {
+      const newContador = await adminService.createContador({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      setUsers((prev) => [newContador, ...prev]);
+      setShowCreateContador(false);
+      setContadorForm(EMPTY_CONTADOR_FORM);
+    } catch (e: unknown) {
+      setContadorError(e instanceof Error ? e.message : 'Error al crear contador');
+    } finally {
+      setContadorBusy(false);
+    }
+  };
+
+  const handleOpenEditContador = (contador: AdminUserRow) => {
+    setEditContadorError(null);
+    setEditContadorForm({ name: contador.name ?? '', email: contador.email });
+    setEditContadorId(contador.id);
+  };
+
+  const handleUpdateContador = async () => {
+    if (!editContadorId) return;
+    setEditContadorError(null);
+    const { name, email } = editContadorForm;
+    if (!name.trim() || !email.trim()) {
+      setEditContadorError('Completa nombre y email.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setEditContadorError('Ingresa un email válido (ejemplo: nombre@correo.com).');
+      return;
+    }
+    setEditContadorBusy(true);
+    try {
+      const updated = await adminService.updateContador(editContadorId, {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+      });
+      setUsers((prev) => prev.map((u) => (u.id === editContadorId ? updated : u)));
+      setEditContadorId(null);
+    } catch (e: unknown) {
+      setEditContadorError(e instanceof Error ? e.message : 'Error al actualizar contador');
+    } finally {
+      setEditContadorBusy(false);
+    }
+  };
+
   // ── derived values ────────────────────────────────────────────────────────
 
   const filtered = users.filter((u) => {
@@ -478,6 +564,13 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
       {/* ── Contadores tab ───────────────────────────────────────────────── */}
       {activeTab === 'contadores' && (
         <div className="space-y-3">
+          <button
+            onClick={handleOpenCreateContador}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+          >
+            <UserPlus size={14} /> Nuevo Contador
+          </button>
+
           {contadores.length === 0 && !loading && (
             <div className="text-center py-14 bg-white rounded-3xl border border-dashed border-slate-200">
               <div className="w-14 h-14 rounded-[20px] bg-slate-100 flex items-center justify-center mx-auto mb-4">
@@ -487,7 +580,7 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                 Sin contadores
               </p>
               <p className="text-[9px] text-slate-300 mt-1">
-                Cambia el rol de un usuario a "Contador" desde la pestaña Empresas.
+                Crea uno con el botón "Nuevo Contador".
               </p>
             </div>
           )}
@@ -512,6 +605,13 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                   <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0">
                     Contador
                   </span>
+                  <button
+                    onClick={() => handleOpenEditContador(contador)}
+                    className="text-slate-300 hover:text-blue-500 transition-colors shrink-0"
+                    aria-label="Editar contador"
+                  >
+                    <Pencil size={15} />
+                  </button>
                 </div>
 
                 <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-2">
@@ -1103,6 +1203,161 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                   : <UserPlus  size={13} />
                 }
                 {createBusy ? 'Creando...' : 'Crear Empresa'}
+              </button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {/* ── Create contador modal ────────────────────────────────────────── */}
+      {showCreateContador && (
+        <ModalShell onClose={() => setShowCreateContador(false)}>
+          <div className="flex items-center gap-3 mb-6 pr-8">
+            <div className="p-3 bg-emerald-600 text-white rounded-2xl shrink-0">
+              <Users size={20} strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-black text-slate-800 tracking-tight uppercase leading-tight">
+                Nuevo Contador
+              </h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                Rol Contador · Sin empresa
+              </p>
+            </div>
+          </div>
+
+          {contadorError && <ModalError message={contadorError} />}
+
+          <div className="space-y-3">
+            <FormField label="Nombre">
+              <input
+                type="text"
+                value={contadorForm.name}
+                onChange={(e) => setContadorForm((prev) => ({ ...prev, name: e.target.value }))}
+                className={inputClass}
+                placeholder="Juan Pérez"
+                autoComplete="name"
+              />
+            </FormField>
+
+            <FormField label="Email">
+              <input
+                type="email"
+                value={contadorForm.email}
+                onChange={(e) => setContadorForm((prev) => ({ ...prev, email: e.target.value }))}
+                className={inputClass}
+                placeholder="contador@correo.com"
+                autoComplete="email"
+              />
+            </FormField>
+
+            <FormField label="Contraseña temporal (mín. 8)">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={contadorForm.password}
+                  onChange={(e) => setContadorForm((prev) => ({ ...prev, password: e.target.value }))}
+                  className={inputClass}
+                  placeholder="••••••••"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setContadorForm((prev) => ({ ...prev, password: randomTempPassword() }))}
+                  className="shrink-0 px-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-200 transition-colors"
+                >
+                  Generar
+                </button>
+              </div>
+            </FormField>
+
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-start gap-2">
+              <AlertCircle className="text-emerald-500 shrink-0 mt-0.5" size={14} />
+              <p className="text-[9px] text-emerald-700 font-bold leading-relaxed">
+                El contador deberá cambiar esta contraseña al iniciar sesión. Podrás asignarle empresas después.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowCreateContador(false)}
+                className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateContador}
+                disabled={contadorBusy}
+                className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              >
+                {contadorBusy
+                  ? <RefreshCw size={13} className="animate-spin" />
+                  : <UserPlus  size={13} />
+                }
+                {contadorBusy ? 'Creando...' : 'Crear Contador'}
+              </button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+
+      {/* ── Edit contador modal ──────────────────────────────────────────── */}
+      {editContadorId && (
+        <ModalShell onClose={() => setEditContadorId(null)}>
+          <div className="flex items-center gap-3 mb-6 pr-8">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0">
+              <Users size={20} strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-black text-slate-800 tracking-tight uppercase leading-tight">
+                Editar Contador
+              </h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate max-w-[200px]">
+                {editContadorForm.email}
+              </p>
+            </div>
+          </div>
+
+          {editContadorError && <ModalError message={editContadorError} />}
+
+          <div className="space-y-3">
+            <FormField label="Nombre">
+              <input
+                type="text"
+                value={editContadorForm.name}
+                onChange={(e) => setEditContadorForm((prev) => ({ ...prev, name: e.target.value }))}
+                className={inputClass}
+                placeholder="Juan Pérez"
+              />
+            </FormField>
+
+            <FormField label="Email">
+              <input
+                type="email"
+                value={editContadorForm.email}
+                onChange={(e) => setEditContadorForm((prev) => ({ ...prev, email: e.target.value }))}
+                className={inputClass}
+                placeholder="contador@correo.com"
+              />
+            </FormField>
+
+            <div className="flex gap-3 pt-3">
+              <button
+                onClick={() => setEditContadorId(null)}
+                className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdateContador}
+                disabled={editContadorBusy}
+                className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+              >
+                {editContadorBusy
+                  ? <RefreshCw size={13} className="animate-spin" />
+                  : <Pencil    size={13} />
+                }
+                {editContadorBusy ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
           </div>

@@ -119,6 +119,8 @@
 
   & .pill { display: inline-flex; align-items: center; gap: .5rem; border: 1px solid var(--line); border-radius: 999px; padding: .45rem .85rem; font-size: .85rem; color: var(--mut); }
 
+  & .only-sm { display: none !important; }
+
   /* hero: chips flotantes alrededor del celular */
   & .hero-chip { position: absolute; z-index: 20; display: flex; align-items: center; gap: 9px; background: #fff; color: #0E1322; border-radius: 14px; padding: 9px 12px; box-shadow: 0 24px 50px -18px rgba(0,0,0,.55); }
   & .hero-chip .hc-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; flex: none; }
@@ -242,6 +244,7 @@
   }
   @media (max-width: 640px) {
     & .hide-sm { display: none !important; }
+    & .only-sm { display: grid !important; }
     & .features-grid, & .steps-grid, & .tests-grid, & .foot-grid { grid-template-columns: 1fr !important; }
     & h1.disp { font-size: clamp(2.5rem, 11vw, 3.4rem); }
     & .trans-arrow { transform: rotate(90deg); margin: 0 auto; }

@@ -119,6 +119,25 @@ const parseResponse = async (response: Response) => {
 
 const AUTH_PATHS_WITHOUT_REDIRECT = ['/auth/login', '/auth/refresh'];
 
+const extractErrorMessage = (payload: unknown, status: number): string => {
+  if (isPlainObject(payload)) {
+    const { detail } = payload;
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) =>
+          isPlainObject(item) && typeof item.msg === 'string'
+            ? item.msg.replace(/^Value error,\s*/i, '')
+            : null
+        )
+        .filter((msg): msg is string => Boolean(msg));
+      if (messages.length) return messages.join(' · ');
+    }
+  }
+  if (typeof payload === 'string' && payload.trim()) return payload;
+  return `Request failed with status ${status}`;
+};
+
 const handleErrorResponse = async (
   response: Response,
   path: string
@@ -133,15 +152,7 @@ const handleErrorResponse = async (
     window.location.href = '/login';
   }
 
-  let message = `Request failed with status ${response.status}`;
-
-  if (isPlainObject(payload) && typeof payload.detail === 'string') {
-    message = payload.detail;
-  } else if (typeof payload === 'string' && payload.trim()) {
-    message = payload;
-  }
-
-  throw new ApiError(message, response.status, payload);
+  throw new ApiError(extractErrorMessage(payload, response.status), response.status, payload);
 };
 
 const requestWithRefresh = async <TResponse>(

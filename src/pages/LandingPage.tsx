@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
-  ArrowRight, Play, Camera, Mic, Menu, User, Sparkles, Check, Send, Home, Plus,
+  ArrowRight, LogIn, Play, Camera, Mic, Menu, User, Sparkles, Check, Send, Home, Plus,
   ScanLine, Building2, Users, LineChart, FileText, Zap, Target, House, History,
   ChevronLeft, Search, RefreshCw, Receipt, FileMinus, FilePlus, Monitor,
   Keyboard, Clock, TriangleAlert, Smartphone, CheckCircle, CheckCircle2, Mail,
@@ -19,6 +19,14 @@ const goToSection = (id: string) => (e: React.MouseEvent) => {
   e.preventDefault();
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
+
+// La landing es solo para la web. Si corre como PWA instalada (standalone), es un
+// usuario, no un prospecto: lo mandamos directo al login.
+const isStandalonePWA = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  window.matchMedia('(display-mode: minimal-ui)').matches ||
+  window.matchMedia('(display-mode: fullscreen)').matches ||
+  (window.navigator as { standalone?: boolean }).standalone === true;
 
 const Wordmark: React.FC<{ size?: number }> = ({ size = 30 }) => (
   <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -264,6 +272,9 @@ const Nav: React.FC<{ scrolled: boolean }> = ({ scrolled }) => (
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <Link className="navlink hide-sm" to="/login" style={{ padding: '.55rem .4rem' }}>Iniciar sesión</Link>
+          <Link className="navlink only-sm" to="/login" aria-label="Iniciar sesión" style={{ placeItems: 'center', width: 40, height: 40, borderRadius: 11, border: '1px solid var(--line)' }}>
+            <LogIn style={{ width: 18, height: 18 }} />
+          </Link>
           <a className="btn btn-primary" href={whatsappUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '.6rem 1.15rem', fontSize: '.92rem' }}>
             Solicita tu demo <MessageCircle className="ar" />
           </a>
@@ -589,19 +600,21 @@ const Footer: React.FC = () => (
 );
 
 const LandingPage: React.FC = () => {
+  const [standalone] = useState(isStandalonePWA);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
+    if (standalone) return;
     const scroller = document.getElementById('root');
     if (!scroller) return;
     const onScroll = () => setScrolled(scroller.scrollTop > 10);
     scroller.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => scroller.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [standalone]);
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (standalone || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const reveals = Array.from(document.querySelectorAll<HTMLElement>('.landing-root .reveal'));
     reveals.forEach((el, i) => {
       el.classList.add('hide');
@@ -616,7 +629,9 @@ const LandingPage: React.FC = () => {
     reveals.forEach((el) => io.observe(el));
     const failsafe = window.setTimeout(() => reveals.forEach((el) => el.classList.remove('hide')), 1600);
     return () => { io.disconnect(); window.clearTimeout(failsafe); };
-  }, []);
+  }, [standalone]);
+
+  if (standalone) return <Navigate to="/dashboard" replace />;
 
   return (
     <div id="top" className="landing-root select-text">
