@@ -4,6 +4,7 @@ import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
 import AppLayout from '../layouts/AppLayout';
 
+import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import DashboardPage from '../pages/DashboardPage';
 import BillingPage from '../pages/BillingPage';
@@ -22,6 +23,7 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
 
         <Route
@@ -40,7 +42,6 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/history" element={<HistoryPage />} />

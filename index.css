@@ -2,6 +2,15 @@
 
 @import "tailwindcss";
 
+/* ── Tokens de marca (Tailwind v4) ──
+   Habilitan utilidades bg-primary / text-accent / ring-secondary, etc.
+   La landing tiene su propia hoja (src/pages/landing.css) y ahi ajusta el azul. */
+@theme {
+  --color-primary: #112657;
+  --color-accent: #2b7fff;
+  --color-secondary: #283450;
+}
+
 /* Ocultar el icono nativo de revelar/limpiar contrasena (Edge/IE).
    Usamos nuestro propio toggle de ojo, evita el ojo duplicado. */
 input::-ms-reveal,
