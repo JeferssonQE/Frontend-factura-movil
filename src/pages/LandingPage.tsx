@@ -3,14 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight, Play, Camera, Mic, Menu, User, Sparkles, Check, Send, Home, Plus,
   ScanLine, Building2, Users, LineChart, FileText, Zap, Target, House, History,
-  ChevronLeft, Search, RefreshCw, Star, Receipt, FileMinus, FilePlus, Monitor,
+  ChevronLeft, Search, RefreshCw, Receipt, FileMinus, FilePlus, Monitor,
   Keyboard, Clock, TriangleAlert, Smartphone, CheckCircle, CheckCircle2, Mail,
   MessageCircle, Globe,
 } from 'lucide-react';
 import './landing.css';
 
-// TODO(jefferson): reemplazar por el numero real de WhatsApp del negocio (formato internacional, sin + ni espacios)
-const WHATSAPP_NUMBER = '51999999999';
+const WHATSAPP_NUMBER = '51963376546';
 const WHATSAPP_MESSAGE = 'Hola, quiero probar FactuMovil AI. ¿Me cuentan cómo funciona?';
 const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
 
@@ -58,11 +57,10 @@ const steps = [
   { n: '03', icon: CheckCircle2, title: 'Emite a SUNAT', desc: 'Envía el comprobante con un toque. Tu cliente lo recibe al instante.', emerald: true },
 ];
 
-// NOTA: testimonios ILUSTRATIVOS. Reemplazar por reseñas reales antes de publicar.
-const testimonials = [
-  { quote: 'Antes facturaba de noche en la PC. Ahora le tomo foto a la nota y emito desde el mostrador en lo que cobro.', av: 'MR', role: 'Comerciante', place: 'Bodega · Lima' },
-  { quote: 'La IA llena el RUC y los montos sola. Dejé de equivocarme y de que me reboten los comprobantes.', av: 'JT', role: 'Emprendedora', place: 'Servicios · Arequipa' },
-  { quote: 'Llevo varias empresas. Cambio de emisor y emito boletas y facturas sin abrir el portal de SUNAT.', av: 'CD', role: 'Contador', place: 'Estudio contable · Cusco' },
+const guarantees = [
+  { icon: Building2, title: 'Validado por SUNAT', desc: 'Facturas, boletas y notas de crédito aceptadas oficialmente. Tu comprobante llega válido a la primera.' },
+  { icon: Zap, title: 'Emite en segundos', desc: 'Toma una foto o graba un audio; la IA completa y envía. Sin tipear el RUC ni calcular el IGV a mano.' },
+  { icon: MessageCircle, title: 'Soporte por WhatsApp', desc: 'Te acompañamos a configurar tu cuenta y resolvemos tus dudas directo por chat, sin tickets ni esperas.' },
 ];
 
 const transformBefore = [
@@ -473,24 +471,18 @@ const HowItWorks: React.FC = () => (
 const SocialProof: React.FC = () => (
   <section id="confianza" className="cream grain">
     <div className="wrap" style={{ paddingBlock: 'clamp(64px,9vw,110px)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 24, flexWrap: 'wrap' }}>
-        <div>
-          <p className="eyebrow reveal">Confianza</p>
-          <h2 className="disp reveal" style={{ margin: '14px 0 0', color: 'var(--cream-ink)' }}>Hecho para quien factura todos los días.</h2>
-        </div>
-        <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 2, color: '#F5A623' }}>
-            {Array.from({ length: 5 }).map((_, i) => <Star key={i} style={{ width: 18, height: 18 }} fill="currentColor" />)}
-          </div>
-          <span className="mono" style={{ fontWeight: 700, color: 'var(--cream-ink)' }}>4.9/5</span>
-        </div>
+      <div style={{ maxWidth: '34em' }}>
+        <p className="eyebrow reveal">Por qué FactuMovil</p>
+        <h2 className="disp reveal" style={{ margin: '14px 0 0', color: 'var(--cream-ink)' }}>Hecho para quien factura todos los días.</h2>
+        <p className="lead reveal" style={{ margin: '18px 0 0' }}>Sin trucos ni letra chica. Esto es lo que hace por ti.</p>
       </div>
       <div className="tests-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18, marginTop: 44 }}>
-        {testimonials.map((t) => (
-          <figure className="t-card reveal" key={t.av}>
-            <p>&ldquo;{t.quote}&rdquo;</p>
-            <figcaption><span className="t-av">{t.av}</span><span><b>{t.role}</b><br />{t.place}</span></figcaption>
-          </figure>
+        {guarantees.map(({ icon: Icon, title, desc }) => (
+          <div className="t-card reveal" key={title}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 46, height: 46, borderRadius: 13, background: 'rgba(44,75,245,.1)', color: 'var(--blue-2)' }}><Icon /></span>
+            <h3 className="disp" style={{ fontSize: '1.2rem', margin: '16px 0 0', color: 'var(--cream-ink)' }}>{title}</h3>
+            <p style={{ margin: '.5rem 0 0', color: 'var(--cream-mut)', fontSize: '.95rem', lineHeight: 1.5 }}>{desc}</p>
+          </div>
         ))}
       </div>
       <div className="reveal" style={{ marginTop: 48, borderTop: '1px solid var(--line-cream)', paddingTop: 28, display: 'flex', flexWrap: 'wrap', gap: '14px 32px', alignItems: 'center' }}>
