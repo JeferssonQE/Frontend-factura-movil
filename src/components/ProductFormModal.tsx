@@ -30,7 +30,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const chooseIgv = (hasIgv: boolean) => {
     setIgvChosen(true);
-    setDraft((prev) => recalcItem({ ...prev, has_igv: hasIgv }, { unit_price: prev.unit_price }));
+    setDraft((prev) => recalcItem(prev, { has_igv: hasIgv }));
   };
 
   const handleSelectProduct = (product: Product) => {

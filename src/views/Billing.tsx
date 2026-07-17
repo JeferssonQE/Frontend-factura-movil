@@ -105,6 +105,7 @@ const Billing: React.FC<BillingProps> = ({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDraftConfirmModal, setShowDraftConfirmModal] = useState(false);
   const [productModal, setProductModal] = useState<{ open: boolean; index: number | null }>({
     open: false,
     index: null,
@@ -455,7 +456,7 @@ const Billing: React.FC<BillingProps> = ({
     return String(lastNumber + 1).padStart(6, '0');
   };
 
-  const handleOpenConfirm = () => {
+  const validateInvoiceForm = (): boolean => {
     const validItems = items.filter((item) => item.description.trim().length > 0);
     const result = invoiceEmissionSchema.safeParse({
       invoice_type: invoiceType,
@@ -473,37 +474,25 @@ const Billing: React.FC<BillingProps> = ({
     if (!result.success) {
       setErrors(result.error.issues.map((issue) => issue.message));
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+      return false;
     }
 
     setErrors([]);
-    setShowConfirmModal(true);
+    return true;
+  };
+
+  const handleOpenConfirm = () => {
+    if (validateInvoiceForm()) setShowConfirmModal(true);
+  };
+
+  const handleOpenDraftConfirm = () => {
+    if (validateInvoiceForm()) setShowDraftConfirmModal(true);
   };
 
   const handleSaveDraft = async () => {
     if (!sender) return;
 
-    const validItems = items.filter((item) => item.description.trim().length > 0);
-    const result = invoiceEmissionSchema.safeParse({
-      invoice_type: invoiceType,
-      clientData,
-      items: validItems.map((item) => ({
-        product_id: item.product_id,
-        description: item.description,
-        quantity: item.quantity,
-        unit: item.unit,
-        unit_price: item.unit_price,
-        has_igv: item.has_igv,
-      })),
-    });
-
-    if (!result.success) {
-      setErrors(result.error.issues.map((issue) => issue.message));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    setErrors([]);
+    setShowDraftConfirmModal(false);
     setIsSavingDraft(true);
     try {
       const series = invoiceType === InvoiceType.BOLETA ? 'B001' : 'F001';
@@ -1356,7 +1345,7 @@ const Billing: React.FC<BillingProps> = ({
 
           <div className="space-y-3">
             <button
-              onClick={handleSaveDraft}
+              onClick={handleOpenDraftConfirm}
               disabled={isSavingDraft || isEmitting || items.length === 0}
               className="w-full bg-slate-200 text-slate-600 h-12 rounded-[20px] font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -1408,6 +1397,56 @@ const Billing: React.FC<BillingProps> = ({
                 className="w-full bg-white border border-slate-100 text-slate-400 py-5 rounded-[22px] font-black text-xs uppercase tracking-widest active:bg-slate-50 transition-all"
               >
                 Revisar Datos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDraftConfirmModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40">
+          <div className="bg-white w-full max-w-sm rounded-[44px] shadow-2xl p-8 text-center animate-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-slate-100 text-slate-600 rounded-[32px] flex items-center justify-center mx-auto mb-6">
+              <Layers size={40} />
+            </div>
+
+            <h3 className="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tighter">
+              ¿Guardar como borrador?
+            </h3>
+
+            <p className="text-slate-500 text-xs font-medium mb-6 leading-relaxed">
+              Se guardará sin emitir a SUNAT. Podrás editarlo y emitirlo después.
+            </p>
+
+            <div className="bg-slate-50 rounded-[24px] p-5 mb-8 space-y-2 text-left">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">Cliente</span>
+                <span className="text-xs font-black text-slate-700 truncate">{clientData.name || '—'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Productos</span>
+                <span className="text-xs font-black text-slate-700">{items.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Total</span>
+                <span className="text-sm font-black text-blue-600">S/ {total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft}
+                className="w-full bg-slate-900 text-white py-5 rounded-[22px] font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 active:scale-95 transition-all disabled:opacity-40"
+              >
+                Guardar borrador
+              </button>
+
+              <button
+                onClick={() => setShowDraftConfirmModal(false)}
+                className="w-full bg-white border border-slate-100 text-slate-400 py-5 rounded-[22px] font-black text-xs uppercase tracking-widest active:bg-slate-50 transition-all"
+              >
+                Revisar datos
               </button>
             </div>
           </div>

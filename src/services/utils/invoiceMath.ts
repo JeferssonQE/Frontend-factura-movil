@@ -18,7 +18,7 @@ export const createEmptyItem = (): InvoiceItem => ({
   quantity: 1,
   unit: UnitOfMeasure.KILOGRAMO,
   unit_price: 0,
-  has_igv: true,
+  has_igv: false,
   total: 0,
 });
 
