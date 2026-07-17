@@ -1,4 +1,6 @@
 // services/apiClient.ts
+import { reportError } from './monitoring';
+
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   'http://localhost:8000';
@@ -10,17 +12,31 @@ const USER_KEY = 'fm_user';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+const toUserMessage = (status: number, technical: string): string => {
+  if (status >= 400 && status < 500) {
+    return technical || 'Revisa los datos e intenta de nuevo.';
+  }
+  return 'Algo salió mal de nuestro lado. Intenta de nuevo en un momento.';
+};
+
 export class ApiError extends Error {
   status: number;
   data: unknown;
+  userMessage: string;
 
   constructor(message: string, status: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.data = data;
+    this.userMessage = toUserMessage(status, message);
   }
 }
+
+export const getUserMessage = (
+  error: unknown,
+  fallback = 'Ocurrió un error. Intenta de nuevo.'
+): string => (error instanceof ApiError ? error.userMessage : fallback);
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -143,6 +159,8 @@ const handleErrorResponse = async (
   path: string
 ): Promise<never> => {
   const payload = await parseResponse(response).catch(() => null);
+  const message = extractErrorMessage(payload, response.status);
+  const apiError = new ApiError(message, response.status, payload);
 
   const isSessionExpiry =
     response.status === 401 && !AUTH_PATHS_WITHOUT_REDIRECT.includes(path);
@@ -152,7 +170,12 @@ const handleErrorResponse = async (
     window.location.href = '/login';
   }
 
-  throw new ApiError(extractErrorMessage(payload, response.status), response.status, payload);
+  if (response.status >= 500) {
+    console.error(`[API] ${response.status} ${path}`, message, payload);
+    reportError(apiError, { path, status: response.status });
+  }
+
+  throw apiError;
 };
 
 const requestWithRefresh = async <TResponse>(

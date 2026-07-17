@@ -3,6 +3,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { initMonitoring } from './src/services/core/monitoring';
+import { AppErrorBoundary } from './src/components/ErrorBoundary';
+
+initMonitoring();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,6 +16,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </React.StrictMode>
 );
