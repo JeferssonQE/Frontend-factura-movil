@@ -30,6 +30,7 @@ import {
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
 import { invoiceService } from '../services/business/invoiceService';
+import { emissionProgress } from '../config/emissionProgress';
 
 const NOTA_CREDITO_ENABLED = false; // en debug — reactivar cuando el flujo de NC esté estable
 
@@ -164,6 +165,36 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
   );
 };
 
+const ProcessingRing: React.FC<{ percent: number }> = ({ percent }) => {
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(Math.max(percent, 0), 100);
+  const offset = circumference * (1 - clamped / 100);
+
+  return (
+    <div className="relative w-12 h-12 shrink-0">
+      <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+        <circle
+          cx="24"
+          cy="24"
+          r={radius}
+          fill="none"
+          stroke="#2B7FFF"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-blue-600">
+        {clamped}%
+      </span>
+    </div>
+  );
+};
+
 const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCreditNote, onEmitDraft, onDeleteInvoice, onRefresh }) => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
@@ -281,21 +312,25 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
               }`}
             >
               <div className="flex items-center gap-4 min-w-0">
-                <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                    invoice.invoice_type === InvoiceType.BOLETA
-                      ? 'bg-blue-50 text-blue-600'
-                      : invoice.invoice_type === InvoiceType.FACTURA
-                      ? 'bg-indigo-50 text-indigo-600'
-                      : 'bg-amber-100 text-amber-600'
-                  }`}
-                >
-                  {invoice.invoice_type === InvoiceType.NOTA_CREDITO ? (
-                    <ArrowDownLeft size={20} />
-                  ) : (
-                    <FileText size={20} />
-                  )}
-                </div>
+                {invoice.status === InvoiceStatus.PROCESANDO ? (
+                  <ProcessingRing percent={emissionProgress(invoice.sunat_current_step).percent} />
+                ) : (
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                      invoice.invoice_type === InvoiceType.BOLETA
+                        ? 'bg-blue-50 text-blue-600'
+                        : invoice.invoice_type === InvoiceType.FACTURA
+                        ? 'bg-indigo-50 text-indigo-600'
+                        : 'bg-amber-100 text-amber-600'
+                    }`}
+                  >
+                    {invoice.invoice_type === InvoiceType.NOTA_CREDITO ? (
+                      <ArrowDownLeft size={20} />
+                    ) : (
+                      <FileText size={20} />
+                    )}
+                  </div>
+                )}
 
                 <div className="min-w-0">
                   <h4 className="text-[13px] font-black text-slate-800 uppercase truncate pr-2 tracking-tight">
@@ -307,6 +342,11 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, onEmitCredi
                       {invoice.invoice_date}
                     </span>
                   </div>
+                  {invoice.status === InvoiceStatus.PROCESANDO && (
+                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-tight mt-1">
+                      {emissionProgress(invoice.sunat_current_step).label}
+                    </p>
+                  )}
                   {invoice.status === InvoiceStatus.FALLO && (
                     <div className="flex items-center gap-1 mt-1">
                       {(() => {

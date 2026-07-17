@@ -20,6 +20,7 @@ import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import ProductFormModal from '../components/ProductFormModal';
 import { unitLabel } from '../services/utils/invoiceMath';
 import { invoiceEmissionSchema } from '../schemas/business';
+import { emissionProgress } from '../config/emissionProgress';
 import {
   Camera,
   Plus,
@@ -118,6 +119,7 @@ const Billing: React.FC<BillingProps> = ({
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | 'timeout' | null>(null);
+  const [emissionCurrentStep, setEmissionCurrentStep] = useState<string | null>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
 
@@ -390,6 +392,8 @@ const Billing: React.FC<BillingProps> = ({
           stopPolling();
           setSunatMessage(statusData.sunat_message);
           setEmissionState('fallo');
+        } else {
+          setEmissionCurrentStep(statusData.current_step);
         }
       } catch { /* mantener polling */ }
     }, POLL_INTERVAL_MS);
@@ -403,6 +407,7 @@ const Billing: React.FC<BillingProps> = ({
   const handleRetry = async () => {
     if (!emissionSuccess?.id) return;
     setEmissionState('processing');
+    setEmissionCurrentStep(null);
     setSunatMessage(null);
     setNumeroComprobante(null);
     try {
@@ -430,6 +435,7 @@ const Billing: React.FC<BillingProps> = ({
     setErrors([]);
     setEmissionStep(0);
     setEmissionState(null);
+    setEmissionCurrentStep(null);
     setSunatMessage(null);
     setNumeroComprobante(null);
   };
@@ -517,6 +523,7 @@ const Billing: React.FC<BillingProps> = ({
         pdf_base64: null,
         sunat_message: null,
         sunat_failed_step: null,
+        sunat_current_step: null,
         referenced_invoice_id: null,
         credit_note_reason: null,
         credit_note_sustento: null,
@@ -564,6 +571,7 @@ const Billing: React.FC<BillingProps> = ({
         pdf_base64: null,
         sunat_message: null,
         sunat_failed_step: null,
+        sunat_current_step: null,
         referenced_invoice_id: null,
         credit_note_reason: null,
         credit_note_sustento: null,
@@ -610,6 +618,7 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   if (emissionState !== null) {
+    const progress = emissionProgress(emissionCurrentStep);
     return (
       <div className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center animate-in fade-in duration-500">
 
@@ -623,11 +632,25 @@ const Billing: React.FC<BillingProps> = ({
               Validando en SUNAT
             </h2>
             {emissionSuccess && (
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6">
                 {emissionSuccess.series}-{emissionSuccess.number}
               </p>
             )}
-            <p className="text-slate-400 text-sm mb-10">Esto puede tardar unos segundos...</p>
+
+            <div className="w-full max-w-xs mb-10">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">
+                  {progress.label}
+                </span>
+                <span className="text-[11px] font-black text-slate-400">{progress.percent}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </div>
+            </div>
 
             <div className="w-full max-w-xs">
               <button
@@ -1267,12 +1290,12 @@ const Billing: React.FC<BillingProps> = ({
                     {item.description || 'Sin nombre'}
                   </p>
                   <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                    S/ {item.unit_price.toFixed(2)} c/u · {item.has_igv ? 'IGV 18%' : 'Exonerado'}
+                    S/ {Number(item.unit_price).toFixed(2)} c/u · {item.has_igv ? 'IGV 18%' : 'Exonerado'}
                   </p>
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <p className="text-sm font-black text-blue-600">S/ {item.total.toFixed(2)}</p>
+                  <p className="text-sm font-black text-blue-600">S/ {Number(item.total).toFixed(2)}</p>
                   <div className="flex items-center gap-1 mt-1 justify-end">
                     <button
                       onClick={() => openEditProduct(index)}

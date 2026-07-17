@@ -150,6 +150,7 @@ export interface Invoice {
   pdf_base64: string | null;
   sunat_message: string | null;
   sunat_failed_step: string | null;
+  sunat_current_step: string | null;
   referenced_invoice_id: number | null;
   credit_note_reason: CreditNoteReason | null;
   credit_note_sustento: string | null;

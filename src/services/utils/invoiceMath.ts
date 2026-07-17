@@ -24,6 +24,9 @@ export const createEmptyItem = (): InvoiceItem => ({
 
 export const recalcItem = (item: InvoiceItem, updates: Partial<InvoiceItem>): InvoiceItem => {
   const next = { ...item, ...updates };
+  next.quantity = Number(next.quantity) || 0;
+  next.unit_price = Number(next.unit_price) || 0;
+  next.total = Number(next.total) || 0;
   const quantity = next.quantity || 1;
 
   if ('total' in updates && updates.total !== undefined) {
