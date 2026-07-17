@@ -12,12 +12,13 @@ import {
   InvoiceStatus,
 } from '../types';
 import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
-import { ApiError } from '../services/core/apiClient';
+import { ApiError, getUserMessage } from '../services/core/apiClient';
 import { PDFService } from '../services/integrations/pdfService';
 import { invoiceService } from '../services/business/invoiceService';
 import { lookupService } from '../services/business/lookupService';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
-import ProductSearchSelector from '../components/ProductSearchSelector';
+import ProductFormModal from '../components/ProductFormModal';
+import { unitLabel } from '../services/utils/invoiceMath';
 import { invoiceEmissionSchema } from '../schemas/business';
 import {
   Camera,
@@ -39,6 +40,8 @@ import {
   XCircle,
   RefreshCw,
   ArrowRight,
+  Search,
+  Pencil,
 } from 'lucide-react';
 
 const DNI_LENGTH = 8;
@@ -52,7 +55,7 @@ const iaErrorMessage = (error: unknown): string => {
     if (error.status === 400) return 'Selecciona una empresa antes de usar la IA.';
     if (error.status === 502)
       return 'La IA no pudo procesar el documento. Intenta de nuevo o ingresa los datos manualmente.';
-    return error.message;
+    return error.userMessage;
   }
   return 'Ocurrió un error al procesar con IA. Intenta de nuevo.';
 };
@@ -97,12 +100,15 @@ const Billing: React.FC<BillingProps> = ({
     invoice_date: new Date().toLocaleDateString('en-CA'),
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [savedItems, setSavedItems] = useState<Set<number>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingType, setProcessingType] = useState<'image' | 'audio' | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [productModal, setProductModal] = useState<{ open: boolean; index: number | null }>({
+    open: false,
+    index: null,
+  });
   const [errors, setErrors] = useState<string[]>([]);
   const [iaWarning, setIaWarning] = useState<string | null>(null);
   const [isEmitting, setIsEmitting] = useState(false);
@@ -121,23 +127,27 @@ const Billing: React.FC<BillingProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  const [isLookingUpDocument, setIsLookingUpDocument] = useState(false);
+  const [documentLookup, setDocumentLookup] = useState<'idle' | 'searching' | 'found' | 'notfound'>('idle');
 
   const handleDniMatch = useCallback(async (value: string) => {
-    setIsLookingUpDocument(true);
+    setDocumentLookup('searching');
     const result = await lookupService.lookupDni(value);
-    setIsLookingUpDocument(false);
     if (result?.nombre_completo) {
       setClientData((prev) => ({ ...prev, name: result.nombre_completo }));
+      setDocumentLookup('found');
+    } else {
+      setDocumentLookup('notfound');
     }
   }, []);
 
   const handleRucMatch = useCallback(async (value: string) => {
-    setIsLookingUpDocument(true);
+    setDocumentLookup('searching');
     const result = await lookupService.lookupRuc(value);
-    setIsLookingUpDocument(false);
     if (result?.razon_social) {
       setClientData((prev) => ({ ...prev, name: result.razon_social }));
+      setDocumentLookup('found');
+    } else {
+      setDocumentLookup('notfound');
     }
   }, []);
 
@@ -323,29 +333,26 @@ const Billing: React.FC<BillingProps> = ({
     event.target.value = '';
   };
 
-  const updateItem = (index: number, updates: Partial<InvoiceItem>) => {
+  const openNewProduct = () => setProductModal({ open: true, index: null });
+  const openEditProduct = (index: number) => setProductModal({ open: true, index });
+  const closeProductModal = () => setProductModal({ open: false, index: null });
+
+  const handleProductSubmit = (item: InvoiceItem, saveToCatalog: boolean) => {
     setItems((prev) => {
-      const nextItems = [...prev];
-      const currentItem = { ...nextItems[index], ...updates };
-      const quantity = currentItem.quantity || 1;
-
-      if ('total' in updates && updates.total !== undefined) {
-        const totalWithoutIgv = currentItem.has_igv ? currentItem.total / 1.18 : currentItem.total;
-        currentItem.unit_price = totalWithoutIgv / quantity;
-      } else if ('unit_price' in updates && updates.unit_price !== undefined) {
-        const base = quantity * currentItem.unit_price;
-        currentItem.total = currentItem.has_igv ? base * 1.18 : base;
-      } else if ('quantity' in updates && updates.quantity !== undefined) {
-        const base = quantity * currentItem.unit_price;
-        currentItem.total = currentItem.has_igv ? base * 1.18 : base;
-      } else if ('has_igv' in updates && updates.has_igv !== undefined) {
-        const totalWithoutIgv = currentItem.has_igv ? currentItem.total / 1.18 : currentItem.total;
-        currentItem.unit_price = totalWithoutIgv / quantity;
-      }
-
-      nextItems[index] = currentItem;
-      return nextItems;
+      if (productModal.index === null) return [...prev, item];
+      const next = [...prev];
+      next[productModal.index] = item;
+      return next;
     });
+    if (saveToCatalog && onSaveProduct) {
+      onSaveProduct({
+        description: item.description,
+        unit: item.unit,
+        base_price: item.unit_price,
+        has_igv: item.has_igv,
+      });
+    }
+    closeProductModal();
   };
 
   const stopPolling = () => {
@@ -415,6 +422,7 @@ const Billing: React.FC<BillingProps> = ({
       invoice_date: new Date().toLocaleDateString('en-CA'),
     });
     setItems([]);
+    setDocumentLookup('idle');
     setPreviewImage(null);
     setEmissionSuccess(null);
     setPdfBase64(null);
@@ -431,58 +439,7 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const removeItem = (index: number) => {
-    setSavedItems((prev) => {
-      const next = new Set<number>();
-      prev.forEach((savedIdx) => {
-        if (savedIdx === index) return;
-        next.add(savedIdx > index ? savedIdx - 1 : savedIdx);
-      });
-      return next;
-    });
     setItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const addItem = () => {
-    setSavedItems((prev) => {
-      const next = new Set<number>();
-      prev.forEach((i) => next.add(i + 1));
-      return next;
-    });
-    setItems((prev) => [
-      {
-        product_id: null,
-        description: '',
-        quantity: 1,
-        unit: UnitOfMeasure.KILOGRAMO,
-        unit_price: 0,
-        has_igv: true,
-        total: 0,
-      },
-      ...prev,
-    ]);
-  };
-
-  const toggleSaveItem = (index: number) => {
-    setSavedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
-
-  const saveMarkedProducts = async () => {
-    if (!onSaveProduct) return;
-    for (const index of savedItems) {
-      const item = items[index];
-      if (!item.description || !item.unit_price) continue;
-      await onSaveProduct({
-        description: item.description,
-        unit: item.unit,
-        base_price: item.unit_price,
-        has_igv: item.has_igv,
-      });
-    }
   };
 
   const getNextNumber = () => {
@@ -578,10 +535,9 @@ const Billing: React.FC<BillingProps> = ({
       };
 
       await onSaveDraft(invoiceData);
-      saveMarkedProducts();
       setClientData({ name: '', document: '', phone: '', invoice_date: new Date().toLocaleDateString('en-CA') });
       setItems([]);
-      setSavedItems(new Set());
+      setDocumentLookup('idle');
       setPreviewImage(null);
       setErrors([]);
     } finally {
@@ -627,8 +583,6 @@ const Billing: React.FC<BillingProps> = ({
 
       setEmissionStep(2);
       const createdInvoice = await onEmit(invoiceData);
-      saveMarkedProducts();
-      setSavedItems(new Set());
       setEmissionStep(3);
 
       const finalInvoice: Invoice = createdInvoice
@@ -638,8 +592,8 @@ const Billing: React.FC<BillingProps> = ({
       setEmissionSuccess(finalInvoice);
       setEmissionState('processing');
       if (finalInvoice.id) startPolling(finalInvoice.id);
-    } catch (error: any) {
-      setErrors([error.message || 'Error al emitir documento']);
+    } catch (error) {
+      setErrors([getUserMessage(error, 'No se pudo emitir el documento.')]);
       setEmissionStep(0);
     } finally {
       setIsEmitting(false);
@@ -1187,6 +1141,55 @@ const Billing: React.FC<BillingProps> = ({
         </div>
 
         <div className="space-y-4">
+          <div>
+            <div className="relative">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+              <input
+                value={clientData.document}
+                onChange={(event) => {
+                  const digits = onlyDigits(event.target.value);
+                  setClientData((prev) => ({ ...prev, document: digits }));
+                  if (digits.length !== DNI_LENGTH && digits.length !== RUC_LENGTH) {
+                    setDocumentLookup('idle');
+                  }
+                }}
+                inputMode="numeric"
+                maxLength={RUC_LENGTH}
+                className="w-full bg-slate-50 border-none rounded-2xl p-4 pl-11 pr-10 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 placeholder:text-slate-300"
+                placeholder="DNI o RUC"
+              />
+              {documentLookup === 'searching' && (
+                <Loader2
+                  size={16}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin"
+                />
+              )}
+              {documentLookup === 'found' && (
+                <CheckCircle2
+                  size={16}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500"
+                />
+              )}
+            </div>
+
+            <p
+              className={`text-[11px] font-bold mt-2 ml-1 ${
+                documentLookup === 'notfound'
+                  ? 'text-amber-500'
+                  : documentLookup === 'found'
+                    ? 'text-emerald-500'
+                    : documentLookup === 'searching'
+                      ? 'text-blue-500'
+                      : 'text-slate-400'
+              }`}
+            >
+              {documentLookup === 'searching' && 'Buscando datos…'}
+              {documentLookup === 'found' && 'Cliente encontrado ✓'}
+              {documentLookup === 'notfound' && 'No lo encontramos. Escribe el nombre abajo.'}
+              {documentLookup === 'idle' && 'Escríbelo y traemos el nombre automáticamente'}
+            </p>
+          </div>
+
           <input
             value={clientData.name}
             onChange={(event) =>
@@ -1196,26 +1199,10 @@ const Billing: React.FC<BillingProps> = ({
             placeholder="Nombre / Razón Social"
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
-              <input
-                value={clientData.document}
-                onChange={(event) =>
-                  setClientData((prev) => ({ ...prev, document: onlyDigits(event.target.value) }))
-                }
-                inputMode="numeric"
-                maxLength={RUC_LENGTH}
-                className="w-full bg-slate-50 border-none rounded-2xl p-4 pr-10 text-sm font-black text-slate-800 placeholder:text-slate-300"
-                placeholder="DNI / RUC"
-              />
-              {isLookingUpDocument && (
-                <Loader2
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin"
-                />
-              )}
-            </div>
-
+          <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+              Fecha de emisión
+            </label>
             <input
               type="date"
               value={clientData.invoice_date}
@@ -1224,7 +1211,7 @@ const Billing: React.FC<BillingProps> = ({
               onChange={(event) =>
                 setClientData((prev) => ({ ...prev, invoice_date: event.target.value }))
               }
-              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800"
+              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -1233,7 +1220,8 @@ const Billing: React.FC<BillingProps> = ({
             onChange={(event) =>
               setClientData((prev) => ({ ...prev, phone: event.target.value }))
             }
-            className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 placeholder:text-slate-300"
+            inputMode="tel"
+            className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 placeholder:text-slate-300"
             placeholder="Celular para envío WhatsApp"
           />
         </div>
@@ -1249,166 +1237,79 @@ const Billing: React.FC<BillingProps> = ({
           </div>
 
           <button
-            onClick={addItem}
+            onClick={openNewProduct}
             className="bg-blue-600 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1 active:scale-95 transition-all"
           >
             <Plus size={14} /> Producto
           </button>
         </div>
 
-        <div className="space-y-3">
-          {items.map((item, index) => (
-            <div
-              key={`item-${index}-${item.product_id ?? 'new'}`}
-              className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-4 animate-in slide-in-from-left duration-300"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1">
-                  <ProductSearchSelector
-                    products={products.filter(
-                      (product) => String(product.sender_id) === String(sender?.id)
-                    )}
-                    value={item.description}
-                    onChange={(value) => updateItem(index, { description: value.toUpperCase() })}
-                    onSelectProduct={(selectedProduct) => {
-                      updateItem(index, {
-                        product_id: selectedProduct.id,
-                        description: selectedProduct.description,
-                        unit: selectedProduct.unit,
-                        unit_price: selectedProduct.base_price,
-                        has_igv: selectedProduct.has_igv,
-                        total:
-                          selectedProduct.base_price *
-                          (item.quantity || 1) *
-                          (selectedProduct.has_igv ? 1.18 : 1),
-                      });
-                    }}
-                    placeholder="NOMBRE DEL PRODUCTO"
-                    showDropdownButton
-                  />
-                </div>
-
-                <button
-                  onClick={() => removeItem(index)}
-                  className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block px-1">
-                    Cant.
-                  </label>
-                  <input
-                    type="number"
-                    value={item.quantity || ''}
-                    onChange={(event) =>
-                      updateItem(index, { quantity: parseFloat(event.target.value) || 0 })
-                    }
-                    placeholder="1"
-                    className="w-full bg-slate-50 rounded-xl px-2 py-3 text-sm font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block px-1">
-                    Unidad
-                  </label>
-                  <select
-                    value={item.unit}
-                    onChange={(event) =>
-                      updateItem(index, { unit: event.target.value as UnitOfMeasure })
-                    }
-                    className="w-full bg-slate-50 rounded-xl px-2 py-3 text-[11px] font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
-                  >
-                    {Object.values(UnitOfMeasure).map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit === 'KILOGRAMO' ? 'KILOG.' : unit}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block px-1">
-                    P.Unit
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    value={item.unit_price || ''}
-                    onChange={(event) =>
-                      updateItem(index, { unit_price: parseFloat(event.target.value) || 0 })
-                    }
-                    onBlur={(event) => {
-                      const val = parseFloat(event.target.value) || 0;
-                      updateItem(index, { unit_price: parseFloat(val.toFixed(4)) });
-                    }}
-                    placeholder="0.000"
-                    className="w-full bg-slate-50 rounded-xl px-2 py-3 text-sm font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[9px] font-black text-blue-600 uppercase mb-1 block px-1">
-                    Total
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    value={item.total || ''}
-                    onChange={(event) =>
-                      updateItem(index, { total: parseFloat(event.target.value) || 0 })
-                    }
-                    onBlur={(event) => {
-                      const val = parseFloat(event.target.value) || 0;
-                      updateItem(index, { total: parseFloat(val.toFixed(3)) });
-                    }}
-                    placeholder="0.000"
-                    className="w-full bg-blue-50 border-2 border-blue-200 rounded-xl px-2 py-2.5 text-sm font-black text-blue-600 text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 items-center">
-                <button
-                  onClick={() => updateItem(index, { has_igv: true })}
-                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${
-                    item.has_igv ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'
-                  }`}
-                >
-                  IGV 18%
-                </button>
-
-                <button
-                  onClick={() => updateItem(index, { has_igv: false })}
-                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${
-                    !item.has_igv ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-400'
-                  }`}
-                >
-                  Exonerado
-                </button>
-
-                {onSaveProduct && (
-                  <label className={`flex items-center gap-1.5 shrink-0 cursor-pointer select-none ${
-                    !item.description || !item.unit_price ? 'opacity-40 pointer-events-none' : ''
-                  }`}>
-                    <input
-                      type="checkbox"
-                      checked={savedItems.has(index)}
-                      disabled={!item.description || !item.unit_price}
-                      onChange={() => toggleSaveItem(index)}
-                      className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
-                    />
-                    <span className="text-[10px] font-black uppercase text-slate-500">Guardar</span>
-                  </label>
-                )}
-              </div>
+        {items.length === 0 ? (
+          <button
+            onClick={openNewProduct}
+            className="w-full bg-white rounded-[28px] border-2 border-dashed border-slate-200 p-8 flex flex-col items-center gap-3 text-center active:scale-[0.99] transition-all"
+          >
+            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center">
+              <ShoppingCart size={28} className="text-slate-300" />
             </div>
-          ))}
-        </div>
+            <div>
+              <p className="text-sm font-black text-slate-500 uppercase tracking-wide">
+                Aún no agregaste productos
+              </p>
+              <p className="text-xs font-bold text-slate-400 mt-1">Toca aquí para agregar el primero</p>
+            </div>
+          </button>
+        ) : (
+          <div className="space-y-3">
+            {items.map((item, index) => (
+              <div
+                key={`item-${index}-${item.product_id ?? 'new'}`}
+                className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-4 flex items-center gap-3 animate-in slide-in-from-left duration-300"
+              >
+                <div className="shrink-0 w-14 text-center">
+                  <p className="text-lg font-black text-slate-800 leading-none">{item.quantity}</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase mt-1">
+                    {unitLabel(item.unit)}
+                  </p>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-slate-800 text-sm uppercase truncate">
+                    {item.description || 'Sin nombre'}
+                  </p>
+                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                    S/ {item.unit_price.toFixed(2)} c/u · {item.has_igv ? 'IGV 18%' : 'Exonerado'}
+                  </p>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-black text-blue-600">S/ {item.total.toFixed(2)}</p>
+                  <div className="flex items-center gap-1 mt-1 justify-end">
+                    <button
+                      onClick={() => openEditProduct(index)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => removeItem(index)}
+                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button
+              onClick={openNewProduct}
+              className="w-full border-2 border-dashed border-blue-200 text-blue-600 rounded-[24px] py-4 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest active:scale-[0.99] transition-all"
+            >
+              <Plus size={16} /> Agregar otro producto
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="bg-gradient-to-br from-slate-50 to-white p-6 rounded-[40px] shadow-xl shadow-slate-200/30 border border-slate-100 mx-1 relative overflow-hidden">
@@ -1511,6 +1412,18 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {productModal.open && (
+        <ProductFormModal
+          initialItem={productModal.index !== null ? items[productModal.index] : null}
+          products={products.filter(
+            (product) => String(product.sender_id) === String(sender?.id)
+          )}
+          canSaveToCatalog={!!onSaveProduct}
+          onSubmit={handleProductSubmit}
+          onClose={closeProductModal}
+        />
       )}
     </div>
   );

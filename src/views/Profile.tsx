@@ -5,16 +5,16 @@ import {
   Building,
   LogOut,
   Edit3,
-  Eye,
-  EyeOff,
   CheckCircle2,
   Lock,
   ShieldCheck,
   Crown,
   ChevronRight,
   ArrowLeftRight,
+  Pencil,
 } from 'lucide-react';
 import { AuthUser, Sender, SenderUpsertInput, UserPlan } from '../types';
+import SunatCredentialsModal from '../components/SunatCredentialsModal';
 
 interface ProfileProps {
   user: AuthUser | null;
@@ -53,7 +53,7 @@ const Profile: React.FC<ProfileProps> = ({
   onLogout,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCredsModal, setShowCredsModal] = useState(false);
   const [form, setForm] = useState<SenderFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -90,6 +90,16 @@ const Profile: React.FC<ProfileProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveCredentials = async (sunatUser: string, sunatPass: string) => {
+    if (!sender) return;
+    await onSaveSender({
+      name: sender.name,
+      ruc: sender.ruc,
+      sunat_user: sunatUser,
+      sunat_pass: sunatPass,
+    });
   };
 
   const getUserInitials = () => {
@@ -169,12 +179,6 @@ const Profile: React.FC<ProfileProps> = ({
               </h4>
             </div>
 
-            {sender && !isEditing && !isContador && (
-              <button onClick={() => setIsEditing(true)} className="text-blue-600 p-2">
-                <Edit3 size={18} />
-              </button>
-            )}
-
             {sender && !isEditing && isContador && (
               <button onClick={() => setIsEditing(true)} className="text-teal-600 p-2">
                 <Edit3 size={18} />
@@ -231,37 +235,23 @@ const Profile: React.FC<ProfileProps> = ({
                 )}
               </div>
 
-              <div className="pt-2 border-t border-slate-100">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
+              <div className="pt-3 border-t border-slate-200">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
                   Credenciales SUNAT (SOL)
                 </p>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={form.sunat_user}
-                    onChange={(e) => setForm((p) => ({ ...p, sunat_user: e.target.value.toUpperCase() }))}
-                    placeholder="Actualizar usuario SOL (opcional)"
-                    autoComplete="off"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={form.sunat_pass}
-                      onChange={(e) => setForm((p) => ({ ...p, sunat_pass: e.target.value }))}
-                      placeholder="Actualizar clave SOL (opcional)"
-                      autoComplete="new-password"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((p) => !p)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCredsModal(true)}
+                  className="w-full flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-left active:scale-[0.98] transition-transform hover:border-slate-300"
+                >
+                  <span className="text-[11px] font-bold text-slate-600">
+                    {sender.has_sunat_credentials ? 'Configuradas y cifradas' : 'Sin configurar'}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[9px] font-black text-teal-600 uppercase tracking-widest shrink-0">
+                    <Pencil size={12} strokeWidth={3} />
+                    {sender.has_sunat_credentials ? 'Editar' : 'Configurar'}
+                  </span>
+                </button>
               </div>
 
               {saveError && (
@@ -367,73 +357,22 @@ const Profile: React.FC<ProfileProps> = ({
                 Estos datos los gestiona tu administrador.
               </p>
 
-              {isEditing ? (
-                <div className="pt-3 border-t border-slate-100 space-y-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                    Credenciales SUNAT (SOL)
-                  </p>
-                  <input
-                    type="text"
-                    value={form.sunat_user}
-                    onChange={(e) => setForm((p) => ({ ...p, sunat_user: e.target.value.toUpperCase() }))}
-                    placeholder="Usuario SOL"
-                    autoComplete="off"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={form.sunat_pass}
-                      onChange={(e) => setForm((p) => ({ ...p, sunat_pass: e.target.value }))}
-                      placeholder="Clave SOL"
-                      autoComplete="new-password"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((p) => !p)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-
-                  {saveError && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                      <span className="text-red-500 text-[11px] font-black uppercase">{saveError}</span>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 pt-1">
-                    <button
-                      onClick={() => {
-                        setIsEditing(false);
-                        setSaveError(null);
-                        setForm({ name: sender.name, ruc: sender.ruc, sunat_user: '', sunat_pass: '' });
-                      }}
-                      disabled={saving}
-                      className="flex-1 bg-slate-100 text-slate-600 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={!form.sunat_user || !form.sunat_pass || saving}
-                      className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle2 size={16} />
-                      {saving ? 'Guardando...' : 'Guardar'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className={`rounded-xl p-4 flex items-center gap-3 ${sender.has_sunat_credentials ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+              <div className="pt-1">
+                <div className={`rounded-xl p-4 flex items-center gap-3 mb-2 ${sender.has_sunat_credentials ? 'bg-emerald-50' : 'bg-amber-50'}`}>
                   <CheckCircle2 className={sender.has_sunat_credentials ? 'text-emerald-500' : 'text-amber-500'} size={18} />
                   <p className={`text-[10px] font-bold uppercase ${sender.has_sunat_credentials ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {sender.has_sunat_credentials ? 'Credenciales SUNAT configuradas' : 'Credenciales SUNAT pendientes'}
                   </p>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setShowCredsModal(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[9px] font-black text-blue-600 uppercase tracking-widest active:scale-[0.98] transition-transform hover:border-slate-300"
+                >
+                  <Pencil size={12} strokeWidth={3} />
+                  {sender.has_sunat_credentials ? 'Editar credenciales SUNAT' : 'Configurar credenciales SUNAT'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -453,6 +392,15 @@ const Profile: React.FC<ProfileProps> = ({
       <p className="text-[9px] text-slate-300 text-center uppercase tracking-widest pt-4">
         FactuMovil AI v2.0
       </p>
+
+      {showCredsModal && sender && (
+        <SunatCredentialsModal
+          hasCredentials={sender.has_sunat_credentials === true}
+          empresaName={sender.name}
+          onSaveCredentials={handleSaveCredentials}
+          onClose={() => setShowCredsModal(false)}
+        />
+      )}
     </div>
   );
 };

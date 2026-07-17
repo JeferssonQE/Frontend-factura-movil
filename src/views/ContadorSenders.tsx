@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, CheckCircle2, RefreshCw, ChevronRight, Save, Eye, EyeOff, ShieldCheck, Play } from 'lucide-react';
+import { Building2, CheckCircle2, RefreshCw, ChevronRight, Save, ShieldCheck, Play, AlertTriangle, Pencil } from 'lucide-react';
 import { Sender, AuthUser, AdminUserRow } from '../types';
 import { SenderFormData } from '../services/business/contadorService';
+import SunatCredentialsModal from '../components/SunatCredentialsModal';
 
 interface ContadorSendersProps {
   user: AuthUser;
@@ -44,17 +45,13 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
 
   const [name, setName] = useState('');
   const [ruc, setRuc] = useState('');
-  const [sunatUser, setSunatUser] = useState('');
-  const [sunatPass, setSunatPass] = useState('');
-  const [showPass, setShowPass] = useState(false);
+  const [showCredsModal, setShowCredsModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setName(sender?.name ?? '');
     setRuc(sender?.ruc ?? '');
-    setSunatUser('');
-    setSunatPass('');
-    setShowPass(false);
+    setShowCredsModal(false);
     setErrors({});
   }, [sender, selectedEmpresaId]);
 
@@ -66,9 +63,6 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
     } else if (!/^\d{11}$/.test(ruc.trim())) {
       next.ruc = 'El RUC debe tener exactamente 11 dígitos numéricos';
     }
-    if ((sunatUser && !sunatPass) || (!sunatUser && sunatPass)) {
-      next.credentials = 'Debes ingresar usuario y clave SUNAT juntos';
-    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -76,8 +70,11 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    const data: SenderFormData = { name: name.trim(), ruc: ruc.trim(), sunat_user: sunatUser, sunat_pass: sunatPass };
-    await onSaveSender(data);
+    await onSaveSender({ name: name.trim(), ruc: ruc.trim(), sunat_user: '', sunat_pass: '' });
+  };
+
+  const handleSaveCredentials = async (sunatUser: string, sunatPass: string) => {
+    await onSaveSender({ name: name.trim(), ruc: ruc.trim(), sunat_user: sunatUser, sunat_pass: sunatPass });
   };
 
   if (loading) {
@@ -124,6 +121,8 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
   }
 
   const selectedEmpresa = empresas.find((e) => e.id === selectedEmpresaId) ?? null;
+  const hasCredentials = sender?.has_sunat_credentials === true;
+  const canOperate = hasCredentials;
 
   return (
     <div className="space-y-5 pb-8">
@@ -215,11 +214,18 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="bg-white rounded-[22px] border border-slate-100 shadow-sm p-5 space-y-4">
-              {sender?.has_sunat_credentials && (
+              {hasCredentials ? (
                 <div className="flex items-center gap-2 bg-emerald-50 rounded-2xl px-3 py-2.5">
                   <ShieldCheck size={13} className="text-emerald-500 shrink-0" strokeWidth={3} />
                   <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">
                     Credenciales SUNAT configuradas
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-amber-50 rounded-2xl px-3 py-2.5">
+                  <AlertTriangle size={13} className="text-amber-500 shrink-0" strokeWidth={3} />
+                  <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">
+                    Faltan credenciales SUNAT
                   </span>
                 </div>
               )}
@@ -255,49 +261,47 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
                 </div>
 
                 <div className="pt-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
                     Credenciales SUNAT
                   </p>
-                  <div className="space-y-2.5">
-                    <input
-                      type="text"
-                      value={sunatUser}
-                      onChange={(e) => { setSunatUser(e.target.value); setErrors((p) => ({ ...p, credentials: '' })); }}
-                      placeholder="Usuario SUNAT"
-                      autoComplete="off"
-                      className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.credentials ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
-                    />
-                    <div className="relative">
-                      <input
-                        type={showPass ? 'text' : 'password'}
-                        value={sunatPass}
-                        onChange={(e) => { setSunatPass(e.target.value); setErrors((p) => ({ ...p, credentials: '' })); }}
-                        placeholder="Clave SOL"
-                        autoComplete="new-password"
-                        className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 pr-12 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.credentials ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPass((v) => !v)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                      >
-                        {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-                    {errors.credentials && <p className="text-[9px] text-red-500 font-semibold px-1">{errors.credentials}</p>}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCredsModal(true)}
+                    className="w-full flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-left active:scale-[0.98] transition-transform hover:border-slate-300"
+                  >
+                    <span className="text-[11px] font-bold text-slate-600">
+                      {hasCredentials ? 'Configuradas y cifradas' : 'Sin configurar'}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest shrink-0">
+                      <Pencil size={12} strokeWidth={3} />
+                      {hasCredentials ? 'Editar' : 'Configurar'}
+                    </span>
+                  </button>
                 </div>
               </div>
 
               {sender && (
-                <button
-                  type="button"
-                  onClick={() => onOperar(sender)}
-                  className="w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                >
-                  <Play size={13} strokeWidth={3} />
-                  Operar como esta empresa
-                </button>
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onOperar(sender)}
+                    disabled={!canOperate}
+                    className={[
+                      'w-full py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-transform',
+                      canOperate
+                        ? 'bg-emerald-600 text-white active:scale-95'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed',
+                    ].join(' ')}
+                  >
+                    <Play size={13} strokeWidth={3} />
+                    Operar como esta empresa
+                  </button>
+                  {!canOperate && (
+                    <p className="text-[9px] text-amber-600 font-semibold text-center px-2">
+                      Configura y guarda las credenciales SUNAT para poder operar.
+                    </p>
+                  )}
+                </div>
               )}
 
               {!sender && (
@@ -321,6 +325,15 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
             </form>
           )}
         </div>
+      )}
+
+      {showCredsModal && sender && (
+        <SunatCredentialsModal
+          hasCredentials={hasCredentials}
+          empresaName={sender.name}
+          onSaveCredentials={handleSaveCredentials}
+          onClose={() => setShowCredsModal(false)}
+        />
       )}
     </div>
   );

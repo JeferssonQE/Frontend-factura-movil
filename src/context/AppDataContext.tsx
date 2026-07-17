@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { authService } from '../services/core/authService';
+import { getUserMessage } from '../services/core/apiClient';
 import { senderService } from '../services/business/senderService';
 import { productsService } from '../services/business/productsService';
 import { clientsService } from '../services/business/clientsService';
@@ -279,8 +280,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
         await refreshProducts();
         showToast('PRODUCTO GUARDADO');
-      } catch (error: any) {
-        showToast(error.message || 'ERROR', 'error');
+      } catch (error) {
+        showToast(getUserMessage(error, 'No se pudo guardar el producto.'), 'error');
       }
     },
     [products, refreshProducts, showToast, isContador]
@@ -362,8 +363,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
         await refreshAllData();
         showToast('CLIENTE GUARDADO');
-      } catch (error: any) {
-        showToast(error.message || 'ERROR', 'error');
+      } catch (error) {
+        showToast(getUserMessage(error, 'No se pudo guardar el cliente.'), 'error');
       }
     },
     [clients, refreshAllData, showToast, isContador]
@@ -409,7 +410,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         return createdInvoice;
       } catch (error: any) {
         console.error('Error guardando invoice:', error);
-        showToast(error.message || 'ERROR AL GUARDAR', 'error');
+        showToast(getUserMessage(error, 'No se pudo emitir el documento.'), 'error');
         return null;
       }
     },
@@ -445,7 +446,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         return createdInvoice;
       } catch (error: any) {
         console.error('Error guardando borrador:', error);
-        showToast(error.message || 'ERROR AL GUARDAR', 'error');
+        showToast(getUserMessage(error, 'No se pudo guardar el borrador.'), 'error');
         return null;
       }
     },
@@ -461,7 +462,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast('DOCUMENTO ENVIADO A SUNAT');
       } catch (error: any) {
         console.error('Error emitiendo borrador:', error);
-        showToast(error.message || 'ERROR AL EMITIR', 'error');
+        showToast(getUserMessage(error, 'No se pudo emitir el documento.'), 'error');
       }
     },
     [refreshAllData, showToast, isContador]
@@ -476,7 +477,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast('DOCUMENTO ELIMINADO');
       } catch (error: any) {
         console.error('Error eliminando invoice:', error);
-        showToast(error.message || 'ERROR AL ELIMINAR', 'error');
+        showToast(getUserMessage(error, 'No se pudo eliminar el documento.'), 'error');
       }
     },
     [refreshAllData, showToast, isContador]
@@ -508,7 +509,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast('NOTA DE CRÉDITO CREADA');
       } catch (error: any) {
         console.error('Error emitiendo Nota de Crédito:', error);
-        showToast(`Error: ${error.message}`, 'error');
+        showToast(getUserMessage(error, 'No se pudo crear la nota de crédito.'), 'error');
       }
     },
     [refreshAllData, showToast, isContador]
