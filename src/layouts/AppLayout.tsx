@@ -1,6 +1,7 @@
 // layouts/AppLayout.tsx
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import Toast from '../components/Toast';
 import { useAppData } from '../context/AppDataContext';
 
 const titles: Record<string, string> = {
@@ -48,7 +49,7 @@ const routeMap: Record<string, string> = {
 export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin, isContador, activeSender } = useAppData();
+  const { user, isAdmin, isContador, activeSender, toast, setToast } = useAppData();
 
   const pathname = location.pathname;
   const title = titles[pathname] || 'FactuMovil';
@@ -66,22 +67,28 @@ export default function AppLayout() {
   })();
 
   return (
-    <Layout
-      activeTab={activeTabMap[pathname] || 'dashboard'}
-      onTabChange={(tab) => {
-        const nextRoute = routeMap[tab];
-        if (nextRoute) navigate(nextRoute);
-      }}
-      onGoBack={() => navigate(-1)}
-      showBack={pathname !== '/dashboard' && pathname !== '/billing' && pathname !== '/profile'}
-      title={title}
-      isAdmin={isAdmin}
-      isContador={isContador}
-      activeSender={activeSender}
-      userInitials={userInitials}
-      hideBottomNav={pathname === '/agent'}
-    >
-      <Outlet />
-    </Layout>
+    <>
+      <Layout
+        activeTab={activeTabMap[pathname] || 'dashboard'}
+        onTabChange={(tab) => {
+          const nextRoute = routeMap[tab];
+          if (nextRoute) navigate(nextRoute);
+        }}
+        onGoBack={() => navigate(-1)}
+        showBack={pathname !== '/dashboard' && pathname !== '/billing' && pathname !== '/profile'}
+        title={title}
+        isAdmin={isAdmin}
+        isContador={isContador}
+        activeSender={activeSender}
+        userInitials={userInitials}
+        hideBottomNav={pathname === '/agent'}
+      >
+        <Outlet />
+      </Layout>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+    </>
   );
 }

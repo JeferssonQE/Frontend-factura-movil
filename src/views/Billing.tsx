@@ -43,6 +43,7 @@ import {
   ArrowRight,
   Search,
   Pencil,
+  KeyRound,
 } from 'lucide-react';
 
 const DNI_LENGTH = 8;
@@ -395,7 +396,14 @@ const Billing: React.FC<BillingProps> = ({
         } else {
           setEmissionCurrentStep(statusData.current_step);
         }
-      } catch { /* mantener polling */ }
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          stopPolling();
+          setSunatMessage('No encontramos el comprobante. Vuelve a intentarlo desde el historial.');
+          setEmissionState('fallo');
+        }
+        /* otros errores transitorios: mantener polling */
+      }
     }, POLL_INTERVAL_MS);
   };
 
@@ -580,15 +588,18 @@ const Billing: React.FC<BillingProps> = ({
 
       setEmissionStep(2);
       const createdInvoice = await onEmit(invoiceData);
-      setEmissionStep(3);
 
-      const finalInvoice: Invoice = createdInvoice
-        ? { ...createdInvoice, status: InvoiceStatus.PROCESANDO }
-        : { ...invoiceData, status: InvoiceStatus.PROCESANDO };
+      if (!createdInvoice) {
+        setEmissionStep(0);
+        return;
+      }
+
+      setEmissionStep(3);
+      const finalInvoice: Invoice = { ...createdInvoice, status: InvoiceStatus.PROCESANDO };
 
       setEmissionSuccess(finalInvoice);
       setEmissionState('processing');
-      if (finalInvoice.id) startPolling(finalInvoice.id);
+      startPolling(finalInvoice.id);
     } catch (error) {
       setErrors([getUserMessage(error, 'No se pudo emitir el documento.')]);
       setEmissionStep(0);
@@ -1380,12 +1391,29 @@ const Billing: React.FC<BillingProps> = ({
               Guardar como Borrador
             </button>
 
-            <button
-              onClick={handleOpenConfirm}
-              className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
-            >
-              <CheckCircle2 size={22} /> Emitir Documento
-            </button>
+            {sender?.sunat_credentials_invalid ? (
+              <>
+                <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+                  <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] font-bold text-red-600 leading-snug">
+                    Tus credenciales SUNAT son incorrectas. Actualízalas para poder emitir.
+                  </p>
+                </div>
+                <button
+                  onClick={onSelectSender}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white h-16 rounded-[24px] shadow-xl shadow-red-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
+                >
+                  <KeyRound size={22} /> Corregir credenciales
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleOpenConfirm}
+                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
+              >
+                <CheckCircle2 size={22} /> Emitir Documento
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -1401,11 +1429,25 @@ const Billing: React.FC<BillingProps> = ({
               ¿Confirmar Venta?
             </h3>
 
-            <p className="text-slate-500 text-xs font-medium mb-8 leading-relaxed">
+            <p className="text-slate-500 text-xs font-medium mb-6 leading-relaxed">
               Está por emitir una <span className="text-blue-600 font-black">{invoiceType}</span>{' '}
-              oficial por un monto total de{' '}
-              <span className="font-black text-slate-900">S/ {total.toFixed(2)}</span>.
+              oficial ante SUNAT. Revisa los datos antes de confirmar.
             </p>
+
+            <div className="bg-slate-50 rounded-[24px] p-5 mb-8 space-y-2 text-left">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">Cliente</span>
+                <span className="text-xs font-black text-slate-700 truncate">{clientData.name || '—'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Productos</span>
+                <span className="text-xs font-black text-slate-700">{items.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Total</span>
+                <span className="text-sm font-black text-blue-600">S/ {total.toFixed(2)}</span>
+              </div>
+            </div>
 
             <div className="flex flex-col gap-3">
               <button

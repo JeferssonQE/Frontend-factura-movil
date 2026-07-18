@@ -71,6 +71,7 @@ export interface Sender {
   name: string;
   ruc: string;
   has_sunat_credentials: boolean;
+  sunat_credentials_invalid?: boolean;
   created_at?: string;
   updated_at?: string;
 }

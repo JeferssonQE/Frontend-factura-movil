@@ -1,5 +1,6 @@
 // src/pages/HistoryPage.tsx
 import React, { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import History from '../views/History';
 import { useAppData } from '../context/AppDataContext';
 import { invoiceService } from '../services/business/invoiceService';
@@ -8,7 +9,8 @@ import { InvoiceStatus } from '../types';
 const POLL_INTERVAL_MS = 10_000; // 10 segundos
 
 const HistoryPage: React.FC = () => {
-  const { invoices, emitCreditNote, emitDraft, deleteInvoice, refreshAllData, activeSenderId } = useAppData();
+  const navigate = useNavigate();
+  const { invoices, emitCreditNote, emitDraft, deleteInvoice, refreshAllData, activeSenderId, activeSender } = useAppData();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const procesandoIds = invoices
@@ -48,7 +50,7 @@ const HistoryPage: React.FC = () => {
     };
   }, [procesandoIds.join(','), refreshAllData, activeSenderId]); // eslint-disable-line
 
-  return <History invoices={invoices} activeSenderId={activeSenderId} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} onDeleteInvoice={deleteInvoice} onRefresh={refreshAllData} />;
+  return <History invoices={invoices} activeSenderId={activeSenderId} credentialsInvalid={activeSender?.sunat_credentials_invalid} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} onDeleteInvoice={deleteInvoice} onFixCredentials={() => navigate('/profile')} onRefresh={refreshAllData} />;
 };
 
 export default HistoryPage;
