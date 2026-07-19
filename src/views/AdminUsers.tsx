@@ -20,10 +20,13 @@ import {
   Plus,
   Unlink,
   Pencil,
+  Loader2,
 } from 'lucide-react';
 import { AdminUserRow, Sender, UserRole, UserPlan } from '../types';
 import { adminService } from '../services/business/adminService';
 import { contadorService, ContadorAssignment } from '../services/business/contadorService';
+import { lookupService } from '../services/business/lookupService';
+import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 
 // ─── props ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +79,9 @@ const randomTempPassword = (): string => {
 };
 
 const isValidEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const RUC_LENGTH = 11;
+const RAZON_SOCIAL_MAX_LENGTH = 100;
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
@@ -152,6 +158,7 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   const [createForm,  setCreateForm]  = useState({ razon_social: '', ruc: '', name: '', email: '', password: '' });
   const [createError, setCreateError] = useState<string | null>(null);
   const [createBusy,  setCreateBusy]  = useState(false);
+  const [rucLookupBusy, setRucLookupBusy] = useState(false);
 
   const [showCreateContador, setShowCreateContador] = useState(false);
   const [contadorForm,  setContadorForm]  = useState({ name: '', email: '', password: '' });
@@ -275,6 +282,20 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
   const generateTempPassword = () => {
     setCreateForm((prev) => ({ ...prev, password: randomTempPassword() }));
   };
+
+  const handleCreateRucLookup = async (ruc: string) => {
+    setRucLookupBusy(true);
+    const result = await lookupService.lookupRuc(ruc);
+    setRucLookupBusy(false);
+    if (result?.razon_social) {
+      setCreateForm((prev) => ({
+        ...prev,
+        razon_social: result.razon_social.toUpperCase().slice(0, RAZON_SOCIAL_MAX_LENGTH),
+      }));
+    }
+  };
+
+  useDebouncedLookup(createForm.ruc, RUC_LENGTH, handleCreateRucLookup);
 
   const handleCreateUser = async () => {
     setCreateError(null);
@@ -1134,25 +1155,35 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
               Datos de la empresa
             </p>
 
+            <FormField label="RUC (11 dígitos)">
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={createForm.ruc}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, ruc: e.target.value.replace(/\D/g, '').slice(0, RUC_LENGTH) }))}
+                  className={`${inputClass} pr-11`}
+                  placeholder="20123456789"
+                  maxLength={RUC_LENGTH}
+                  autoFocus
+                />
+                {rucLookupBusy && (
+                  <Loader2
+                    size={16}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-500 animate-spin"
+                  />
+                )}
+              </div>
+            </FormField>
+
             <FormField label="Razón Social">
               <input
                 type="text"
                 value={createForm.razon_social}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, razon_social: e.target.value.toUpperCase() }))}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, razon_social: e.target.value.toUpperCase().slice(0, RAZON_SOCIAL_MAX_LENGTH) }))}
                 className={inputClass}
-                placeholder="MI EMPRESA SAC"
-              />
-            </FormField>
-
-            <FormField label="RUC (11 dígitos)">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={createForm.ruc}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, ruc: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
-                className={inputClass}
-                placeholder="20123456789"
-                maxLength={11}
+                placeholder="Se completa con el RUC"
+                maxLength={RAZON_SOCIAL_MAX_LENGTH}
               />
             </FormField>
 
