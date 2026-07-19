@@ -25,6 +25,7 @@ import { emissionProgress } from '../config/emissionProgress';
 import { getSunatError } from '../config/sunatErrors';
 import {
   Camera,
+  Images,
   Plus,
   Trash2,
   X,
@@ -121,6 +122,7 @@ const Billing: React.FC<BillingProps> = ({
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [iaWarning, setIaWarning] = useState<string | null>(null);
+  const [iaSuccess, setIaSuccess] = useState<string | null>(null);
   const [isEmitting, setIsEmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [emissionStep, setEmissionStep] = useState(0);
@@ -132,12 +134,15 @@ const Billing: React.FC<BillingProps> = ({
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   React.useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const productsSectionRef = useRef<HTMLElement | null>(null);
 
   const [documentLookup, setDocumentLookup] = useState<'idle' | 'searching' | 'found' | 'notfound'>('idle');
 
@@ -170,9 +175,11 @@ const Billing: React.FC<BillingProps> = ({
     .filter((item) => item.has_igv)
     .reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
 
-  const exonerada = items
-    .filter((item) => !item.has_igv)
-    .reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  const exoneratedItems = items.filter((item) => !item.has_igv);
+  const exonerada = exoneratedItems.reduce(
+    (sum, item) => sum + item.unit_price * item.quantity,
+    0
+  );
 
   const igvTotal = gravada * 0.18;
   const total = gravada + exonerada + igvTotal;
@@ -203,8 +210,15 @@ const Billing: React.FC<BillingProps> = ({
     return UnitOfMeasure.UNIDAD;
   };
 
+  const scrollToProducts = () => {
+    requestAnimationFrame(() =>
+      productsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    );
+  };
+
   const fillFormWithResult = (result: IAExtractionResult) => {
     setIaWarning(null);
+    setIaSuccess(null);
 
     if (result.tipo_documento) {
       setInvoiceType(
@@ -247,18 +261,16 @@ const Billing: React.FC<BillingProps> = ({
     setItems(
       result.productos.map((product) => {
         const quantity = product.cantidad || 1;
-        const extractedHasIgv = product.igv !== 0;
         const matchedProduct = products.find(
           (candidate) => String(candidate.id) === String(product.productId)
         );
 
+        const hasIgv = matchedProduct ? matchedProduct.has_igv : false;
         const description = matchedProduct?.description || product.descripcion || '';
         const unitPrice =
           matchedProduct?.base_price ||
           product.precio_base ||
-          product.precio_total / (extractedHasIgv ? 1.18 : 1) / quantity;
-
-        const hasIgv = matchedProduct?.has_igv ?? extractedHasIgv;
+          product.precio_total / (hasIgv ? 1.18 : 1) / quantity;
 
         return {
           product_id: matchedProduct?.id ?? null,
@@ -271,6 +283,12 @@ const Billing: React.FC<BillingProps> = ({
         };
       })
     );
+
+    const count = result.productos.length;
+    setIaSuccess(
+      `Listo — ${count} ${count === 1 ? 'producto detectado' : 'productos detectados'}. Revisa los datos antes de emitir.`
+    );
+    scrollToProducts();
   };
 
   const startRecording = async () => {
@@ -314,6 +332,7 @@ const Billing: React.FC<BillingProps> = ({
       recorder.start();
       setIsRecording(true);
       setIaWarning(null);
+      setIaSuccess(null);
     } catch {
       alert('No se pudo acceder al micrófono.');
     }
@@ -334,6 +353,8 @@ const Billing: React.FC<BillingProps> = ({
     reader.onload = async () => {
       const base64 = reader.result as string;
       setPreviewImage(base64);
+      setIaWarning(null);
+      setIaSuccess(null);
 
       setTimeout(async () => {
         setIsProcessing(true);
@@ -353,6 +374,16 @@ const Billing: React.FC<BillingProps> = ({
 
     reader.readAsDataURL(file);
     event.target.value = '';
+  };
+
+  const openCamera = () => {
+    setPhotoMenuOpen(false);
+    cameraInputRef.current?.click();
+  };
+
+  const openGallery = () => {
+    setPhotoMenuOpen(false);
+    galleryInputRef.current?.click();
   };
 
   const openNewProduct = () => setProductModal({ open: true, index: null });
@@ -468,6 +499,8 @@ const Billing: React.FC<BillingProps> = ({
     setEmissionFailedStep(null);
     setSunatMessage(null);
     setNumeroComprobante(null);
+    setIaWarning(null);
+    setIaSuccess(null);
   };
 
   const clearAll = () => {
@@ -518,7 +551,18 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const handleOpenConfirm = () => {
-    if (validateInvoiceForm()) setShowConfirmModal(true);
+    if (!validateInvoiceForm()) return;
+
+    const hasItemWithoutPrice = items.some(
+      (item) => item.description.trim().length > 0 && item.unit_price <= 0
+    );
+    if (hasItemWithoutPrice) {
+      setErrors(['Hay productos sin precio (S/ 0.00). Asígnales un precio antes de emitir.']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    setShowConfirmModal(true);
   };
 
   const handleOpenDraftConfirm = () => {
@@ -921,6 +965,31 @@ const Billing: React.FC<BillingProps> = ({
         </div>
       )}
 
+      {iaSuccess && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
+          <CheckCircle2
+            className="text-emerald-500 shrink-0 mt-0.5"
+            size={16}
+            style={{ animation: 'iaCheckPop 0.45s ease-out' }}
+          />
+          <div className="flex-1">
+            <p className="text-emerald-800 text-[11px] font-black uppercase tracking-wide leading-relaxed">
+              {iaSuccess}
+            </p>
+          </div>
+          <button onClick={() => setIaSuccess(null)} className="text-emerald-400 hover:text-emerald-600">
+            <X size={14} />
+          </button>
+          <style>{`
+            @keyframes iaCheckPop {
+              0%   { transform: scale(0);    opacity: 0; }
+              60%  { transform: scale(1.25); opacity: 1; }
+              100% { transform: scale(1);    opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
+
       <section className="bg-white p-5 rounded-[40px] shadow-sm border border-slate-100 relative overflow-hidden">
         <div
           className="w-full h-44 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative overflow-hidden mb-4"
@@ -1096,7 +1165,7 @@ const Billing: React.FC<BillingProps> = ({
           ) : (
             <>
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setPhotoMenuOpen(true)}
                 className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all"
               >
                 <Camera size={18} /> Foto
@@ -1120,12 +1189,61 @@ const Billing: React.FC<BillingProps> = ({
         </div>
 
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleScan}
+        />
+        <input
+          ref={galleryInputRef}
           type="file"
           accept="image/*"
           className="hidden"
           onChange={handleScan}
         />
+
+        {photoMenuOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm animate-[fm-backdrop-in_0.15s_ease-out]"
+            onClick={() => setPhotoMenuOpen(false)}
+          >
+            <div
+              className="w-full max-w-md bg-white rounded-t-[36px] p-4 pb-8 shadow-2xl animate-[fm-sheet-in_0.2s_ease-out]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+
+              <button
+                onClick={openCamera}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-slate-50 active:scale-[0.98] transition-all"
+              >
+                <span className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <Camera size={20} />
+                </span>
+                <span className="font-bold text-sm text-slate-800">Tomar foto</span>
+              </button>
+
+              <button
+                onClick={openGallery}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-slate-50 active:scale-[0.98] transition-all"
+              >
+                <span className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+                  <Images size={20} />
+                </span>
+                <span className="font-bold text-sm text-slate-800">Subir de galería</span>
+              </button>
+
+              <button
+                onClick={() => setPhotoMenuOpen(false)}
+                className="w-full mt-2 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-slate-400 active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="bg-white p-6 rounded-[36px] shadow-sm border border-slate-100">
@@ -1279,7 +1397,7 @@ const Billing: React.FC<BillingProps> = ({
         </div>
       </section>
 
-      <section className="space-y-4">
+      <section ref={productsSectionRef} className="space-y-4 scroll-mt-4">
         <div className="flex justify-between items-center px-4">
           <div className="flex items-center gap-2">
             <ShoppingCart size={18} className="text-blue-600" />
@@ -1477,6 +1595,20 @@ const Billing: React.FC<BillingProps> = ({
                 <span className="text-sm font-black text-blue-600">S/ {total.toFixed(2)}</span>
               </div>
             </div>
+
+            {exoneratedItems.length > 0 && (
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-6 text-left">
+                <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] font-bold text-amber-700 leading-snug">
+                  {exoneratedItems.length === 1
+                    ? '1 producto sin IGV (exonerado): '
+                    : `${exoneratedItems.length} productos sin IGV (exonerado): `}
+                  <span className="font-black">
+                    {exoneratedItems.map((item) => item.description || 'Sin nombre').join(', ')}
+                  </span>
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col gap-3">
               <button
