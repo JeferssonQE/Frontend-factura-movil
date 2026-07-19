@@ -212,23 +212,33 @@ const Billing: React.FC<BillingProps> = ({
       );
     }
 
-    const hasClient = result.cliente?.cliente?.trim();
-    if (hasClient) {
+    const client = result.cliente;
+    const hasClientData = Boolean(
+      client &&
+        (client.cliente?.trim() ||
+          client.dni?.trim() ||
+          client.ruc?.trim() ||
+          client.telefono?.trim())
+    );
+    if (hasClientData) {
       setClientData((prev) => ({
         ...prev,
-        name: result.cliente.cliente || '',
-        document: result.cliente.dni || result.cliente.ruc || '',
-        phone: result.cliente.telefono || '',
-        invoice_date: result.cliente.fecha
-          ? formatDateForInput(result.cliente.fecha)
+        name: client.cliente || prev.name,
+        document: client.dni || client.ruc || prev.document,
+        phone: client.telefono || prev.phone,
+        invoice_date: client.fecha
+          ? formatDateForInput(client.fecha)
           : prev.invoice_date,
       }));
     }
 
     if (!result.productos || result.productos.length === 0) {
+      const clientName = client?.cliente?.trim();
       setIaWarning(
-        hasClient
-          ? `Cliente "${result.cliente.cliente}" detectado. No se identificaron productos — agrégalos manualmente.`
+        hasClientData
+          ? clientName
+            ? `Cliente "${clientName}" detectado. No se identificaron productos — agrégalos manualmente.`
+            : 'Datos del cliente detectados. No se identificaron productos — agrégalos manualmente.'
           : 'No se detectaron productos ni cliente. Intenta dictar más claro o agrega los datos manualmente.'
       );
       return;

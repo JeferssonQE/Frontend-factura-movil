@@ -1,5 +1,5 @@
 // services/authService.ts
-import { apiClient, storageKeys, saveTokens } from './apiClient';
+import { apiClient, storageKeys, saveTokens, ApiError } from './apiClient';
 import { AuthUser } from '../../types';
 
 const INACTIVITY_LIMIT_MS = 30 * 24 * 60 * 60 * 1000;
@@ -165,9 +165,15 @@ export const authService = {
 
     try {
       return await this.getMe();
-    } catch {
-      clearSession();
-      return null;
+    } catch (error) {
+      // Solo un 401 significa token invalido y justifica cerrar sesion.
+      // Un fallo de red (sin internet) es transitorio: conservamos la sesion
+      // y devolvemos el usuario cacheado para no forzar un nuevo login.
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        return null;
+      }
+      return getStoredUser<MeResponse>();
     }
   },
 };

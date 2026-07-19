@@ -108,7 +108,9 @@ const tryRefreshToken = async (): Promise<string | null> => {
     processRefreshQueue(data.access_token);
     return data.access_token;
   } catch {
-    clearStoredSession();
+    // Fallo de red al refrescar (sin internet): el refresh token sigue
+    // siendo valido, asi que no cerramos sesion. Devolvemos null y la
+    // request original se resuelve cuando vuelva la conexion.
     return null;
   } finally {
     isRefreshing = false;
