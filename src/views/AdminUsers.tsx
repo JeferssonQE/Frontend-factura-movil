@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   Building2,
   Plus,
-  Minus,
+  Unlink,
   Pencil,
 } from 'lucide-react';
 import { AdminUserRow, Sender, UserRole, UserPlan } from '../types';
@@ -587,24 +587,46 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
 
           {contadores.map((contador) => {
             const contadorAssignments = assignments[contador.id] ?? [];
+            const isActive = contador.is_active;
+            const isBusy   = !!actionLoading[contador.id];
             return (
               <div
                 key={contador.id}
-                className="bg-white rounded-[24px] border border-slate-100 shadow-sm"
+                className={[
+                  'bg-white rounded-[24px] shadow-sm border-l-[3px] border-r border-t border-b transition-opacity',
+                  isActive ? 'border-l-transparent border-slate-100' : 'border-l-red-300 border-slate-100',
+                  isBusy ? 'opacity-50 pointer-events-none' : '',
+                ].join(' ')}
               >
                 <div className="flex items-center gap-3 px-4 pt-4 pb-3">
                   <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center font-black text-[11px] text-emerald-700 shrink-0">
                     {getInitials(contador)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight truncate">
-                      {contador.name || '—'}
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight truncate">
+                        {contador.name || '—'}
+                      </p>
+                      {!isActive && (
+                        <span className="shrink-0 text-[8px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                          Inactivo
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-slate-400 truncate">{contador.email}</p>
                   </div>
-                  <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0">
-                    Contador
-                  </span>
+                  <button
+                    onClick={() => handleToggleActive(contador)}
+                    disabled={isBusy}
+                    title={isActive ? 'Desactivar contador' : 'Activar contador'}
+                    aria-label={isActive ? 'Desactivar contador' : 'Activar contador'}
+                    className="disabled:opacity-30 transition-transform active:scale-90 shrink-0"
+                  >
+                    {isActive
+                      ? <ToggleRight className="text-emerald-500" size={26} />
+                      : <ToggleLeft  className="text-slate-300"   size={26} />
+                    }
+                  </button>
                   <button
                     onClick={() => handleOpenEditContador(contador)}
                     className="text-slate-300 hover:text-blue-500 transition-colors shrink-0"
@@ -639,10 +661,11 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                             </div>
                             <button
                               onClick={() => handleRemoveEmpresa(contador.id, empresaId)}
-                              className="text-slate-300 hover:text-red-500 transition-colors shrink-0"
-                              aria-label="Quitar asignación"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                              aria-label="Desvincular empresa"
+                              title="Desvincular empresa"
                             >
-                              <Minus size={13} />
+                              <Unlink size={13} />
                             </button>
                           </div>
                         );

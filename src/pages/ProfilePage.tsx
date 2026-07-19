@@ -8,6 +8,8 @@ const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { user, activeSender, saveSender, logout, isAdmin, isContador } = useAppData();
 
+  const canEditIdentity = isAdmin;
+
   const handleLogout = () => {
     logout();
     navigate('/login', { replace: true });
@@ -19,6 +21,7 @@ const ProfilePage: React.FC = () => {
       sender={activeSender}
       isAdmin={isAdmin}
       isContador={isContador}
+      canEditIdentity={canEditIdentity}
       onSaveSender={saveSender}
       onGoToAdmin={() => navigate('/admin/users')}
       onChangeSender={() => navigate('/contador/senders')}

@@ -144,6 +144,26 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         const current = activeSenderIdRef.current;
         if (current) {
           await loadSenderData(current);
+          if (user?.role === UserRole.CONTADOR) {
+            const saved = localStorage.getItem('fm_contador_active_sender');
+            if (saved) {
+              try {
+                const empresaUserId = JSON.parse(saved)?.sender?.user_id;
+                if (empresaUserId) {
+                  const freshSender = await contadorService.getEmpresaSender(empresaUserId);
+                  if (freshSender) {
+                    setSenders([freshSender]);
+                    localStorage.setItem(
+                      'fm_contador_active_sender',
+                      JSON.stringify({ senderId: freshSender.id, sender: freshSender })
+                    );
+                  }
+                }
+              } catch {
+                /* snapshot corrupto o error de red: se conserva el sender actual */
+              }
+            }
+          }
         } else if (user?.role === UserRole.CONTADOR) {
           const saved = localStorage.getItem('fm_contador_active_sender');
           if (saved) {
@@ -225,12 +245,27 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     async (input: SenderUpsertInput) => {
       if (isContador) {
         if (!activeSender) return;
-        await contadorService.updateEmpresaSender(activeSender.user_id, {
+        const updated = await contadorService.updateEmpresaSender(activeSender.user_id, {
           name: input.name,
           ruc: input.ruc,
           sunat_user: input.sunat_user,
           sunat_pass: input.sunat_pass,
         });
+        setSenders((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+        const snapshotRaw = localStorage.getItem('fm_contador_active_sender');
+        if (snapshotRaw) {
+          try {
+            const snap = JSON.parse(snapshotRaw);
+            if (snap.senderId === updated.id) {
+              localStorage.setItem(
+                'fm_contador_active_sender',
+                JSON.stringify({ senderId: updated.id, sender: { ...snap.sender, ...updated } })
+              );
+            }
+          } catch {
+            /* snapshot corrupto: se regenera al re-operar */
+          }
+        }
       } else if (activeSender) {
         await senderService.updateSender(input);
       } else {

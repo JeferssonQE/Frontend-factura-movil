@@ -6,7 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 
 const BillingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent, showToast, refreshAllData } = useAppData();
+  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent, showToast, refreshAllData, saveSender } = useAppData();
 
   return (
     <Billing
@@ -35,6 +35,15 @@ const BillingPage: React.FC = () => {
           unit: data.unit,
           base_price: data.base_price,
           has_igv: data.has_igv,
+        });
+      }}
+      onSaveCredentials={async (sunatUser, sunatPass) => {
+        if (!activeSender) return;
+        await saveSender({
+          name: activeSender.name,
+          ruc: activeSender.ruc,
+          sunat_user: sunatUser,
+          sunat_pass: sunatPass,
         });
       }}
     />

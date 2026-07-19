@@ -18,9 +18,11 @@ import { invoiceService } from '../services/business/invoiceService';
 import { lookupService } from '../services/business/lookupService';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import ProductFormModal from '../components/ProductFormModal';
+import SunatCredentialsModal from '../components/SunatCredentialsModal';
 import { unitLabel } from '../services/utils/invoiceMath';
 import { invoiceEmissionSchema } from '../schemas/business';
 import { emissionProgress } from '../config/emissionProgress';
+import { getSunatError } from '../config/sunatErrors';
 import {
   Camera,
   Plus,
@@ -74,6 +76,7 @@ interface BillingProps {
   onKeepEmitting?: () => void;
   onRefresh?: () => Promise<void> | void;
   onSaveProduct?: (data: { description: string; unit: UnitOfMeasure; base_price: number; has_igv: boolean }) => Promise<void>;
+  onSaveCredentials?: (sunatUser: string, sunatPass: string) => Promise<void>;
 }
 
 interface BillingClientData {
@@ -95,6 +98,7 @@ const Billing: React.FC<BillingProps> = ({
   onSaveProduct,
   onKeepEmitting,
   onRefresh,
+  onSaveCredentials,
 }) => {
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(InvoiceType.BOLETA);
   const [clientData, setClientData] = useState<BillingClientData>({
@@ -114,6 +118,7 @@ const Billing: React.FC<BillingProps> = ({
     open: false,
     index: null,
   });
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [iaWarning, setIaWarning] = useState<string | null>(null);
   const [isEmitting, setIsEmitting] = useState(false);
@@ -123,6 +128,7 @@ const Billing: React.FC<BillingProps> = ({
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | 'timeout' | null>(null);
   const [emissionCurrentStep, setEmissionCurrentStep] = useState<string | null>(null);
+  const [emissionFailedStep, setEmissionFailedStep] = useState<string | null>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
 
@@ -394,6 +400,7 @@ const Billing: React.FC<BillingProps> = ({
         } else if (statusData.status === InvoiceStatus.FALLO) {
           stopPolling();
           setSunatMessage(statusData.sunat_message);
+          setEmissionFailedStep(statusData.sunat_failed_step);
           if (onRefresh) await onRefresh();
           setEmissionState('fallo');
         } else {
@@ -419,6 +426,7 @@ const Billing: React.FC<BillingProps> = ({
     if (!emissionSuccess?.id) return;
     setEmissionState('processing');
     setEmissionCurrentStep(null);
+    setEmissionFailedStep(null);
     setSunatMessage(null);
     setNumeroComprobante(null);
     try {
@@ -447,6 +455,7 @@ const Billing: React.FC<BillingProps> = ({
     setEmissionStep(0);
     setEmissionState(null);
     setEmissionCurrentStep(null);
+    setEmissionFailedStep(null);
     setSunatMessage(null);
     setNumeroComprobante(null);
   };
@@ -633,6 +642,7 @@ const Billing: React.FC<BillingProps> = ({
 
   if (emissionState !== null) {
     const progress = emissionProgress(emissionCurrentStep);
+    const failInfo = getSunatError(emissionFailedStep);
     return (
       <div className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center animate-in fade-in duration-500">
 
@@ -746,14 +756,11 @@ const Billing: React.FC<BillingProps> = ({
               <XCircle size={56} strokeWidth={2} />
             </div>
             <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-red-600">
-              {sender?.sunat_credentials_invalid ? 'Credenciales SUNAT incorrectas' : 'Error en Emisión'}
+              {failInfo.title}
             </h2>
-            {sunatMessage && (
-              <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
-                {sunatMessage}
-              </p>
-            )}
-            {!sunatMessage && <div className="mb-10" />}
+            <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
+              {failInfo.message}
+            </p>
 
             <div className="w-full space-y-3 max-w-xs">
               {sender?.sunat_credentials_invalid ? (
@@ -1528,6 +1535,35 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {sender?.sunat_credentials_invalid && (
+        <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[32px] flex items-center justify-center mb-6">
+            <KeyRound size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-3">
+            Credenciales SUNAT incorrectas
+          </h2>
+          <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-xs">
+            Debes corregir tu usuario y clave SOL antes de poder emitir.
+          </p>
+          <button
+            onClick={() => (onSaveCredentials ? setShowCredentialsModal(true) : onSelectSender())}
+            className="w-full max-w-xs bg-gradient-to-r from-orange-500 to-red-500 text-white h-16 rounded-[24px] shadow-xl shadow-red-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
+          >
+            <KeyRound size={22} /> Corregir credenciales
+          </button>
+        </div>
+      )}
+
+      {showCredentialsModal && sender && onSaveCredentials && (
+        <SunatCredentialsModal
+          hasCredentials={sender.has_sunat_credentials}
+          empresaName={sender.name}
+          onSaveCredentials={onSaveCredentials}
+          onClose={() => setShowCredentialsModal(false)}
+        />
       )}
 
       {productModal.open && (
