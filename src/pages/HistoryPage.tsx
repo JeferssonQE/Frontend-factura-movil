@@ -4,9 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import History from '../views/History';
 import { useAppData } from '../context/AppDataContext';
 import { invoiceService } from '../services/business/invoiceService';
+import { pdfCache } from '../services/business/pdfCache';
 import { InvoiceStatus } from '../types';
 
-const POLL_INTERVAL_MS = 10_000; // 10 segundos
+const POLL_INTERVAL_MS = 4_000; // 4 segundos
+const PREFETCH_PDF_COUNT = 5;
 
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,6 +51,17 @@ const HistoryPage: React.FC = () => {
       }
     };
   }, [procesandoIds.join(','), refreshAllData, activeSenderId]); // eslint-disable-line
+
+  useEffect(() => {
+    const recientes = invoices
+      .filter((inv) => inv.status === InvoiceStatus.EMITIDO)
+      .slice(0, PREFETCH_PDF_COUNT)
+      .filter((inv) => !pdfCache.has(inv.id));
+    if (recientes.length === 0) return;
+    Promise.allSettled(
+      recientes.map((inv) => pdfCache.load(inv.id, activeSenderId ?? undefined))
+    );
+  }, [invoices, activeSenderId]);
 
   return <History invoices={invoices} activeSenderId={activeSenderId} credentialsInvalid={activeSender?.sunat_credentials_invalid} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} onDeleteInvoice={deleteInvoice} onFixCredentials={() => navigate('/profile')} onRefresh={refreshAllData} />;
 };

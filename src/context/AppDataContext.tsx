@@ -14,6 +14,7 @@ import { productsService } from '../services/business/productsService';
 import { clientsService } from '../services/business/clientsService';
 import { invoiceService } from '../services/business/invoiceService';
 import { contadorService } from '../services/business/contadorService';
+import { pdfCache } from '../services/business/pdfCache';
 import {
   Sender,
   SenderUpsertInput,
@@ -194,6 +195,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const selectSenderAsContador = useCallback(
     async (senderId: number, empresaSenders?: Sender[]) => {
+      pdfCache.clear();
       if (empresaSenders) setSenders(empresaSenders);
       setActiveSenderId(senderId);
       await loadSenderData(senderId);
@@ -210,6 +212,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const changeSender = useCallback(
     async (senderId: number) => {
+      pdfCache.clear();
       setActiveSenderId(senderId);
       const senderName = senders.find((sender) => sender.id === senderId)?.name ?? '';
       await loadSenderData(isContador ? senderId : undefined);
@@ -527,6 +530,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = useCallback(() => {
     authService.logout();
+    pdfCache.clear();
     localStorage.removeItem('fm_contador_active_sender');
     setUser(null);
     setSenders([]);

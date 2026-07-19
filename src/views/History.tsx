@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
 import { PDFService } from '../services/integrations/pdfService';
-import { invoiceService } from '../services/business/invoiceService';
+import { pdfCache } from '../services/business/pdfCache';
 import { emissionProgress } from '../config/emissionProgress';
 
 const NOTA_CREDITO_ENABLED = false; // en debug — reactivar cuando el flujo de NC esté estable
@@ -222,13 +222,22 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
       setSelectedInvoicePdf(null);
       return;
     }
+    const id = selectedInvoice.id;
+    if (pdfCache.has(id)) {
+      setSelectedInvoicePdf(pdfCache.get(id));
+      setIsPdfLoading(false);
+      return;
+    }
+    setSelectedInvoicePdf(null);
     setIsPdfLoading(true);
-    invoiceService
-      .getInvoice(selectedInvoice.id, activeSenderId ?? undefined)
-      .then((inv) => setSelectedInvoicePdf(inv.pdf_base64 ?? null))
-      .catch(() => setSelectedInvoicePdf(null))
-      .finally(() => setIsPdfLoading(false));
-  }, [selectedInvoice?.id]);
+    let cancelled = false;
+    pdfCache
+      .load(id, activeSenderId ?? undefined)
+      .then((base64) => { if (!cancelled) setSelectedInvoicePdf(base64); })
+      .catch(() => { if (!cancelled) setSelectedInvoicePdf(null); })
+      .finally(() => { if (!cancelled) setIsPdfLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedInvoice?.id, activeSenderId]);
 
   const filtered = invoices.filter((invoice) => {
     const matchesSearch =
