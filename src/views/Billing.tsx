@@ -72,6 +72,7 @@ interface BillingProps {
   onAddClient: (client: Client) => void;
   onSelectSender: () => void;
   onKeepEmitting?: () => void;
+  onRefresh?: () => Promise<void> | void;
   onSaveProduct?: (data: { description: string; unit: UnitOfMeasure; base_price: number; has_igv: boolean }) => Promise<void>;
 }
 
@@ -93,6 +94,7 @@ const Billing: React.FC<BillingProps> = ({
   onSelectSender,
   onSaveProduct,
   onKeepEmitting,
+  onRefresh,
 }) => {
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(InvoiceType.BOLETA);
   const [clientData, setClientData] = useState<BillingClientData>({
@@ -392,6 +394,7 @@ const Billing: React.FC<BillingProps> = ({
         } else if (statusData.status === InvoiceStatus.FALLO) {
           stopPolling();
           setSunatMessage(statusData.sunat_message);
+          if (onRefresh) await onRefresh();
           setEmissionState('fallo');
         } else {
           setEmissionCurrentStep(statusData.current_step);
@@ -743,7 +746,7 @@ const Billing: React.FC<BillingProps> = ({
               <XCircle size={56} strokeWidth={2} />
             </div>
             <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-red-600">
-              Error en Emisión
+              {sender?.sunat_credentials_invalid ? 'Credenciales SUNAT incorrectas' : 'Error en Emisión'}
             </h2>
             {sunatMessage && (
               <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
@@ -753,12 +756,21 @@ const Billing: React.FC<BillingProps> = ({
             {!sunatMessage && <div className="mb-10" />}
 
             <div className="w-full space-y-3 max-w-xs">
-              <button
-                onClick={handleRetry}
-                className="w-full bg-red-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
-              >
-                <RefreshCw size={18} /> Reintentar
-              </button>
+              {sender?.sunat_credentials_invalid ? (
+                <button
+                  onClick={onSelectSender}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
+                >
+                  <KeyRound size={18} /> Actualizar usuario SUNAT
+                </button>
+              ) : (
+                <button
+                  onClick={handleRetry}
+                  className="w-full bg-red-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
+                >
+                  <RefreshCw size={18} /> Reintentar
+                </button>
+              )}
               <button
                 onClick={resetForm}
                 className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"

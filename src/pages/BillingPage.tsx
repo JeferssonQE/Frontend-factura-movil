@@ -6,7 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 
 const BillingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent, showToast } = useAppData();
+  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent, showToast, refreshAllData } = useAppData();
 
   return (
     <Billing
@@ -25,6 +25,7 @@ const BillingPage: React.FC = () => {
       }}
       onSelectSender={() => navigate('/profile')}
       onKeepEmitting={() => showToast('COMPROBANTE EN COLA · MÍRALO EN HISTORIAL')}
+      onRefresh={refreshAllData}
       onSaveProduct={async (data) => {
         if (!activeSender) return;
         await saveProductSilent({
