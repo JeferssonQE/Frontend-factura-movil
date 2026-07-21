@@ -393,6 +393,11 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                 <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">
                   {invoice.series}-{invoice.number}
                 </p>
+                {invoice.status === InvoiceStatus.EMITIDO && invoice.nro_comprobante_sunat && (
+                  <p className="text-[8px] text-blue-600 font-black uppercase tracking-widest">
+                    Nº SUNAT: {invoice.nro_comprobante_sunat}
+                  </p>
+                )}
                 <p className="text-[7px] text-slate-300 font-mono tracking-wide">
                   ID: {invoice.id}
                 </p>
@@ -455,6 +460,16 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                     {selectedInvoice.invoice_date}
                   </span>
                 </div>
+                {selectedInvoice.status === InvoiceStatus.EMITIDO && selectedInvoice.nro_comprobante_sunat && (
+                  <div className="mt-3 pt-3 border-t border-slate-200 flex justify-between items-center">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                      Nº SUNAT
+                    </span>
+                    <span className="text-[11px] font-black text-blue-600 select-all">
+                      {selectedInvoice.nro_comprobante_sunat}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="px-2">
