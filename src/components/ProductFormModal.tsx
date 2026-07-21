@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ShoppingCart, X } from 'lucide-react';
 import { InvoiceItem, Product, UnitOfMeasure } from '../types';
+import { SUNAT_UNITS } from '../config/sunatUnits';
 import { recalcItem, createEmptyItem, unitLabel } from '../services/utils/invoiceMath';
 import ProductSearchSelector from './ProductSearchSelector';
 
@@ -116,7 +117,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 onChange={(event) => updateDraft({ unit: event.target.value as UnitOfMeasure })}
                 className="w-full bg-slate-50 rounded-xl px-2 py-3 text-[11px] font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
               >
-                {Object.values(UnitOfMeasure).map((unit) => (
+                {SUNAT_UNITS.map((unit) => (
                   <option key={unit} value={unit}>
                     {unitLabel(unit)}
                   </option>

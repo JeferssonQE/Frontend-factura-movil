@@ -1,17 +1,15 @@
 // schemas/business.ts
 import { z } from 'zod';
 import {
-  UnitOfMeasure,
   InvoiceType,
   CreditNoteReason,
 } from '../types';
+import { SUNAT_UNITS } from '../config/sunatUnits';
 
 // ==================== HELPERS ====================
 const optionalText = z.string().trim().optional().or(z.literal(''));
 
-const unitEnum = z.enum(
-  Object.values(UnitOfMeasure) as [UnitOfMeasure, ...UnitOfMeasure[]]
-);
+const unitEnum = z.enum(SUNAT_UNITS);
 
 const creditNoteReasonEnum = z.enum(
   Object.values(CreditNoteReason) as [CreditNoteReason, ...CreditNoteReason[]]

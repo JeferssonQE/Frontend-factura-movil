@@ -1,12 +1,7 @@
 // types.ts
-export enum UnitOfMeasure {
-  UNIDAD = 'UNIDAD',
-  KILOGRAMO = 'KILOGRAMO',
-  CAJA = 'CAJA',
-  BOLSA = 'BOLSA',
-  LITRO = 'LITRO',
-  DOCENA = 'DOCENA',
-}
+import type { UnitOfMeasure } from './config/sunatUnits';
+export { SUNAT_UNITS, isSunatUnit } from './config/sunatUnits';
+export type { UnitOfMeasure };
 
 export enum InvoiceType {
   BOLETA = 'BOLETA',

@@ -12,6 +12,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Product, UnitOfMeasure } from '../types';
+import { SUNAT_UNITS } from '../config/sunatUnits';
 import { productSchema } from '../schemas/business';
 import ProductSearchSelector from '../components/ProductSearchSelector';
 
@@ -275,10 +276,10 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                 </label>
                 <select
                   name="unit"
-                  defaultValue={editingProduct?.unit || UnitOfMeasure.KILOGRAMO}
+                  defaultValue={editingProduct?.unit || 'UNIDAD'}
                   className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 appearance-none uppercase"
                 >
-                  {Object.values(UnitOfMeasure).map((unit) => (
+                  {SUNAT_UNITS.map((unit) => (
                     <option key={unit} value={unit}>
                       {unit}
                     </option>

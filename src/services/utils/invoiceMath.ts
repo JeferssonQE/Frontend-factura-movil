@@ -10,13 +10,13 @@ const ceilTo = (value: number, decimals: number = CALC_DECIMALS): number => {
 };
 
 export const unitLabel = (unit: UnitOfMeasure): string =>
-  unit === UnitOfMeasure.KILOGRAMO ? 'KILOG.' : unit;
+  unit === 'KILOGRAMO' ? 'KILOG.' : unit;
 
 export const createEmptyItem = (): InvoiceItem => ({
   product_id: null,
   description: '',
   quantity: 1,
-  unit: UnitOfMeasure.KILOGRAMO,
+  unit: 'KILOGRAMO',
   unit_price: 0,
   has_igv: false,
   total: 0,

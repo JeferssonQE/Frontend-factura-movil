@@ -11,6 +11,7 @@ import {
   IAExtractionResult,
   InvoiceStatus,
 } from '../types';
+import { isSunatUnit } from '../config/sunatUnits';
 import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
 import { ApiError, getUserMessage } from '../services/core/apiClient';
 import { PDFService } from '../services/integrations/pdfService';
@@ -204,10 +205,7 @@ const Billing: React.FC<BillingProps> = ({
 
   const mapUnit = (unit: string): UnitOfMeasure => {
     const normalized = unit?.toUpperCase();
-    if (Object.values(UnitOfMeasure).includes(normalized as UnitOfMeasure)) {
-      return normalized as UnitOfMeasure;
-    }
-    return UnitOfMeasure.UNIDAD;
+    return isSunatUnit(normalized) ? normalized : 'UNIDAD';
   };
 
   const scrollToProducts = () => {
