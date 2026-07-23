@@ -12,7 +12,7 @@ const PREFETCH_PDF_COUNT = 5;
 
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { invoices, emitCreditNote, emitDraft, deleteInvoice, refreshAllData, activeSenderId, activeSender } = useAppData();
+  const { invoices, emitCreditNote, emitDraft, deleteInvoice, refreshAllData, patchInvoice, activeSenderId, activeSender } = useAppData();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const procesandoIds = invoices
@@ -29,16 +29,20 @@ const HistoryPage: React.FC = () => {
     }
 
     const poll = async () => {
-      let changed = false;
+      let statusChanged = false;
       await Promise.allSettled(
         procesandoIds.map(async (id) => {
           try {
             const s = await invoiceService.getInvoiceStatus(id, activeSenderId ?? undefined);
-            if (s.status !== InvoiceStatus.PROCESANDO) changed = true;
+            if (s.status === InvoiceStatus.PROCESANDO) {
+              patchInvoice(id, { sunat_current_step: s.current_step });
+            } else {
+              statusChanged = true;
+            }
           } catch { /* ignorar errores individuales */ }
         })
       );
-      if (changed) await refreshAllData();
+      if (statusChanged) await refreshAllData();
     };
 
     poll();
@@ -50,7 +54,7 @@ const HistoryPage: React.FC = () => {
         timerRef.current = null;
       }
     };
-  }, [procesandoIds.join(','), refreshAllData, activeSenderId]); // eslint-disable-line
+  }, [procesandoIds.join(','), refreshAllData, patchInvoice, activeSenderId]); // eslint-disable-line
 
   useEffect(() => {
     const recientes = invoices

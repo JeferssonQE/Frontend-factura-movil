@@ -79,6 +79,7 @@ type AppDataContextValue = {
   emitDraft: (invoiceId: number) => Promise<void>;
   deleteInvoice: (invoiceId: number) => Promise<void>;
   emitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => Promise<void>;
+  patchInvoice: (invoiceId: number, patch: Partial<Invoice>) => void;
 
   logout: () => void;
 };
@@ -418,6 +419,12 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     [refreshAllData, showToast, isContador]
   );
 
+  const patchInvoice = useCallback((invoiceId: number, patch: Partial<Invoice>) => {
+    setInvoices((prev) =>
+      prev.map((invoice) => (invoice.id === invoiceId ? { ...invoice, ...patch } : invoice))
+    );
+  }, []);
+
   const persistInvoice = useCallback(
     async (invoice: Invoice): Promise<Invoice | null> => {
       try {
@@ -667,6 +674,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       emitDraft,
       deleteInvoice,
       emitCreditNote,
+      patchInvoice,
 
       logout,
     }),
@@ -701,6 +709,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       emitDraft,
       deleteInvoice,
       emitCreditNote,
+      patchInvoice,
       logout,
     ]
   );

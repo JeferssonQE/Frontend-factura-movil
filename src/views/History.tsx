@@ -1,5 +1,5 @@
 // views/History.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   FileText,
@@ -206,16 +206,6 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
   const [showReasonSelect, setShowReasonSelect] = useState(false);
   const [isEmittingDraft, setIsEmittingDraft] = useState(false);
   const [isDeletingInvoice, setIsDeletingInvoice] = useState(false);
-
-  const hasProcessing = invoices.some((invoice) => invoice.status === InvoiceStatus.PROCESANDO);
-  const onRefreshRef = useRef(onRefresh);
-  onRefreshRef.current = onRefresh;
-
-  useEffect(() => {
-    if (!hasProcessing) return;
-    const intervalId = window.setInterval(() => onRefreshRef.current(), 8000);
-    return () => window.clearInterval(intervalId);
-  }, [hasProcessing]);
 
   useEffect(() => {
     if (!selectedInvoice) {
