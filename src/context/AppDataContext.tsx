@@ -14,6 +14,7 @@ import { productsService } from '../services/business/productsService';
 import { clientsService } from '../services/business/clientsService';
 import { invoiceService } from '../services/business/invoiceService';
 import { contadorService } from '../services/business/contadorService';
+import { inventoryService, InventoryProductPayload } from '../services/business/inventoryService';
 import { pdfCache } from '../services/business/pdfCache';
 import {
   Sender,
@@ -21,6 +22,7 @@ import {
   Product,
   Client,
   Invoice,
+  InventoryProduct,
   CreditNoteReason,
   AuthUser,
   UserRole,
@@ -56,6 +58,11 @@ type AppDataContextValue = {
   products: Product[];
   clients: Client[];
   invoices: Invoice[];
+
+  inventory: InventoryProduct[];
+  inventoryEnabled: boolean;
+  refreshInventory: () => Promise<void>;
+  saveInventoryItem: (payload: InventoryProductPayload) => Promise<void>;
 
   setToast: React.Dispatch<React.SetStateAction<ToastState>>;
   showToast: (message: string, type?: 'success' | 'error') => void;
@@ -99,6 +106,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [inventory, setInventory] = useState<InventoryProduct[]>([]);
+  const [inventoryEnabled, setInventoryEnabled] = useState(false);
 
   const activeSenderIdRef = useRef<number | null>(null);
   useEffect(() => {
@@ -371,6 +380,32 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     [refreshAllData, showToast, isContador]
   );
 
+  const refreshInventory = useCallback(async () => {
+    const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+    try {
+      const loaded = await inventoryService.getInventory(senderId);
+      setInventory(loaded);
+      setInventoryEnabled(true);
+    } catch {
+      setInventory([]);
+      setInventoryEnabled(false);
+    }
+  }, [isContador]);
+
+  const saveInventoryItem = useCallback(
+    async (payload: InventoryProductPayload) => {
+      try {
+        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        await inventoryService.createProduct(payload, senderId);
+        await refreshInventory();
+        showToast('PRODUCTO AGREGADO AL INVENTARIO');
+      } catch (error) {
+        showToast(getUserMessage(error, 'No se pudo agregar el producto.'), 'error');
+      }
+    },
+    [isContador, refreshInventory, showToast]
+  );
+
   const saveClient = useCallback(
     async (client: Client) => {
       try {
@@ -579,6 +614,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     setProducts([]);
     setClients([]);
     setInvoices([]);
+    setInventory([]);
+    setInventoryEnabled(false);
     setActiveSenderId(null);
     setDataReady(false);
   }, []);
@@ -630,8 +667,9 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (user) {
       refreshAllData();
+      refreshInventory();
     }
-  }, [user, refreshAllData]);
+  }, [user, refreshAllData, refreshInventory]);
 
   const value = useMemo<AppDataContextValue>(
     () => ({
@@ -649,6 +687,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       products,
       clients,
       invoices,
+
+      inventory,
+      inventoryEnabled,
+      refreshInventory,
+      saveInventoryItem,
 
       setToast,
       showToast,
@@ -691,6 +734,10 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       products,
       clients,
       invoices,
+      inventory,
+      inventoryEnabled,
+      refreshInventory,
+      saveInventoryItem,
       showToast,
       login,
       refreshUser,

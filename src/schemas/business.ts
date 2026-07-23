@@ -97,6 +97,37 @@ export const productSchema = z.object({
 
 export type ProductInput = z.infer<typeof productSchema>;
 
+// ==================== INVENTARIO ====================
+export const inventoryProductSchema = z.object({
+  nombre: z
+    .string()
+    .trim()
+    .min(2, 'Nombre debe tener al menos 2 caracteres')
+    .max(255, 'Máximo 255 caracteres')
+    .transform((value) => value.toUpperCase()),
+  categoria: optionalText,
+  unidad_medida: unitEnum,
+  precio_venta: z
+    .number()
+    .min(0, 'Precio no puede ser negativo')
+    .max(999999.99, 'Precio muy alto'),
+  cantidad_inicial: z
+    .number()
+    .min(0.001, 'La cantidad debe ser mayor a 0')
+    .max(999999.999, 'Cantidad muy alta'),
+  precio_compra: z
+    .number()
+    .min(0, 'Precio no puede ser negativo')
+    .max(999999.99, 'Precio muy alto')
+    .optional(),
+  fecha_vencimiento: optionalText.refine(
+    (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
+    'Fecha inválida (YYYY-MM-DD)'
+  ),
+});
+
+export type InventoryProductInput = z.infer<typeof inventoryProductSchema>;
+
 // ==================== INVOICE ITEMS ====================
 export const invoiceItemSchema = z.object({
   product_id: z.number().int().positive().nullable().optional(),

@@ -9,6 +9,7 @@ const titles: Record<string, string> = {
   '/billing':           'Emitir Documento',
   '/history':           'Historial',
   '/products':          'Productos',
+  '/inventory':         'Inventario',
   '/clients':           'Clientes',
   '/profile':           'Mi Perfil',
   '/agent':             'Agente SUNAT IA',
@@ -23,6 +24,7 @@ const activeTabMap: Record<string, string> = {
   '/billing':           'billing',
   '/history':           'history',
   '/products':          'products',
+  '/inventory':         'inventory',
   '/clients':           'clients',
   '/profile':           'profile',
   '/agent':             'agent',
@@ -37,6 +39,7 @@ const routeMap: Record<string, string> = {
   billing:              '/billing',
   history:              '/history',
   products:             '/products',
+  inventory:            '/inventory',
   clients:              '/clients',
   profile:              '/profile',
   agent:                '/agent',
@@ -49,7 +52,7 @@ const routeMap: Record<string, string> = {
 export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin, isContador, activeSender, toast, setToast } = useAppData();
+  const { user, isAdmin, isContador, activeSender, toast, setToast, inventoryEnabled } = useAppData();
 
   const pathname = location.pathname;
   const title = titles[pathname] || 'FactuMovil';
@@ -82,6 +85,7 @@ export default function AppLayout() {
         activeSender={activeSender}
         userInitials={userInitials}
         hideBottomNav={pathname === '/agent'}
+        showInventory={inventoryEnabled}
       >
         <Outlet />
       </Layout>

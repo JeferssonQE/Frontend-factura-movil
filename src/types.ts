@@ -89,6 +89,20 @@ export interface Product {
   updated_at?: string;
 }
 
+export interface InventoryProduct {
+  id: number;
+  sender_id: number;
+  nombre: string;
+  categoria: string | null;
+  unidad_medida: string;
+  precio_venta: number;
+  foto_url: string | null;
+  stock_total: number;
+  proximo_vencimiento: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ProductUpsertInput {
   description: string;
   unit: UnitOfMeasure;

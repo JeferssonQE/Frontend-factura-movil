@@ -10,6 +10,7 @@ import DashboardPage from '../pages/DashboardPage';
 import BillingPage from '../pages/BillingPage';
 import HistoryPage from '../pages/HistoryPage';
 import ProductsPage from '../pages/ProductsPage';
+import InventoryPage from '../pages/InventoryPage';
 import ClientsPage from '../pages/ClientsPage';
 import ProfilePage from '../pages/ProfilePage';
 import OnboardingPage from '../pages/OnboardingPage';
@@ -46,6 +47,7 @@ export default function AppRouter() {
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/feedback" element={<FeedbackPage />} />
