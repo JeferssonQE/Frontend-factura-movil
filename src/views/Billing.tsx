@@ -580,7 +580,7 @@ const Billing: React.FC<BillingProps> = ({
         id: Date.now(),
         sender_id: sender.id,
         client_id: null,
-        client_name: clientData.name,
+        client_name: clientData.name.trim().toUpperCase(),
         client_document: clientData.document || null,
         invoice_type: invoiceType,
         series,
@@ -628,7 +628,7 @@ const Billing: React.FC<BillingProps> = ({
         id: Date.now(),
         sender_id: sender.id,
         client_id: null,
-        client_name: clientData.name,
+        client_name: clientData.name.trim().toUpperCase(),
         client_document: clientData.document || null,
         invoice_type: invoiceType,
         series,
@@ -1361,7 +1361,7 @@ const Billing: React.FC<BillingProps> = ({
           <input
             value={clientData.name}
             onChange={(event) =>
-              setClientData((prev) => ({ ...prev, name: event.target.value.toUpperCase() }))
+              setClientData((prev) => ({ ...prev, name: event.target.value }))
             }
             className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 uppercase placeholder:text-slate-300"
             placeholder="Nombre / Razón Social"

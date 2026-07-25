@@ -56,7 +56,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSubmit(
-      { ...draft, description: draft.description.trim() },
+      { ...draft, description: draft.description.trim().toUpperCase() },
       saveToCatalog && offerSaveToCatalog
     );
   };
@@ -87,7 +87,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
             <ProductSearchSelector
               products={products}
               value={draft.description}
-              onChange={(value) => updateDraft({ description: value.toUpperCase() })}
+              onChange={(value) => updateDraft({ description: value })}
               onSelectProduct={handleSelectProduct}
               placeholder="Nombre del producto"
               showDropdownButton

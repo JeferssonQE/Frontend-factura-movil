@@ -11,17 +11,23 @@ export type ProductPayload = {
 
 const qs = (senderId?: number) => (senderId ? `?sender_id=${senderId}` : '');
 
+const normalizeProduct = (product: Product): Product => ({
+  ...product,
+  base_price: Number(product.base_price) || 0,
+});
+
 export const productsService = {
   async getProducts(senderId?: number): Promise<Product[]> {
-    return apiClient.get<Product[]>(`/products${qs(senderId)}`);
+    const products = await apiClient.get<Product[]>(`/products${qs(senderId)}`);
+    return products.map(normalizeProduct);
   },
 
   async createProduct(payload: ProductPayload, senderId?: number): Promise<Product> {
-    return apiClient.post<Product>(`/products${qs(senderId)}`, payload);
+    return normalizeProduct(await apiClient.post<Product>(`/products${qs(senderId)}`, payload));
   },
 
   async updateProduct(productId: number, payload: ProductPayload, senderId?: number): Promise<Product> {
-    return apiClient.put<Product>(`/products/${productId}${qs(senderId)}`, payload);
+    return normalizeProduct(await apiClient.put<Product>(`/products/${productId}${qs(senderId)}`, payload));
   },
 
   async deleteProduct(productId: number, senderId?: number): Promise<void> {
