@@ -8,6 +8,7 @@ import {
   AlertCircle,
   X,
   RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { InventoryProduct } from '../types';
 import { SUNAT_UNITS } from '../config/sunatUnits';
@@ -16,6 +17,7 @@ import { InventoryProductPayload } from '../services/business/inventoryService';
 
 interface InventoryProps {
   inventory: InventoryProduct[];
+  inventoryEnabled: boolean;
   senderId: number | null;
   onSave: (payload: InventoryProductPayload) => Promise<void>;
   onRefresh: () => void;
@@ -27,7 +29,13 @@ const formatVencimiento = (fecha: string | null): string => {
   return `Vence ${day}/${month}/${year}`;
 };
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, senderId, onSave, onRefresh }) => {
+const Inventory: React.FC<InventoryProps> = ({
+  inventory,
+  inventoryEnabled,
+  senderId,
+  onSave,
+  onRefresh,
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [salePrice, setSalePrice] = useState('');
@@ -35,6 +43,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, senderId, onSave, onRe
   const [quantity, setQuantity] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  if (!inventoryEnabled) {
+    return (
+      <div className="text-center py-20 bg-white/50 rounded-[40px] border border-dashed border-slate-200">
+        <Lock size={48} className="mx-auto text-slate-200 mb-2" />
+        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
+          Módulo de Inventario no Disponible
+        </p>
+      </div>
+    );
+  }
 
   const filteredInventory = inventory.filter(
     (item) =>

@@ -1,8 +1,10 @@
 // services/geminiService.ts
 // La extracción con Gemini vive en el backend (la API key nunca llega al navegador).
 // Estas funciones solo hacen el POST; los errores se propagan para que la vista los muestre.
+// La respuesta se valida contra aiExtractionSchema antes de devolverla: la vista siempre
+// recibe un objeto con la forma completa, nunca claves ausentes.
 
-import { IAExtractionResult } from '../../types';
+import { aiExtractionSchema, IAExtractionResult } from '../../schemas/ai';
 import { apiClient } from '../core/apiClient';
 
 type ExtractionKind = 'image' | 'audio';
@@ -15,11 +17,13 @@ interface ExtractionPayload {
 
 const qs = (senderId?: number) => (senderId ? `?sender_id=${senderId}` : '');
 
-const extractInvoice = (
+const extractInvoice = async (
   payload: ExtractionPayload,
   senderId?: number
-): Promise<IAExtractionResult> =>
-  apiClient.post<IAExtractionResult>(`/ai/extract${qs(senderId)}`, payload);
+): Promise<IAExtractionResult> => {
+  const response = await apiClient.post<unknown>(`/ai/extract${qs(senderId)}`, payload);
+  return aiExtractionSchema.parse(response);
+};
 
 export const processInvoiceImage = (
   base64Image: string,

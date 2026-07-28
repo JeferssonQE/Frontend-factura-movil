@@ -4,7 +4,8 @@ import Inventory from '../views/Inventory';
 import { useAppData } from '../context/AppDataContext';
 
 const InventoryPage: React.FC = () => {
-  const { inventory, activeSenderId, saveInventoryItem, refreshInventory } = useAppData();
+  const { inventory, inventoryEnabled, activeSenderId, saveInventoryItem, refreshInventory } =
+    useAppData();
 
   useEffect(() => {
     refreshInventory();
@@ -13,6 +14,7 @@ const InventoryPage: React.FC = () => {
   return (
     <Inventory
       inventory={inventory}
+      inventoryEnabled={inventoryEnabled}
       senderId={activeSenderId}
       onSave={saveInventoryItem}
       onRefresh={refreshInventory}

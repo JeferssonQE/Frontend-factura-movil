@@ -7,9 +7,21 @@ import {
 import { SUNAT_UNITS } from '../config/sunatUnits';
 
 // ==================== HELPERS ====================
-const optionalText = z.string().trim().optional().or(z.literal(''));
+// null y undefined se normalizan a '': el "vacio" tiene una sola representacion en
+// todo el sistema. Antes era una union (.or(z.literal(''))) y cualquier valor no-string
+// producia el mensaje generico "Invalid input" sin decir que campo fallaba.
+const optionalText = z.preprocess(
+  (value) => value ?? '',
+  z.string({ error: 'Debe ser texto' }).trim()
+);
 
 const unitEnum = z.enum(SUNAT_UNITS);
+
+const currency = (label: string) =>
+  z
+    .number({ error: `${label} debe ser un número válido` })
+    .min(0, `${label} no puede ser negativo`)
+    .max(999999.99, `${label} muy alto`);
 
 const creditNoteReasonEnum = z.enum(
   Object.values(CreditNoteReason) as [CreditNoteReason, ...CreditNoteReason[]]
@@ -18,7 +30,7 @@ const creditNoteReasonEnum = z.enum(
 const MAX_BACKDATED_DAYS = 2;
 
 // SUNAT permite emitir con fecha desde hoy hasta MAX_BACKDATED_DAYS atras.
-const isWithinEmissionWindow = (dateStr: string): boolean => {
+export const isWithinEmissionWindow = (dateStr: string): boolean => {
   const today = new Date().toLocaleDateString('en-CA');
   const minDate = new Date();
   minDate.setDate(minDate.getDate() - MAX_BACKDATED_DAYS);
@@ -137,14 +149,11 @@ export const invoiceItemSchema = z.object({
     .min(1, 'Descripción es requerida')
     .max(200, 'Máximo 200 caracteres'),
   quantity: z
-    .number()
+    .number({ error: 'La cantidad debe ser un número válido' })
     .min(0.001, 'Cantidad debe ser mayor a 0')
     .max(999999, 'Cantidad muy alta'),
   unit: unitEnum,
-  unit_price: z
-    .number()
-    .min(0, 'Precio no puede ser negativo')
-    .max(999999.99, 'Precio muy alto'),
+  unit_price: currency('El precio'),
   has_igv: z.boolean(),
 });
 

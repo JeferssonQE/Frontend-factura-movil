@@ -381,7 +381,12 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const refreshInventory = useCallback(async () => {
-    const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+    if (isContador && !activeSenderId) {
+      setInventory([]);
+      setInventoryEnabled(false);
+      return;
+    }
+    const senderId = isContador ? activeSenderId ?? undefined : undefined;
     try {
       const loaded = await inventoryService.getInventory(senderId);
       setInventory(loaded);
@@ -390,12 +395,12 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       setInventory([]);
       setInventoryEnabled(false);
     }
-  }, [isContador]);
+  }, [isContador, activeSenderId]);
 
   const saveInventoryItem = useCallback(
     async (payload: InventoryProductPayload) => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? activeSenderId ?? undefined : undefined;
         await inventoryService.createProduct(payload, senderId);
         await refreshInventory();
         showToast('PRODUCTO AGREGADO AL INVENTARIO');
@@ -403,7 +408,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(getUserMessage(error, 'No se pudo agregar el producto.'), 'error');
       }
     },
-    [isContador, refreshInventory, showToast]
+    [isContador, activeSenderId, refreshInventory, showToast]
   );
 
   const saveClient = useCallback(
@@ -667,9 +672,14 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (user) {
       refreshAllData();
+    }
+  }, [user, refreshAllData]);
+
+  useEffect(() => {
+    if (user) {
       refreshInventory();
     }
-  }, [user, refreshAllData, refreshInventory]);
+  }, [user, activeSenderId, refreshInventory]);
 
   const value = useMemo<AppDataContextValue>(
     () => ({

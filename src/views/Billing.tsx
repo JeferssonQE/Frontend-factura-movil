@@ -10,9 +10,10 @@ import {
   InvoiceItem,
   IAExtractionResult,
   InvoiceStatus,
+  BillingClientData,
 } from '../types';
-import { isSunatUnit } from '../config/sunatUnits';
 import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
+import { mergeExtraction, FormSnapshot } from '../services/integrations/aiExtractionMerge';
 import { ApiError, getUserMessage } from '../services/core/apiClient';
 import { PDFService } from '../services/integrations/pdfService';
 import { invoiceService } from '../services/business/invoiceService';
@@ -66,6 +67,15 @@ const iaErrorMessage = (error: unknown): string => {
   return 'Ocurrió un error al procesar con IA. Intenta de nuevo.';
 };
 
+// Un mensaje de Zod suelto no dice donde mirar; el path si:
+// ['items', 2, 'quantity'] -> "Producto 3: Cantidad debe ser mayor a 0".
+const describeIssue = (issue: { path: PropertyKey[]; message: string }): string => {
+  const [section, index] = issue.path;
+  return section === 'items' && typeof index === 'number'
+    ? `Producto ${index + 1}: ${issue.message}`
+    : issue.message;
+};
+
 interface BillingProps {
   sender: Sender | null;
   products: Product[];
@@ -79,13 +89,6 @@ interface BillingProps {
   onRefresh?: () => Promise<void> | void;
   onSaveProduct?: (data: { description: string; unit: UnitOfMeasure; base_price: number; has_igv: boolean }) => Promise<void>;
   onSaveCredentials?: (sunatUser: string, sunatPass: string) => Promise<void>;
-}
-
-interface BillingClientData {
-  name: string;
-  document: string;
-  phone: string;
-  invoice_date: string;
 }
 
 const Billing: React.FC<BillingProps> = ({
@@ -145,6 +148,13 @@ const Billing: React.FC<BillingProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const productsSectionRef = useRef<HTMLElement | null>(null);
 
+  // La respuesta de la IA llega segundos despues del disparo: el merge debe leer el
+  // formulario tal como esta ahora, no el que capturo el closure al tomar la foto.
+  const formSnapshotRef = useRef<FormSnapshot>({ invoiceType, clientData });
+  React.useEffect(() => {
+    formSnapshotRef.current = { invoiceType, clientData };
+  }, [invoiceType, clientData]);
+
   const [documentLookup, setDocumentLookup] = useState<'idle' | 'searching' | 'found' | 'notfound'>('idle');
 
   const handleDniMatch = useCallback(async (value: string) => {
@@ -185,28 +195,12 @@ const Billing: React.FC<BillingProps> = ({
   const igvTotal = gravada * 0.18;
   const total = gravada + exonerada + igvTotal;
 
-  const formatDateForInput = (dateStr: string): string => {
-    if (dateStr.includes('/')) {
-      const parts = dateStr.split('/');
-      if (parts.length === 3) {
-        const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-        return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-      }
-    }
-    return dateStr;
-  };
-
   const maxInvoiceDate = new Date().toLocaleDateString('en-CA');
   const minInvoiceDate = (() => {
     const limit = new Date();
     limit.setDate(limit.getDate() - 2);
     return limit.toLocaleDateString('en-CA');
   })();
-
-  const mapUnit = (unit: string): UnitOfMeasure => {
-    const normalized = unit?.toUpperCase();
-    return isSunatUnit(normalized) ? normalized : 'UNIDAD';
-  };
 
   const scrollToProducts = () => {
     requestAnimationFrame(() =>
@@ -218,73 +212,31 @@ const Billing: React.FC<BillingProps> = ({
     setIaWarning(null);
     setIaSuccess(null);
 
-    if (result.tipo_documento) {
-      setInvoiceType(
-        result.tipo_documento === 'FACTURA' ? InvoiceType.FACTURA : InvoiceType.BOLETA
-      );
-    }
+    const merged = mergeExtraction(result, formSnapshotRef.current, products);
+    const reviewNote = merged.ignored.length
+      ? ` Revisa: ${merged.ignored.join(', ')}.`
+      : '';
 
-    const client = result.cliente;
-    const hasClientData = Boolean(
-      client &&
-        (client.cliente?.trim() ||
-          client.dni?.trim() ||
-          client.ruc?.trim() ||
-          client.telefono?.trim())
-    );
-    if (hasClientData) {
-      setClientData((prev) => ({
-        ...prev,
-        name: client.cliente || prev.name,
-        document: client.dni || client.ruc || prev.document,
-        phone: client.telefono || prev.phone,
-        invoice_date: client.fecha
-          ? formatDateForInput(client.fecha)
-          : prev.invoice_date,
-      }));
-    }
+    setInvoiceType(merged.invoiceType);
+    setClientData(merged.clientData);
 
-    if (!result.productos || result.productos.length === 0) {
-      const clientName = client?.cliente?.trim();
+    if (merged.items.length === 0) {
+      const detectedName = merged.clientData.name.trim();
       setIaWarning(
-        hasClientData
-          ? clientName
-            ? `Cliente "${clientName}" detectado. No se identificaron productos — agrégalos manualmente.`
-            : 'Datos del cliente detectados. No se identificaron productos — agrégalos manualmente.'
-          : 'No se detectaron productos ni cliente. Intenta dictar más claro o agrega los datos manualmente.'
+        (detectedName
+          ? `Cliente "${detectedName}" detectado. No se identificaron productos — agrégalos manualmente.`
+          : 'No se identificaron productos. Intenta dictar más claro o agrégalos manualmente.') +
+          reviewNote
       );
       return;
     }
 
-    setItems(
-      result.productos.map((product) => {
-        const quantity = product.cantidad || 1;
-        const matchedProduct = products.find(
-          (candidate) => String(candidate.id) === String(product.productId)
-        );
+    setItems(merged.items);
 
-        const hasIgv = matchedProduct ? matchedProduct.has_igv : false;
-        const description = matchedProduct?.description || product.descripcion || '';
-        const unitPrice =
-          matchedProduct?.base_price ||
-          product.precio_base ||
-          product.precio_total / (hasIgv ? 1.18 : 1) / quantity;
-
-        return {
-          product_id: matchedProduct?.id ?? null,
-          description,
-          quantity,
-          unit: mapUnit(product.unidad_medida),
-          unit_price: unitPrice,
-          has_igv: hasIgv,
-          total: product.precio_total || unitPrice * quantity * (hasIgv ? 1.18 : 1),
-        };
-      })
-    );
-
-    const count = result.productos.length;
+    const count = merged.items.length;
     setIaSuccess(
-      `Listo — ${count} ${count === 1 ? 'producto detectado' : 'productos detectados'}. Revisa los datos antes de emitir.`
+      `Listo — ${count} ${count === 1 ? 'producto detectado' : 'productos detectados'}.` +
+        `${reviewNote} Revisa los datos antes de emitir.`
     );
     scrollToProducts();
   };
@@ -539,7 +491,7 @@ const Billing: React.FC<BillingProps> = ({
     });
 
     if (!result.success) {
-      setErrors(result.error.issues.map((issue) => issue.message));
+      setErrors(result.error.issues.map(describeIssue));
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return false;
     }

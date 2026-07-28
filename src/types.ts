@@ -228,23 +228,11 @@ export interface AdminUserRow {
   updated_at?: string;
 }
 
-export interface IAExtractionResult {
-  tipo_documento: 'BOLETA' | 'FACTURA';
-  cliente: {
-    fecha: string;
-    cliente: string;
-    dni: string;
-    ruc: string;
-    telefono: string;
-  };
-  productos: Array<{
-    productId?: number | string;
-    cantidad: number;
-    unidad_medida: string;
-    descripcion: string;
-    precio_base: number;
-    igv: number;
-    precio_total: number;
-  }>;
-  total: number;
+export type { ExtractedClient, ExtractedProduct, IAExtractionResult } from './schemas/ai';
+
+export interface BillingClientData {
+  name: string;
+  document: string;
+  phone: string;
+  invoice_date: string;
 }
