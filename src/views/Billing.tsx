@@ -57,6 +57,18 @@ const DNI_LENGTH = 8;
 const RUC_LENGTH = 11;
 const onlyDigits = (value: string): string => value.replace(/\D/g, '');
 
+// Borrador no guardado (cliente + productos a medio llenar): sobrevive a una navegacion
+// accidental dentro de la misma pestana, pero no mas alla — para eso existe "Guardar
+// borrador", que si persiste en la BD. Scoped por sender para que el de una empresa no
+// se filtre a otra.
+const billingDraftKey = (senderId: number): string => `fm_billing_draft_${senderId}`;
+
+interface BillingDraftCache {
+  invoiceType: InvoiceType;
+  clientData: BillingClientData;
+  items: InvoiceItem[];
+}
+
 const iaErrorMessage = (error: unknown): string => {
   if (error instanceof ApiError) {
     if (error.status === 429)
@@ -170,6 +182,48 @@ const Billing: React.FC<BillingProps> = ({
     !!sender?.has_sunat_credentials &&
     sender?.sunat_credentials_status === 'PENDIENTE' &&
     !skippedCredentialsCheck;
+
+  const draftRestoredRef = useRef(false);
+  const skipNextDraftPersistRef = useRef(false);
+
+  React.useEffect(() => {
+    if (draftRestoredRef.current || !sender) return;
+    draftRestoredRef.current = true;
+
+    const cachedRaw = sessionStorage.getItem(billingDraftKey(sender.id));
+    if (!cachedRaw) return;
+
+    try {
+      const cached: BillingDraftCache = JSON.parse(cachedRaw);
+      skipNextDraftPersistRef.current = true;
+      setInvoiceType(cached.invoiceType);
+      setClientData(cached.clientData);
+      setItems(cached.items);
+    } catch {
+      sessionStorage.removeItem(billingDraftKey(sender.id));
+    }
+  }, [sender]);
+
+  React.useEffect(() => {
+    if (!sender) return;
+    // El render que aplica la restauracion de arriba todavia trae el estado vacio previo:
+    // sin este guard, esta misma pasada lo tomaria como "formulario vacio" y borraria el
+    // borrador que recien se encontro, antes de que llegue a pintarse.
+    if (skipNextDraftPersistRef.current) {
+      skipNextDraftPersistRef.current = false;
+      return;
+    }
+
+    const key = billingDraftKey(sender.id);
+    const hasContent = clientData.name.trim() !== '' || clientData.document.trim() !== '' || items.length > 0;
+
+    if (!hasContent) {
+      sessionStorage.removeItem(key);
+      return;
+    }
+
+    sessionStorage.setItem(key, JSON.stringify({ invoiceType, clientData, items }));
+  }, [sender, invoiceType, clientData, items]);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -691,6 +745,10 @@ const Billing: React.FC<BillingProps> = ({
       setEmissionStep(3);
       const finalInvoice: Invoice = { ...createdInvoice, status: InvoiceStatus.PROCESANDO };
 
+      // El formulario sigue "lleno" en pantalla mientras se ve el exito, pero ya se
+      // emitio: si el usuario navega por accidente y vuelve, no debe reaparecer y
+      // arriesgar una emision duplicada.
+      if (sender) sessionStorage.removeItem(billingDraftKey(sender.id));
       setEmissionSuccess(finalInvoice);
       setEmissionState('processing');
       startPolling(finalInvoice.id);
@@ -1347,6 +1405,9 @@ const Billing: React.FC<BillingProps> = ({
                 onChange={(event) => {
                   const digits = onlyDigits(event.target.value);
                   setClientData((prev) => ({ ...prev, document: digits }));
+                  // RUC (11 digitos) solo puede ir en factura; cualquier otro caso (DNI,
+                  // documento incompleto o solo nombre) es boleta.
+                  setInvoiceType(digits.length === RUC_LENGTH ? InvoiceType.FACTURA : InvoiceType.BOLETA);
                   if (digits.length !== DNI_LENGTH && digits.length !== RUC_LENGTH) {
                     setDocumentLookup('idle');
                   }
@@ -1627,6 +1688,14 @@ const Billing: React.FC<BillingProps> = ({
                 <span className="text-xs font-black text-slate-700">{items.length}</span>
               </div>
               <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Subtotal</span>
+                <span className="text-xs font-black text-slate-700">S/ {(gravada + exonerada).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
+                <span className="text-xs font-black text-slate-700">S/ {igvTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Total</span>
                 <span className="text-sm font-black text-blue-600">S/ {total.toFixed(2)}</span>
               </div>
@@ -1688,6 +1757,14 @@ const Billing: React.FC<BillingProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Productos</span>
                 <span className="text-xs font-black text-slate-700">{items.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Subtotal</span>
+                <span className="text-xs font-black text-slate-700">S/ {(gravada + exonerada).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
+                <span className="text-xs font-black text-slate-700">S/ {igvTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Total</span>
