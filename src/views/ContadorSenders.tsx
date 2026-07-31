@@ -327,11 +327,12 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
         </div>
       )}
 
-      {showCredsModal && sender && (
+      {showCredsModal && sender && selectedEmpresaId && (
         <SunatCredentialsModal
           hasCredentials={hasCredentials}
           empresaName={sender.name}
           onSaveCredentials={handleSaveCredentials}
+          empresaUserId={selectedEmpresaId}
           onClose={() => setShowCredsModal(false)}
         />
       )}

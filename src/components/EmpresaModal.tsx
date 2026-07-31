@@ -4,6 +4,8 @@ import { Building2, X, AlertCircle, Eye, EyeOff, Loader2, Lock, Search } from 'l
 import { Sender, SenderUpsertInput } from '../types';
 import { lookupService } from '../services/business/lookupService';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
+import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
+import SunatCredentialsVerdict from './SunatCredentialsVerdict';
 
 const RUC_LENGTH = 11;
 
@@ -11,10 +13,20 @@ interface EmpresaModalProps {
   sender: Sender | null;
   canEditIdentity: boolean;
   onSave: (payload: SenderUpsertInput) => Promise<void>;
+  onVerified?: () => void | Promise<void>;
   onClose: () => void;
+  /** Id de la empresa cuando quien verifica es un contador, no la propia empresa. */
+  empresaUserId?: string;
 }
 
-const EmpresaModal: React.FC<EmpresaModalProps> = ({ sender, canEditIdentity, onSave, onClose }) => {
+const EmpresaModal: React.FC<EmpresaModalProps> = ({
+  sender,
+  canEditIdentity,
+  onSave,
+  onVerified,
+  onClose,
+  empresaUserId,
+}) => {
   const [ruc, setRuc] = useState(sender?.ruc ?? '');
   const [razonSocial, setRazonSocial] = useState(sender?.name ?? '');
   const [sunatUser, setSunatUser] = useState('');
@@ -23,6 +35,9 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({ sender, canEditIdentity, on
   const [lookingUp, setLookingUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [verdictSeen, setVerdictSeen] = useState(false);
+  const { phase, status, message, check, reset } = useSunatCredentialsCheck(() => setVerdictSeen(true), empresaUserId);
 
   const hasCredentials = sender?.has_sunat_credentials === true;
 
@@ -82,13 +97,43 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({ sender, canEditIdentity, on
         sunat_user: user || undefined,
         sunat_pass: pass || undefined,
       });
-      onClose();
     } catch {
       setFormError('No se pudieron guardar los datos. Intenta de nuevo.');
+      return;
     } finally {
       setSubmitting(false);
     }
+
+    // Credenciales nuevas: se prueban antes de cerrar. Si solo cambio la identidad de la
+    // empresa no hay nada que verificar en SUNAT.
+    if (!user) {
+      onClose();
+      return;
+    }
+    await check();
   };
+
+  /** Cualquier salida refresca los datos si SUNAT alcanzó a dar un veredicto. */
+  const handleClose = async () => {
+    if (verdictSeen) await onVerified?.();
+    onClose();
+  };
+
+  if (phase !== 'idle') {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
+        <div className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+          <SunatCredentialsVerdict
+            phase={phase}
+            status={status}
+            errorMessage={message}
+            onRetry={reset}
+            onAccept={handleClose}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">

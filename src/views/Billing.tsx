@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
 import { mergeExtraction, FormSnapshot } from '../services/integrations/aiExtractionMerge';
+import { prepareImageForAI } from '../services/utils/imagePrep';
 import { ApiError, getUserMessage } from '../services/core/apiClient';
 import { PDFService } from '../services/integrations/pdfService';
 import { invoiceService } from '../services/business/invoiceService';
@@ -21,6 +22,7 @@ import { lookupService } from '../services/business/lookupService';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import ProductFormModal from '../components/ProductFormModal';
 import SunatCredentialsModal from '../components/SunatCredentialsModal';
+import SunatCredentialsGate from '../components/SunatCredentialsGate';
 import { unitLabel } from '../services/utils/invoiceMath';
 import { invoiceEmissionSchema } from '../schemas/business';
 import { emissionProgress } from '../config/emissionProgress';
@@ -67,13 +69,32 @@ const iaErrorMessage = (error: unknown): string => {
   return 'Ocurrió un error al procesar con IA. Intenta de nuevo.';
 };
 
-// Un mensaje de Zod suelto no dice donde mirar; el path si:
-// ['items', 2, 'quantity'] -> "Producto 3: Cantidad debe ser mayor a 0".
-const describeIssue = (issue: { path: PropertyKey[]; message: string }): string => {
-  const [section, index] = issue.path;
-  return section === 'items' && typeof index === 'number'
-    ? `Producto ${index + 1}: ${issue.message}`
-    : issue.message;
+const AUDIO_BITS_PER_SECOND = 24_000;
+
+// ~2.5 minutos de dictado a 24 kbps. Por encima de esto avisamos en vez de dejar que el
+// proxy responda 413 sin CORS, que en el navegador se ve como un fallo de red opaco.
+const MAX_AUDIO_BYTES = 450 * 1024;
+
+// Cada error de formulario puede apuntar a un producto puntual (itemIndex = indice en
+// `items`) para poder resaltar esa fila y hacer scroll hasta ella, no solo mostrar texto.
+interface FormError {
+  message: string;
+  itemIndex?: number;
+}
+
+// Un mensaje de Zod suelto no dice donde mirar; el path si: ['items', 2, 'quantity'].
+// Ese "2" es el indice dentro de `validItems` (los items con descripcion, ya filtrados),
+// por eso se remapea con itemIndexByValidIndex antes de convertirlo en "Producto N".
+const describeIssue = (
+  issue: { path: PropertyKey[]; message: string },
+  itemIndexByValidIndex: number[]
+): FormError => {
+  const [section, validIndex] = issue.path;
+  if (section === 'items' && typeof validIndex === 'number') {
+    const itemIndex = itemIndexByValidIndex[validIndex];
+    return { message: `Producto ${itemIndex + 1}: ${issue.message}`, itemIndex };
+  }
+  return { message: issue.message };
 };
 
 interface BillingProps {
@@ -89,6 +110,8 @@ interface BillingProps {
   onRefresh?: () => Promise<void> | void;
   onSaveProduct?: (data: { description: string; unit: UnitOfMeasure; base_price: number; has_igv: boolean }) => Promise<void>;
   onSaveCredentials?: (sunatUser: string, sunatPass: string) => Promise<void>;
+  /** Id de la empresa cuando quien opera es un contador, no la propia empresa. */
+  empresaUserId?: string;
 }
 
 const Billing: React.FC<BillingProps> = ({
@@ -104,6 +127,7 @@ const Billing: React.FC<BillingProps> = ({
   onKeepEmitting,
   onRefresh,
   onSaveCredentials,
+  empresaUserId,
 }) => {
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(InvoiceType.BOLETA);
   const [clientData, setClientData] = useState<BillingClientData>({
@@ -124,7 +148,8 @@ const Billing: React.FC<BillingProps> = ({
     index: null,
   });
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [skippedCredentialsCheck, setSkippedCredentialsCheck] = useState(false);
+  const [errors, setErrors] = useState<FormError[]>([]);
   const [iaWarning, setIaWarning] = useState<string | null>(null);
   const [iaSuccess, setIaSuccess] = useState<string | null>(null);
   const [isEmitting, setIsEmitting] = useState(false);
@@ -138,6 +163,14 @@ const Billing: React.FC<BillingProps> = ({
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
 
+  const credentialsRejected = sender?.sunat_credentials_status === 'INVALIDA';
+  // PENDIENTE = guardadas pero nunca verificadas (SUNAT estaba caido al configurarlas):
+  // se comprueba el acceso antes de dejar llenar el comprobante, no despues.
+  const mustVerifyCredentials =
+    !!sender?.has_sunat_credentials &&
+    sender?.sunat_credentials_status === 'PENDIENTE' &&
+    !skippedCredentialsCheck;
+
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
@@ -147,6 +180,7 @@ const Billing: React.FC<BillingProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const productsSectionRef = useRef<HTMLElement | null>(null);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   // La respuesta de la IA llega segundos despues del disparo: el merge debe leer el
   // formulario tal como esta ahora, no el que capturo el closure al tomar la foto.
@@ -182,6 +216,18 @@ const Billing: React.FC<BillingProps> = ({
   useDebouncedLookup(clientData.document, DNI_LENGTH, handleDniMatch);
   useDebouncedLookup(clientData.document, RUC_LENGTH, handleRucMatch);
 
+  // Unica fuente de verdad para "que filas resaltar en rojo": se deriva de errors en vez
+  // de mantener un estado aparte, asi nunca puede desincronizarse del banner de errores.
+  const invalidItemIndexes = React.useMemo(
+    () =>
+      new Set(
+        errors
+          .map((error) => error.itemIndex)
+          .filter((index): index is number => index !== undefined)
+      ),
+    [errors]
+  );
+
   const gravada = items
     .filter((item) => item.has_igv)
     .reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
@@ -206,6 +252,23 @@ const Billing: React.FC<BillingProps> = ({
     requestAnimationFrame(() =>
       productsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     );
+  };
+
+  const scrollToItem = (index: number) => {
+    requestAnimationFrame(() =>
+      itemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    );
+  };
+
+  // Si algun error apunta a un producto, ese es el lugar mas util donde llevar al usuario;
+  // si no (ej. falta el cliente), la unica opcion sensata sigue siendo subir al tope.
+  const scrollToFirstIssue = (formErrors: FormError[]) => {
+    const firstItemIndex = formErrors.find((error) => error.itemIndex !== undefined)?.itemIndex;
+    if (firstItemIndex !== undefined) {
+      scrollToItem(firstItemIndex);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const fillFormWithResult = (result: IAExtractionResult) => {
@@ -244,7 +307,9 @@ const Billing: React.FC<BillingProps> = ({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      // Opus a 24 kbps transcribe voz sin perder inteligibilidad y pesa ~5 veces menos que
+      // el bitrate por defecto (~128 kbps = 1 MB por minuto, que el proxy rechaza).
+      const recorder = new MediaRecorder(stream, { audioBitsPerSecond: AUDIO_BITS_PER_SECOND });
 
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
@@ -256,7 +321,18 @@ const Billing: React.FC<BillingProps> = ({
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // El contenedor real lo decide el navegador: Chrome da webm/opus, Safari mp4.
+        const audioMime = recorder.mimeType?.split(';')[0] || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: audioMime });
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (audioBlob.size > MAX_AUDIO_BYTES) {
+          setIaWarning(
+            'La grabación es muy larga. Dicta la venta en menos de un minuto e intenta de nuevo.'
+          );
+          return;
+        }
+
         const reader = new FileReader();
 
         reader.onloadend = async () => {
@@ -265,7 +341,7 @@ const Billing: React.FC<BillingProps> = ({
           setProcessingType('audio');
 
           try {
-            const result = await processInvoiceAudio(base64Audio, 'audio/webm', sender?.id);
+            const result = await processInvoiceAudio(base64Audio, audioMime, sender?.id);
             if (result) fillFormWithResult(result);
           } catch (error) {
             setIaWarning(iaErrorMessage(error));
@@ -276,7 +352,6 @@ const Billing: React.FC<BillingProps> = ({
         };
 
         reader.readAsDataURL(audioBlob);
-        stream.getTracks().forEach((track) => track.stop());
       };
 
       recorder.start();
@@ -297,33 +372,24 @@ const Billing: React.FC<BillingProps> = ({
 
   const handleScan = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      setPreviewImage(base64);
-      setIaWarning(null);
-      setIaSuccess(null);
+    setIaWarning(null);
+    setIaSuccess(null);
+    setIsProcessing(true);
+    setProcessingType('image');
 
-      setTimeout(async () => {
-        setIsProcessing(true);
-        setProcessingType('image');
-
-        try {
-          const result = await processInvoiceImage(base64, sender?.id);
-          if (result) fillFormWithResult(result);
-        } catch (error) {
-          setIaWarning(iaErrorMessage(error));
-        } finally {
-          setIsProcessing(false);
-          setProcessingType(null);
-        }
-      }, 100);
-    };
-
-    reader.readAsDataURL(file);
-    event.target.value = '';
+    try {
+      const { dataUrl, mimeType } = await prepareImageForAI(file);
+      setPreviewImage(dataUrl);
+      fillFormWithResult(await processInvoiceImage(dataUrl, mimeType, sender?.id));
+    } catch (error) {
+      setIaWarning(iaErrorMessage(error));
+    } finally {
+      setIsProcessing(false);
+      setProcessingType(null);
+    }
   };
 
   const openCamera = () => {
@@ -476,11 +542,14 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const validateInvoiceForm = (): boolean => {
-    const validItems = items.filter((item) => item.description.trim().length > 0);
+    const validItemsWithIndex = items
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.description.trim().length > 0);
+
     const result = invoiceEmissionSchema.safeParse({
       invoice_type: invoiceType,
       clientData,
-      items: validItems.map((item) => ({
+      items: validItemsWithIndex.map(({ item }) => ({
         product_id: item.product_id,
         description: item.description,
         quantity: item.quantity,
@@ -491,8 +560,12 @@ const Billing: React.FC<BillingProps> = ({
     });
 
     if (!result.success) {
-      setErrors(result.error.issues.map(describeIssue));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const itemIndexByValidIndex = validItemsWithIndex.map(({ index }) => index);
+      const formErrors = result.error.issues.map((issue) =>
+        describeIssue(issue, itemIndexByValidIndex)
+      );
+      setErrors(formErrors);
+      scrollToFirstIssue(formErrors);
       return false;
     }
 
@@ -503,12 +576,17 @@ const Billing: React.FC<BillingProps> = ({
   const handleOpenConfirm = () => {
     if (!validateInvoiceForm()) return;
 
-    const hasItemWithoutPrice = items.some(
-      (item) => item.description.trim().length > 0 && item.unit_price <= 0
-    );
-    if (hasItemWithoutPrice) {
-      setErrors(['Hay productos sin precio (S/ 0.00). Asígnales un precio antes de emitir.']);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    const itemsWithoutPrice = items
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.description.trim().length > 0 && item.unit_price <= 0);
+
+    if (itemsWithoutPrice.length > 0) {
+      const formErrors = itemsWithoutPrice.map(({ index }) => ({
+        message: `Producto ${index + 1}: asígnale un precio antes de emitir (S/ 0.00).`,
+        itemIndex: index,
+      }));
+      setErrors(formErrors);
+      scrollToFirstIssue(formErrors);
       return;
     }
 
@@ -617,7 +695,7 @@ const Billing: React.FC<BillingProps> = ({
       setEmissionState('processing');
       startPolling(finalInvoice.id);
     } catch (error) {
-      setErrors([getUserMessage(error, 'No se pudo emitir el documento.')]);
+      setErrors([{ message: getUserMessage(error, 'No se pudo emitir el documento.') }]);
       setEmissionStep(0);
     } finally {
       setIsEmitting(false);
@@ -767,7 +845,7 @@ const Billing: React.FC<BillingProps> = ({
             </p>
 
             <div className="w-full space-y-3 max-w-xs">
-              {sender?.sunat_credentials_invalid ? (
+              {credentialsRejected ? (
                 <button
                   onClick={onSelectSender}
                   className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
@@ -892,8 +970,8 @@ const Billing: React.FC<BillingProps> = ({
 
             <ul className="space-y-1">
               {errors.map((error, index) => (
-                <li key={`${index}-${error}`} className="text-[11px] font-bold flex items-start gap-2">
-                  <span className="text-red-200">•</span> {error}
+                <li key={`${index}-${error.message}`} className="text-[11px] font-bold flex items-start gap-2">
+                  <span className="text-red-200">•</span> {error.message}
                 </li>
               ))}
             </ul>
@@ -1381,46 +1459,54 @@ const Billing: React.FC<BillingProps> = ({
           </button>
         ) : (
           <div className="space-y-3">
-            {items.map((item, index) => (
-              <div
-                key={`item-${index}-${item.product_id ?? 'new'}`}
-                className="bg-white rounded-[28px] shadow-sm border border-slate-100 p-4 flex items-center gap-3 animate-in slide-in-from-left duration-300"
-              >
-                <div className="shrink-0 w-14 text-center">
-                  <p className="text-lg font-black text-slate-800 leading-none">{item.quantity}</p>
-                  <p className="text-[9px] font-black text-slate-400 uppercase mt-1">
-                    {unitLabel(item.unit)}
-                  </p>
-                </div>
+            {items.map((item, index) => {
+              const hasError = invalidItemIndexes.has(index);
+              return (
+                <div
+                  key={`item-${index}-${item.product_id ?? 'new'}`}
+                  ref={(el) => {
+                    itemRefs.current[index] = el;
+                  }}
+                  className={`bg-white rounded-[28px] shadow-sm border p-4 flex items-center gap-3 animate-in slide-in-from-left duration-300 transition-colors ${
+                    hasError ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-100'
+                  }`}
+                >
+                  <div className="shrink-0 w-14 text-center">
+                    <p className="text-lg font-black text-slate-800 leading-none">{item.quantity}</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase mt-1">
+                      {unitLabel(item.unit)}
+                    </p>
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className="font-black text-slate-800 text-sm uppercase truncate">
-                    {item.description || 'Sin nombre'}
-                  </p>
-                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                    S/ {Number(item.unit_price).toFixed(2)} c/u · {item.has_igv ? 'IGV 18%' : 'Exonerado'}
-                  </p>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-slate-800 text-sm uppercase truncate">
+                      {item.description || 'Sin nombre'}
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                      S/ {Number(item.unit_price).toFixed(2)} c/u · {item.has_igv ? 'IGV 18%' : 'Exonerado'}
+                    </p>
+                  </div>
 
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-black text-blue-600">S/ {Number(item.total).toFixed(2)}</p>
-                  <div className="flex items-center gap-1 mt-1 justify-end">
-                    <button
-                      onClick={() => openEditProduct(index)}
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() => removeItem(index)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-black text-blue-600">S/ {Number(item.total).toFixed(2)}</p>
+                    <div className="flex items-center gap-1 mt-1 justify-end">
+                      <button
+                        onClick={() => openEditProduct(index)}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={() => removeItem(index)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <button
               onClick={openNewProduct}
@@ -1488,7 +1574,7 @@ const Billing: React.FC<BillingProps> = ({
               Guardar como Borrador
             </button>
 
-            {sender?.sunat_credentials_invalid ? (
+            {credentialsRejected ? (
               <>
                 <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
                   <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
@@ -1629,7 +1715,28 @@ const Billing: React.FC<BillingProps> = ({
         </div>
       )}
 
-      {sender?.sunat_credentials_invalid && (
+      {mustVerifyCredentials && sender && !isEmitting && !emissionSuccess && (
+        <SunatCredentialsGate
+          empresaName={sender.name}
+          empresaUserId={empresaUserId}
+          onVerified={async () => {
+            setSkippedCredentialsCheck(true);
+            await onRefresh?.();
+          }}
+          onFixCredentials={async () => {
+            setSkippedCredentialsCheck(true);
+            await onRefresh?.();
+            if (onSaveCredentials) {
+              setShowCredentialsModal(true);
+              return;
+            }
+            onSelectSender();
+          }}
+          onSkip={() => setSkippedCredentialsCheck(true)}
+        />
+      )}
+
+      {credentialsRejected && (
         <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center">
           <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[32px] flex items-center justify-center mb-6">
             <KeyRound size={40} />
@@ -1654,6 +1761,8 @@ const Billing: React.FC<BillingProps> = ({
           hasCredentials={sender.has_sunat_credentials}
           empresaName={sender.name}
           onSaveCredentials={onSaveCredentials}
+          onVerified={onRefresh}
+          empresaUserId={empresaUserId}
           onClose={() => setShowCredentialsModal(false)}
         />
       )}

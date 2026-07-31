@@ -6,11 +6,12 @@ import { useAppData } from '../context/AppDataContext';
 
 const BillingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSender, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent, showToast, refreshAllData, saveSender } = useAppData();
+  const { activeSender, isContador, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent, showToast, refreshAllData, saveSender } = useAppData();
 
   return (
     <Billing
       sender={activeSender}
+      empresaUserId={isContador ? activeSender?.user_id : undefined}
       products={products}
       clients={clients}
       invoices={invoices}

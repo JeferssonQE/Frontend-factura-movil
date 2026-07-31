@@ -9,8 +9,11 @@ import {
   ShieldCheck,
   Building,
   ArrowRight,
+  AlertTriangle,
 } from 'lucide-react';
-import { Sender } from '../types';
+import { Sender, SunatCredentialsStatus } from '../types';
+import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
+import { CHECKING_CREDENTIALS_MESSAGE, CREDENTIALS_VERDICT } from '../config/sunatCredentials';
 
 interface OnboardingProps {
   sender: Sender | null;
@@ -39,6 +42,46 @@ const ReadOnlyField: React.FC<{ label: string; value: string }> = ({ label, valu
   </div>
 );
 
+const VERDICT_TONES: Record<SunatCredentialsStatus, string> = {
+  VALIDA: 'bg-emerald-50 text-emerald-600',
+  INVALIDA: 'bg-red-50 text-red-500',
+  PENDIENTE: 'bg-amber-50 text-amber-600',
+};
+
+const VerdictBlock: React.FC<{
+  status: SunatCredentialsStatus;
+  title: string;
+  message: string;
+  onRetry: () => void;
+  onContinue: () => void;
+}> = ({ status, title, message, onRetry, onContinue }) => (
+  <div className="py-4 text-center">
+    <div className={`w-16 h-16 mx-auto mb-5 rounded-[26px] flex items-center justify-center ${VERDICT_TONES[status]}`}>
+      {status === 'VALIDA' ? <CheckCircle2 size={28} /> : <AlertTriangle size={28} />}
+    </div>
+    <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest mb-2">{title}</h2>
+    <p className="text-[10px] text-slate-400 font-semibold leading-relaxed mb-6">{message}</p>
+
+    {status === 'INVALIDA' ? (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all"
+      >
+        Corregir credenciales
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={onContinue}
+        className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+      >
+        Entrar a FactuMovil <ArrowRight size={16} />
+      </button>
+    )}
+  </div>
+);
+
 const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSaveSunat, onFinish }) => {
   const [step, setStep] = useState<Step>(1);
 
@@ -53,10 +96,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const { phase, status, message, check, reset } = useSunatCredentialsCheck();
+
   const passwordTooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
   const passwordValid = password.length >= MIN_PASSWORD_LENGTH && password === confirmPassword;
   const sunatValid = sunatUser.trim().length > 0 && sunatPass.trim().length > 0;
+
+  // Sin veredicto de SUNAT (error de red) el estado real es "sin verificar".
+  const verdictStatus: SunatCredentialsStatus = status ?? 'PENDIENTE';
+  const verdictCopy = CREDENTIALS_VERDICT[verdictStatus];
 
   const handleSubmitPassword = async () => {
     if (!passwordValid) return;
@@ -72,17 +121,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
     }
   };
 
+  /** Guarda y comprueba el acceso: con credenciales rechazadas no se sale de este paso. */
   const handleConnectSunat = async () => {
     if (!sunatValid) return;
     setLoading(true);
     setError('');
     try {
       await onSaveSunat(sunatUser.trim(), sunatPass.trim());
-      onFinish();
     } catch {
       setError('No se pudieron guardar las credenciales. Intenta de nuevo.');
+      return;
+    } finally {
       setLoading(false);
     }
+
+    await check();
   };
 
   return (
@@ -181,7 +234,31 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
           </>
         )}
 
-        {step === 2 && (
+        {step === 2 && phase === 'checking' && (
+          <div className="py-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-[26px] bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Loader2 size={28} className="animate-spin" />
+            </div>
+            <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest mb-2">
+              Probando tu acceso
+            </h2>
+            <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">
+              {CHECKING_CREDENTIALS_MESSAGE}
+            </p>
+          </div>
+        )}
+
+        {step === 2 && (phase === 'done' || phase === 'error') && (
+          <VerdictBlock
+            status={verdictStatus}
+            title={verdictCopy.title}
+            message={phase === 'error' ? message : verdictCopy.message}
+            onRetry={reset}
+            onContinue={onFinish}
+          />
+        )}
+
+        {step === 2 && phase === 'idle' && (
           <>
             <div className="flex items-center justify-center gap-2 mb-3">
               <Building className="text-blue-600" size={16} />

@@ -41,6 +41,20 @@ export const getUserMessage = (
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+// La Clave SOL y las contrasenas viajan en el body de /auth/* y /sender. Aunque este log
+// solo corre en desarrollo, son credenciales de clientes reales: no van a la consola.
+const REDACTED_FIELDS = ['password', 'sunat_pass', 'sunat_user', 'data'];
+
+const redactBody = (body: unknown): unknown => {
+  if (!isPlainObject(body)) return body;
+
+  return Object.fromEntries(
+    Object.entries(body).map(([key, value]) =>
+      REDACTED_FIELDS.includes(key) ? [key, '***'] : [key, value]
+    )
+  );
+};
+
 const buildHeaders = (includeJson = true): HeadersInit => {
   const headers: Record<string, string> = {};
 
@@ -238,13 +252,25 @@ const request = async <TResponse>(
   body?: unknown,
   init?: RequestInit
 ): Promise<TResponse> => {
-  if (!import.meta.env.DEV) return requestWithRefresh<TResponse>(method, path, body, init);
+  try {
+    if (!import.meta.env.DEV) {
+      return await requestWithRefresh<TResponse>(method, path, body, init);
+    }
 
-  const t0 = performance.now();
-  console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? body : '');
-  const result = await requestWithRefresh<TResponse>(method, path, body, init);
-  console.log(`[API] ${method} ${path} ⏱ ${(performance.now() - t0).toFixed(0)}ms`);
-  return result;
+    const t0 = performance.now();
+    console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? redactBody(body) : '');
+    const result = await requestWithRefresh<TResponse>(method, path, body, init);
+    console.log(`[API] ${method} ${path} ⏱ ${(performance.now() - t0).toFixed(0)}ms`);
+    return result;
+  } catch (error) {
+    // Un fallo sin respuesta HTTP (red caida, CORS, body rechazado por el proxy) nunca pasa
+    // por handleErrorResponse: sin esto, Sentry no ve el error y el usuario se queda solo
+    // con el toast. Es justo el caso que deja "error al procesar" sin rastro en Sentry.
+    if (!(error instanceof ApiError)) {
+      reportError(error, { path, method, kind: 'network' });
+    }
+    throw error;
+  }
 };
 
 export const apiClient = {

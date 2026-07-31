@@ -6,7 +6,7 @@ import { useAppData } from '../context/AppDataContext';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeSender, saveSender, logout, isAdmin, isContador } = useAppData();
+  const { user, activeSender, saveSender, logout, isAdmin, isContador, refreshAllData } = useAppData();
 
   const canEditIdentity = isAdmin;
 
@@ -23,6 +23,7 @@ const ProfilePage: React.FC = () => {
       isContador={isContador}
       canEditIdentity={canEditIdentity}
       onSaveSender={saveSender}
+      onRefresh={refreshAllData}
       onGoToAdmin={() => navigate('/admin/users')}
       onChangeSender={() => navigate('/contador/senders')}
       onLogout={handleLogout}

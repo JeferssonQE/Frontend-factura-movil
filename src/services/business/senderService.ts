@@ -1,6 +1,6 @@
 // services/business/senderService.ts
 import { apiClient } from '../core/apiClient';
-import { Sender, SenderUpsertInput } from '../../types';
+import { Sender, SenderUpsertInput, SunatCredentialsValidation } from '../../types';
 
 export const senderService = {
   async getSender(): Promise<Sender | null> {
@@ -24,5 +24,13 @@ export const senderService = {
 
   async deleteSender(): Promise<void> {
     await apiClient.delete<void>('/sender');
+  },
+
+  async startSunatCredentialsValidation(): Promise<{ task_id: string }> {
+    return apiClient.post<{ task_id: string }>('/sender/sunat-credentials/validate', {});
+  },
+
+  async getSunatCredentialsValidation(taskId: string): Promise<SunatCredentialsValidation> {
+    return apiClient.get<SunatCredentialsValidation>(`/sender/sunat-credentials/validation/${taskId}`);
   },
 };

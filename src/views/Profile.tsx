@@ -11,6 +11,8 @@ import {
   ChevronRight,
   ArrowLeftRight,
   Pencil,
+  AlertTriangle,
+  KeyRound,
 } from 'lucide-react';
 import { AuthUser, Sender, SenderUpsertInput, UserPlan } from '../types';
 import EmpresaModal from '../components/EmpresaModal';
@@ -22,10 +24,60 @@ interface ProfileProps {
   isContador?: boolean;
   canEditIdentity: boolean;
   onSaveSender: (sender: SenderUpsertInput) => Promise<void>;
+  onRefresh?: () => Promise<void>;
   onGoToAdmin: () => void;
   onChangeSender?: () => void;
   onLogout: () => void;
 }
+
+/** Muestra si la empresa puede emitir: no basta con tener credenciales, deben funcionar. */
+const CredentialsBadge: React.FC<{ sender: Sender }> = ({ sender }) => {
+  if (!sender.has_sunat_credentials) {
+    return (
+      <BadgeShell tone="bg-amber-50 text-amber-700" icon={<KeyRound className="text-amber-500" size={18} />}>
+        Credenciales SUNAT pendientes
+      </BadgeShell>
+    );
+  }
+
+  if (sender.sunat_credentials_status === 'INVALIDA') {
+    return (
+      <BadgeShell tone="bg-red-50 text-red-700" icon={<AlertTriangle className="text-red-500" size={18} />}>
+        SUNAT rechazó tus credenciales
+      </BadgeShell>
+    );
+  }
+
+  if (sender.sunat_credentials_status === 'VALIDA') {
+    return (
+      <BadgeShell tone="bg-emerald-50 text-emerald-700" icon={<CheckCircle2 className="text-emerald-500" size={18} />}>
+        Acceso a SUNAT verificado
+        {sender.sunat_credentials_checked_at && (
+          <span className="block text-[9px] font-bold text-emerald-600/70 normal-case tracking-normal mt-0.5">
+            {new Date(sender.sunat_credentials_checked_at).toLocaleDateString('es-PE')}
+          </span>
+        )}
+      </BadgeShell>
+    );
+  }
+
+  return (
+    <BadgeShell tone="bg-slate-100 text-slate-600" icon={<ShieldCheck className="text-slate-400" size={18} />}>
+      Credenciales guardadas, sin verificar
+    </BadgeShell>
+  );
+};
+
+const BadgeShell: React.FC<{ tone: string; icon: React.ReactNode; children: React.ReactNode }> = ({
+  tone,
+  icon,
+  children,
+}) => (
+  <div className={`rounded-xl p-4 flex items-center gap-3 ${tone}`}>
+    {icon}
+    <p className="text-[10px] font-bold uppercase leading-tight">{children}</p>
+  </div>
+);
 
 const PLAN_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   free:       { bg: 'bg-slate-100',   text: 'text-slate-500',  label: 'FREE'       },
@@ -40,6 +92,7 @@ const Profile: React.FC<ProfileProps> = ({
   isContador = false,
   canEditIdentity,
   onSaveSender,
+  onRefresh,
   onGoToAdmin,
   onChangeSender,
   onLogout,
@@ -169,12 +222,7 @@ const Profile: React.FC<ProfileProps> = ({
                 <p className="text-sm font-black text-slate-800">{sender.ruc}</p>
               </div>
 
-              <div className={`rounded-xl p-4 flex items-center gap-3 ${sender.has_sunat_credentials ? 'bg-emerald-50' : 'bg-amber-50'}`}>
-                <CheckCircle2 className={sender.has_sunat_credentials ? 'text-emerald-500' : 'text-amber-500'} size={18} />
-                <p className={`text-[10px] font-bold uppercase ${sender.has_sunat_credentials ? 'text-emerald-700' : 'text-amber-700'}`}>
-                  {sender.has_sunat_credentials ? 'Credenciales SUNAT configuradas' : 'Credenciales SUNAT pendientes'}
-                </p>
-              </div>
+              <CredentialsBadge sender={sender} />
 
               <button
                 type="button"
@@ -219,6 +267,8 @@ const Profile: React.FC<ProfileProps> = ({
           sender={sender}
           canEditIdentity={canEditIdentity}
           onSave={onSaveSender}
+          onVerified={onRefresh}
+          empresaUserId={isContador ? sender.user_id : undefined}
           onClose={() => setShowEmpresaModal(false)}
         />
       )}

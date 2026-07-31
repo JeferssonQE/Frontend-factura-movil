@@ -27,9 +27,10 @@ const extractInvoice = async (
 
 export const processInvoiceImage = (
   base64Image: string,
+  mimeType: string,
   senderId?: number
 ): Promise<IAExtractionResult> =>
-  extractInvoice({ kind: 'image', data: base64Image }, senderId);
+  extractInvoice({ kind: 'image', data: base64Image, mime_type: mimeType }, senderId);
 
 export const processInvoiceAudio = (
   base64Audio: string,

@@ -1,12 +1,14 @@
 // vite.config.ts
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+// Sin loadEnv a proposito: solo las variables con prefijo VITE_ deben llegar al bundle.
+// loadEnv(mode, '.', '') cargaba TODAS las del .env y aqui se inyectaba GEMINI_API_KEY
+// en el codigo del navegador. Hoy la IA vive en el backend: la key no sale del servidor.
+export default defineConfig(() => {
     return {
       server: {
         port: 3000,
@@ -52,39 +54,14 @@ export default defineConfig(({ mode }) => {
               }
             ]
           },
+          // Solo assets estaticos. El navegador ya no llama a Gemini ni a Supabase (todo
+          // pasa por la API), y cachear respuestas de datos deja informacion de facturacion
+          // en el dispositivo mucho despues de cerrar la sesion.
           workbox: {
-            globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-            runtimeCaching: [
-              {
-                urlPattern: /^https:\/\/api\.generativelanguage\.googleapis\.com\/.*/i,
-                handler: 'NetworkFirst',
-                options: {
-                  cacheName: 'gemini-api-cache',
-                  expiration: {
-                    maxEntries: 10,
-                    maxAgeSeconds: 3600
-                  }
-                }
-              },
-              {
-                urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-                handler: 'NetworkFirst',
-                options: {
-                  cacheName: 'supabase-cache',
-                  expiration: {
-                    maxEntries: 50,
-                    maxAgeSeconds: 86400
-                  }
-                }
-              }
-            ]
+            globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}']
           }
         })
       ],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
