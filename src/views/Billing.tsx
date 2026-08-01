@@ -169,7 +169,7 @@ const Billing: React.FC<BillingProps> = ({
   const [emissionStep, setEmissionStep] = useState(0);
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
-  const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | 'timeout' | null>(null);
+  const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | null>(null);
   const [emissionCurrentStep, setEmissionCurrentStep] = useState<string | null>(null);
   const [emissionFailedStep, setEmissionFailedStep] = useState<string | null>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
@@ -486,17 +486,10 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const POLL_INTERVAL_MS = 4_000;
-  const POLL_TIMEOUT_MS = 90_000;
 
   const startPolling = (invoiceId: number) => {
     stopPolling();
-    const startedAt = Date.now();
     pollingRef.current = setInterval(async () => {
-      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-        stopPolling();
-        setEmissionState('timeout');
-        return;
-      }
       try {
         const statusData = await invoiceService.getInvoiceStatus(invoiceId, sender?.id);
         if (statusData.status === InvoiceStatus.EMITIDO) {
@@ -918,30 +911,6 @@ const Billing: React.FC<BillingProps> = ({
                   <RefreshCw size={18} /> Reintentar
                 </button>
               )}
-              <button
-                onClick={resetForm}
-                className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
-              >
-                <RotateCcw size={18} /> Nueva Venta
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* ── TIMEOUT ── */}
-        {emissionState === 'timeout' && (
-          <>
-            <div className="w-24 h-24 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-8">
-              <AlertTriangle size={52} strokeWidth={2} />
-            </div>
-            <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-amber-600">
-              Procesando en SUNAT
-            </h2>
-            <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
-              La emisión está tardando más de lo esperado. Revisa el historial para ver el resultado.
-            </p>
-
-            <div className="w-full space-y-3 max-w-xs">
               <button
                 onClick={resetForm}
                 className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
