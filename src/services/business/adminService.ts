@@ -3,8 +3,15 @@ import { apiClient } from '../core/apiClient';
 import { AdminUserRow, Sender, UserRole, UserPlan } from '../../types';
 
 export type UpdateCompanyPayload = {
+  name: string;
+  email: string;
   razon_social: string;
   ruc: string;
+};
+
+export type UpdateCompanyResult = {
+  sender: Sender;
+  user: AdminUserRow;
 };
 
 export type CreateUserPayload = {
@@ -40,8 +47,8 @@ export const adminService = {
     return apiClient.get<Sender[]>('/admin/users/senders');
   },
 
-  async updateCompany(userId: string, payload: UpdateCompanyPayload): Promise<Sender> {
-    return apiClient.put<Sender>(`/admin/users/${userId}/company`, payload);
+  async updateCompany(userId: string, payload: UpdateCompanyPayload): Promise<UpdateCompanyResult> {
+    return apiClient.put<UpdateCompanyResult>(`/admin/users/${userId}/company`, payload);
   },
 
   async createUser(payload: CreateUserPayload): Promise<AdminUserRow> {

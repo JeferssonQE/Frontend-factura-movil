@@ -172,7 +172,7 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
 
   const [senders,     setSenders]     = useState<Record<string, Sender>>({});
   const [editUserId,  setEditUserId]  = useState<string | null>(null);
-  const [editForm,    setEditForm]    = useState({ razon_social: '', ruc: '' });
+  const [editForm,    setEditForm]    = useState({ name: '', email: '', razon_social: '', ruc: '' });
   const [editError,   setEditError]   = useState<string | null>(null);
   const [editBusy,    setEditBusy]    = useState(false);
 
@@ -331,25 +331,37 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     const sender = senders[user.id];
     if (!sender) return;
     setEditError(null);
-    setEditForm({ razon_social: sender.name, ruc: sender.ruc });
+    setEditForm({
+      name: user.name ?? '',
+      email: user.email,
+      razon_social: sender.name,
+      ruc: sender.ruc,
+    });
     setEditUserId(user.id);
   };
 
   const handleUpdateCompany = async () => {
     if (!editUserId) return;
     setEditError(null);
-    const { razon_social, ruc } = editForm;
-    if (!razon_social.trim() || ruc.length !== 11) {
-      setEditError('Completa la razón social y un RUC de 11 dígitos.');
+    const { name, email, razon_social, ruc } = editForm;
+    if (!name.trim() || !email.trim() || !razon_social.trim() || ruc.length !== 11) {
+      setEditError('Completa nombre, email, razón social y un RUC de 11 dígitos.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setEditError('Ingresa un email válido (ejemplo: nombre@correo.com).');
       return;
     }
     setEditBusy(true);
     try {
-      const updated = await adminService.updateCompany(editUserId, {
+      const { sender, user } = await adminService.updateCompany(editUserId, {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
         razon_social: razon_social.trim().toUpperCase(),
         ruc,
       });
-      setSenders((prev) => ({ ...prev, [editUserId]: updated }));
+      setSenders((prev) => ({ ...prev, [editUserId]: sender }));
+      setUsers((prev) => prev.map((u) => (u.id === editUserId ? user : u)));
       setEditUserId(null);
     } catch (e: unknown) {
       setEditError(e instanceof Error ? e.message : 'Error al actualizar empresa');
@@ -1438,6 +1450,26 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
           {editError && <ModalError message={editError} />}
 
           <div className="space-y-3">
+            <FormField label="Nombre de contacto">
+              <input
+                type="text"
+                value={editForm.name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                className={inputClass}
+                placeholder="Juan Pérez"
+              />
+            </FormField>
+
+            <FormField label="Email">
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                className={inputClass}
+                placeholder="empresa@correo.com"
+              />
+            </FormField>
+
             <FormField label="Razón Social">
               <input
                 type="text"
