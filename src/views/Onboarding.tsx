@@ -92,6 +92,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
   const [sunatUser, setSunatUser] = useState('');
   const [sunatPass, setSunatPass] = useState('');
   const [showSunatPass, setShowSunatPass] = useState(false);
+  const [showCaptureForm, setShowCaptureForm] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -106,6 +107,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
   // Sin veredicto de SUNAT (error de red) el estado real es "sin verificar".
   const verdictStatus: SunatCredentialsStatus = status ?? 'PENDIENTE';
   const verdictCopy = CREDENTIALS_VERDICT[verdictStatus];
+
+  // El contador pudo haber conectado SUNAT antes de este primer ingreso: no pedirle
+  // de nuevo la Clave SOL, solo mostrar el estado que ya existe para esa empresa.
+  const alreadyConnected = Boolean(sender?.has_sunat_credentials) && !showCaptureForm;
+  const preConnectedStatus: SunatCredentialsStatus = sender?.sunat_credentials_status ?? 'PENDIENTE';
+  const preConnectedCopy = CREDENTIALS_VERDICT[preConnectedStatus];
 
   const handleSubmitPassword = async () => {
     if (!passwordValid) return;
@@ -230,6 +237,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
               >
                 {loading ? <Loader2 className="animate-spin" size={18} /> : <><span>Guardar y continuar</span><ArrowRight size={18} /></>}
               </button>
+
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                disabled={loading}
+                className="w-full text-slate-400 py-2 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors disabled:opacity-50"
+              >
+                Más tarde
+              </button>
             </div>
           </>
         )}
@@ -258,7 +274,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
           />
         )}
 
-        {step === 2 && phase === 'idle' && (
+        {step === 2 && phase === 'idle' && alreadyConnected && (
+          <VerdictBlock
+            status={preConnectedStatus}
+            title={preConnectedCopy.title}
+            message={preConnectedCopy.message}
+            onRetry={() => setShowCaptureForm(true)}
+            onContinue={onFinish}
+          />
+        )}
+
+        {step === 2 && phase === 'idle' && !alreadyConnected && (
           <>
             <div className="flex items-center justify-center gap-2 mb-3">
               <Building className="text-blue-600" size={16} />
