@@ -1,6 +1,7 @@
 // services/business/inventoryService.ts
+
+import type { InventoryProduct } from '../../types';
 import { apiClient } from '../core/apiClient';
-import { InventoryProduct } from '../../types';
 
 export type InventoryProductPayload = {
   nombre: string;
@@ -21,7 +22,10 @@ export const inventoryService = {
     return apiClient.get<InventoryProduct[]>(`/inventory${qs(senderId)}`);
   },
 
-  async createProduct(payload: InventoryProductPayload, senderId?: number): Promise<InventoryProduct> {
+  async createProduct(
+    payload: InventoryProductPayload,
+    senderId?: number,
+  ): Promise<InventoryProduct> {
     return apiClient.post<InventoryProduct>(`/inventory${qs(senderId)}`, payload);
   },
 };

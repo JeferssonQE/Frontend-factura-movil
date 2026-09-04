@@ -1,12 +1,25 @@
 // src/pages/BillingPage.tsx
-import React from 'react';
+import type React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Billing from '../views/Billing';
 import { useAppData } from '../context/AppDataContext';
+import Billing from '../views/Billing';
 
 const BillingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeSender, isContador, products, clients, invoices, persistInvoice, saveDraft, saveClient, saveProductSilent, showToast, refreshAllData, saveSender } = useAppData();
+  const {
+    activeSender,
+    isContador,
+    products,
+    clients,
+    invoices,
+    persistInvoice,
+    saveDraft,
+    saveClient,
+    saveProductSilent,
+    showToast,
+    refreshAllData,
+    saveSender,
+  } = useAppData();
 
   return (
     <Billing

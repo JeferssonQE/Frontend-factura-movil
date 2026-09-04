@@ -22,7 +22,18 @@ interface KnowledgeEntry {
 
 const KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
-    keywords: ['igv', 'impuesto general ventas', 'impuesto a las ventas', '18%', 'credito fiscal', 'debito fiscal', 'base imponible', 'exonerado', 'inafecto', 'gravado'],
+    keywords: [
+      'igv',
+      'impuesto general ventas',
+      'impuesto a las ventas',
+      '18%',
+      'credito fiscal',
+      'debito fiscal',
+      'base imponible',
+      'exonerado',
+      'inafecto',
+      'gravado',
+    ],
     response: `IGV — Impuesto General a las Ventas
 
 Tasa vigente: 18% (16% IGV + 2% IPM — Impuesto de Promoción Municipal).
@@ -41,7 +52,18 @@ Operaciones inafectas: no están dentro del ámbito de aplicación del IGV (ej. 
 Declaración: mensual, a través del PDT 621 o Formulario Virtual 621 en el portal SUNAT.`,
   },
   {
-    keywords: ['ruc', 'registro unico contribuyentes', 'numero ruc', 'obtener ruc', 'inscripcion ruc', 'estado ruc', 'activo', 'suspendido', 'baja ruc', 'tipo contribuyente'],
+    keywords: [
+      'ruc',
+      'registro unico contribuyentes',
+      'numero ruc',
+      'obtener ruc',
+      'inscripcion ruc',
+      'estado ruc',
+      'activo',
+      'suspendido',
+      'baja ruc',
+      'tipo contribuyente',
+    ],
     response: `RUC — Registro Único de Contribuyentes
 
 El RUC es el número de identificación tributaria en Perú, compuesto por 11 dígitos.
@@ -63,7 +85,17 @@ Estados del RUC:
 Verificación: puedes consultar el RUC de cualquier contribuyente en sunat.gob.pe → Consultas en línea → Por RUC.`,
   },
   {
-    keywords: ['factura', 'boleta', 'comprobante pago', 'ticket', 'emitir factura', 'emitir boleta', 'diferencia factura boleta', 'cuando emitir', 'requisitos comprobante'],
+    keywords: [
+      'factura',
+      'boleta',
+      'comprobante pago',
+      'ticket',
+      'emitir factura',
+      'emitir boleta',
+      'diferencia factura boleta',
+      'cuando emitir',
+      'requisitos comprobante',
+    ],
     response: `Comprobantes de Pago — Factura vs. Boleta
 
 FACTURA
@@ -84,7 +116,16 @@ Obligación de emitir: siempre que realices una operación de venta o prestació
 Montos mínimos: no existe monto mínimo para emitir; sin embargo, boletas menores a S/ 5 pueden emitirse de forma consolidada al final del día.`,
   },
   {
-    keywords: ['nota credito', 'nota de credito', 'anular factura', 'anular boleta', 'devolucion', 'descuento', 'corregir comprobante', 'cuando emitir nota'],
+    keywords: [
+      'nota credito',
+      'nota de credito',
+      'anular factura',
+      'anular boleta',
+      'devolucion',
+      'descuento',
+      'corregir comprobante',
+      'cuando emitir nota',
+    ],
     response: `Nota de Crédito
 
 La nota de crédito es el comprobante que permite modificar o anular una factura o boleta ya emitida.
@@ -106,7 +147,16 @@ Efecto tributario:
 • En facturas, el cliente debe reducir su crédito fiscal`,
   },
   {
-    keywords: ['portal sol', 'clave sol', 'sunat online', 'sunat virtual', 'declaracion online', 'tramites online', 'e-menu', 'sunat operaciones'],
+    keywords: [
+      'portal sol',
+      'clave sol',
+      'sunat online',
+      'sunat virtual',
+      'declaracion online',
+      'tramites online',
+      'e-menu',
+      'sunat operaciones',
+    ],
     response: `Portal SOL — SUNAT Operaciones en Línea
 
 El Portal SOL (sunat.gob.pe) es la plataforma virtual de SUNAT para realizar trámites y declaraciones.
@@ -128,7 +178,15 @@ Operaciones disponibles:
 Clave SOL secundaria: puedes crear usuarios secundarios para que tu contador acceda sin compartir la clave principal.`,
   },
   {
-    keywords: ['detracciones', 'spot', 'sistema pago obligaciones tributarias', 'detraccion', 'cuenta detracciones', 'bienes sujetos detracciones', 'porcentaje detraccion'],
+    keywords: [
+      'detracciones',
+      'spot',
+      'sistema pago obligaciones tributarias',
+      'detraccion',
+      'cuenta detracciones',
+      'bienes sujetos detracciones',
+      'porcentaje detraccion',
+    ],
     response: `Detracciones — SPOT
 
 El Sistema de Pago de Obligaciones Tributarias (SPOT) obliga al comprador a depositar un porcentaje del precio de compra en una cuenta especial del Banco de la Nación a nombre del proveedor.
@@ -149,7 +207,19 @@ Cuenta de detracciones: los fondos solo pueden usarse para pagar tributos, multa
 El incumplimiento genera multas del 50% al 100% del monto no depositado.`,
   },
   {
-    keywords: ['regimen tributario', 'rus', 'nrus', 'nuevo rus', 'rer', 'regimen especial', 'rmt', 'regimen mype', 'regimen general', 'que regimen elegir', 'cambiar regimen'],
+    keywords: [
+      'regimen tributario',
+      'rus',
+      'nrus',
+      'nuevo rus',
+      'rer',
+      'regimen especial',
+      'rmt',
+      'regimen mype',
+      'regimen general',
+      'que regimen elegir',
+      'cambiar regimen',
+    ],
     response: `Regímenes Tributarios
 
 NRUS — Nuevo Régimen Único Simplificado
@@ -197,7 +267,17 @@ Historial reciente:
 • 2022: S/ 4,600`,
   },
   {
-    keywords: ['libros electronicos', 'ple', 'sire', 'libro diario', 'libro mayor', 'registro compras', 'registro ventas', 'obligacion libros', 'quien lleva libros'],
+    keywords: [
+      'libros electronicos',
+      'ple',
+      'sire',
+      'libro diario',
+      'libro mayor',
+      'registro compras',
+      'registro ventas',
+      'obligacion libros',
+      'quien lleva libros',
+    ],
     response: `Libros Electrónicos
 
 PLE — Programa de Libros Electrónicos (en proceso de sustitución por SIRE)
@@ -218,7 +298,18 @@ SIRE — Sistema Integrado de Registros Electrónicos (vigente desde 2023)
 Plazos de cierre: los libros electrónicos se cierran el día hábil siguiente al vencimiento de la declaración mensual del período.`,
   },
   {
-    keywords: ['comprobante electronico', 'factura electronica', 'boleta electronica', 'ose', 'see', 'xml', 'cdr', 'sunat online exchange', 'facturacion electronica', 'obligatorio electronico'],
+    keywords: [
+      'comprobante electronico',
+      'factura electronica',
+      'boleta electronica',
+      'ose',
+      'see',
+      'xml',
+      'cdr',
+      'sunat online exchange',
+      'facturacion electronica',
+      'obligatorio electronico',
+    ],
     response: `Comprobantes Electrónicos
 
 La facturación electrónica es obligatoria para la mayoría de contribuyentes en Perú.
@@ -240,7 +331,14 @@ Representación impresa: el PDF con código QR es la representación impresa vá
 Obligatoriedad: prácticamente todas las empresas están obligadas. La fecha de entrada varía según el tipo de contribuyente (principales contribuyentes desde 2014, MYPE desde 2022–2024).`,
   },
   {
-    keywords: ['itan', 'impuesto temporal activos netos', 'activos netos', 'itan 2025', 'pago itan', 'acreditacion itan'],
+    keywords: [
+      'itan',
+      'impuesto temporal activos netos',
+      'activos netos',
+      'itan 2025',
+      'pago itan',
+      'acreditacion itan',
+    ],
     response: `ITAN — Impuesto Temporal a los Activos Netos
 
 Tasa: 0.4% sobre el valor de los activos netos al 31 de diciembre del año anterior que superen S/ 1,000,000.
@@ -258,7 +356,16 @@ Si no se acredita totalmente en el año, el saldo NO puede arrastrarse al año s
 Plazo de declaración: según cronograma SUNAT (generalmente en marzo/abril del año siguiente al ejercicio gravado).`,
   },
   {
-    keywords: ['multa', 'sancion', 'infraccion', 'regimen gradualidad', 'rebaja multa', 'no emitir comprobante', 'no declarar', 'declarar fuera plazo'],
+    keywords: [
+      'multa',
+      'sancion',
+      'infraccion',
+      'regimen gradualidad',
+      'rebaja multa',
+      'no emitir comprobante',
+      'no declarar',
+      'declarar fuera plazo',
+    ],
     response: `Infracciones y Multas SUNAT
 
 Infracciones más comunes:
@@ -282,7 +389,15 @@ Importante: pagar la multa con rebaja máxima + intereses moratorios (TIM: tasa 
 Consulta tus deudas en el Portal SOL → Mis declaraciones y pagos → Mis deudas.`,
   },
   {
-    keywords: ['cronograma', 'vencimiento', 'plazo declaracion', 'fecha pago', 'cuando declarar', 'ultimo digito ruc', 'calendario tributario'],
+    keywords: [
+      'cronograma',
+      'vencimiento',
+      'plazo declaracion',
+      'fecha pago',
+      'cuando declarar',
+      'ultimo digito ruc',
+      'calendario tributario',
+    ],
     response: `Cronograma de Obligaciones Mensuales
 
 SUNAT establece fechas de vencimiento para declarar y pagar IGV + Renta mensual (PDT 621 / Formulario Virtual 621) según el último dígito del RUC:
@@ -305,7 +420,14 @@ Las fechas exactas varían cada año. Consulta el cronograma oficial actualizado
 Si el día de vencimiento cae en feriado o fin de semana, el plazo se extiende al siguiente día hábil.`,
   },
   {
-    keywords: ['renta cuarta categoria', 'cuarta categoria', 'honorarios', 'recibo por honorarios', 'suspension retenciones', 'profesional independiente'],
+    keywords: [
+      'renta cuarta categoria',
+      'cuarta categoria',
+      'honorarios',
+      'recibo por honorarios',
+      'suspension retenciones',
+      'profesional independiente',
+    ],
     response: `Renta de 4ta Categoría — Trabajadores Independientes
 
 Aplica a: profesionales independientes, directores de empresa, regidores, etc. que emiten recibos por honorarios.
@@ -324,7 +446,14 @@ Declaración anual: en la Declaración Jurada Anual (marzo–abril del año sigu
 • Más de 45 UIT: 30%`,
   },
   {
-    keywords: ['fraccionamiento', 'aplazamiento', 'deuda tributaria', 'refinanciamiento', 'pagar deuda sunat', 'cuotas deuda'],
+    keywords: [
+      'fraccionamiento',
+      'aplazamiento',
+      'deuda tributaria',
+      'refinanciamiento',
+      'pagar deuda sunat',
+      'cuotas deuda',
+    ],
     response: `Fraccionamiento y Aplazamiento de Deuda Tributaria
 
 Si tienes deuda con SUNAT puedes solicitar un fraccionamiento o aplazamiento bajo el Artículo 36° del Código Tributario.
@@ -351,7 +480,10 @@ También existe el RAF (Régimen de Aplazamiento y Fraccionamiento COVID-19) par
 // ---------------------------------------------------------------------------
 
 function findBestMatch(query: string): KnowledgeEntry | null {
-  const normalized = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalized = query
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
   let bestEntry: KnowledgeEntry | null = null;
   let bestScore = 0;
@@ -359,7 +491,10 @@ function findBestMatch(query: string): KnowledgeEntry | null {
   for (const entry of KNOWLEDGE_BASE) {
     let score = 0;
     for (const keyword of entry.keywords) {
-      const normalizedKeyword = keyword.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const normalizedKeyword = keyword
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
       if (normalized.includes(normalizedKeyword)) {
         score += normalizedKeyword.split(' ').length;
       }

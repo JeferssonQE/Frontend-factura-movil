@@ -1,5 +1,5 @@
 // config/sunatCredentials.ts
-import { SunatCredentialsStatus } from '../types';
+import type { SunatCredentialsStatus } from '../types';
 
 export interface CredentialsVerdictCopy {
   title: string;

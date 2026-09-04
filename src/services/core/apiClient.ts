@@ -1,9 +1,7 @@
 // services/apiClient.ts
 import { reportError } from './monitoring';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const ACCESS_TOKEN_KEY = 'fm_access_token';
 const REFRESH_TOKEN_KEY = 'fm_refresh_token';
@@ -35,7 +33,7 @@ export class ApiError extends Error {
 
 export const getUserMessage = (
   error: unknown,
-  fallback = 'Ocurrió un error. Intenta de nuevo.'
+  fallback = 'Ocurrió un error. Intenta de nuevo.',
 ): string => (error instanceof ApiError ? error.userMessage : fallback);
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -50,8 +48,8 @@ const redactBody = (body: unknown): unknown => {
 
   return Object.fromEntries(
     Object.entries(body).map(([key, value]) =>
-      REDACTED_FIELDS.includes(key) ? [key, '***'] : [key, value]
-    )
+      REDACTED_FIELDS.includes(key) ? [key, '***'] : [key, value],
+    ),
   );
 };
 
@@ -77,8 +75,7 @@ const clearStoredSession = () => {
   localStorage.removeItem(LAST_ACTIVITY_KEY);
 };
 
-const getRefreshToken = (): string | null =>
-  localStorage.getItem(REFRESH_TOKEN_KEY);
+const getRefreshToken = (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY);
 
 const saveTokens = (accessToken: string, refreshToken: string) => {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -160,7 +157,7 @@ const extractErrorMessage = (payload: unknown, status: number): string => {
         .map((item) =>
           isPlainObject(item) && typeof item.msg === 'string'
             ? item.msg.replace(/^Value error,\s*/i, '')
-            : null
+            : null,
         )
         .filter((msg): msg is string => Boolean(msg));
       if (messages.length) return messages.join(' · ');
@@ -170,16 +167,12 @@ const extractErrorMessage = (payload: unknown, status: number): string => {
   return `Request failed with status ${status}`;
 };
 
-const handleErrorResponse = async (
-  response: Response,
-  path: string
-): Promise<never> => {
+const handleErrorResponse = async (response: Response, path: string): Promise<never> => {
   const payload = await parseResponse(response).catch(() => null);
   const message = extractErrorMessage(payload, response.status);
   const apiError = new ApiError(message, response.status, payload);
 
-  const isSessionExpiry =
-    response.status === 401 && !AUTH_PATHS_WITHOUT_REDIRECT.includes(path);
+  const isSessionExpiry = response.status === 401 && !AUTH_PATHS_WITHOUT_REDIRECT.includes(path);
 
   if (isSessionExpiry) {
     clearStoredSession();
@@ -198,7 +191,7 @@ const requestWithRefresh = async <TResponse>(
   method: HttpMethod,
   path: string,
   body?: unknown,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<TResponse> => {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
@@ -212,7 +205,8 @@ const requestWithRefresh = async <TResponse>(
 
   if (response.status !== 401) {
     if (!response.ok) {
-      if (import.meta.env.DEV) console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
+      if (import.meta.env.DEV)
+        console.error(`[API] ${method} ${path} → ${response.status}`, response.statusText);
       return handleErrorResponse(response, path);
     }
     const data = await parseResponse(response);
@@ -237,7 +231,8 @@ const requestWithRefresh = async <TResponse>(
   });
 
   if (!retryResponse.ok) {
-    if (import.meta.env.DEV) console.error(`[API] ${method} ${path} → ${retryResponse.status}`, retryResponse.statusText);
+    if (import.meta.env.DEV)
+      console.error(`[API] ${method} ${path} → ${retryResponse.status}`, retryResponse.statusText);
     return handleErrorResponse(retryResponse, path);
   }
 
@@ -250,7 +245,7 @@ const request = async <TResponse>(
   method: HttpMethod,
   path: string,
   body?: unknown,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<TResponse> => {
   try {
     if (!import.meta.env.DEV) {
@@ -258,7 +253,10 @@ const request = async <TResponse>(
     }
 
     const t0 = performance.now();
-    console.log(`[API] ${method} ${API_BASE_URL}${path}`, body !== undefined ? redactBody(body) : '');
+    console.log(
+      `[API] ${method} ${API_BASE_URL}${path}`,
+      body !== undefined ? redactBody(body) : '',
+    );
     const result = await requestWithRefresh<TResponse>(method, path, body, init);
     console.log(`[API] ${method} ${path} ⏱ ${(performance.now() - t0).toFixed(0)}ms`);
     return result;

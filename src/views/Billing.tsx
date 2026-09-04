@@ -1,57 +1,58 @@
 // views/Billing.tsx
-import React, { useCallback, useRef, useState } from 'react';
+
 import {
-  Sender,
-  Product,
-  Client,
-  Invoice,
-  InvoiceType,
-  UnitOfMeasure,
-  InvoiceItem,
-  IAExtractionResult,
-  InvoiceStatus,
-  BillingClientData,
-} from '../types';
-import { processInvoiceImage, processInvoiceAudio } from '../services/integrations/geminiService';
-import { mergeExtraction, FormSnapshot } from '../services/integrations/aiExtractionMerge';
-import { prepareImageForAI } from '../services/utils/imagePrep';
-import { ApiError, getUserMessage } from '../services/core/apiClient';
-import { PDFService } from '../services/integrations/pdfService';
-import { invoiceService } from '../services/business/invoiceService';
-import { lookupService } from '../services/business/lookupService';
-import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
+  AlertTriangle,
+  ArrowRight,
+  Camera,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  Images,
+  KeyRound,
+  Layers,
+  Loader2,
+  MessageCircle,
+  Mic,
+  Pencil,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  ShoppingCart,
+  Square,
+  Trash2,
+  User,
+  X,
+  XCircle,
+} from 'lucide-react';
+import React, { useCallback, useRef, useState } from 'react';
 import ProductFormModal from '../components/ProductFormModal';
-import SunatCredentialsModal from '../components/SunatCredentialsModal';
 import SunatCredentialsGate from '../components/SunatCredentialsGate';
-import { unitLabel } from '../services/utils/invoiceMath';
-import { invoiceEmissionSchema } from '../schemas/business';
+import SunatCredentialsModal from '../components/SunatCredentialsModal';
 import { emissionProgress } from '../config/emissionProgress';
 import { getSunatError } from '../config/sunatErrors';
+import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
+import { invoiceEmissionSchema } from '../schemas/business';
+import { invoiceService } from '../services/business/invoiceService';
+import { lookupService } from '../services/business/lookupService';
+import { ApiError, getUserMessage } from '../services/core/apiClient';
+import { type FormSnapshot, mergeExtraction } from '../services/integrations/aiExtractionMerge';
+import { processInvoiceAudio, processInvoiceImage } from '../services/integrations/geminiService';
+import { PDFService } from '../services/integrations/pdfService';
+import { prepareImageForAI } from '../services/utils/imagePrep';
+import { unitLabel } from '../services/utils/invoiceMath';
 import {
-  Camera,
-  Images,
-  Plus,
-  Trash2,
-  X,
-  ShoppingCart,
-  User,
-  CheckCircle2,
-  RotateCcw,
-  ChevronDown,
-  Layers,
-  Mic,
-  Square,
-  AlertTriangle,
-  MessageCircle,
-  Loader2,
-  Download,
-  XCircle,
-  RefreshCw,
-  ArrowRight,
-  Search,
-  Pencil,
-  KeyRound,
-} from 'lucide-react';
+  type BillingClientData,
+  type Client,
+  type IAExtractionResult,
+  type Invoice,
+  type InvoiceItem,
+  InvoiceStatus,
+  InvoiceType,
+  type Product,
+  type Sender,
+  type UnitOfMeasure,
+} from '../types';
 
 const DNI_LENGTH = 8;
 const RUC_LENGTH = 11;
@@ -99,7 +100,7 @@ interface FormError {
 // por eso se remapea con itemIndexByValidIndex antes de convertirlo en "Producto N".
 const describeIssue = (
   issue: { path: PropertyKey[]; message: string },
-  itemIndexByValidIndex: number[]
+  itemIndexByValidIndex: number[],
 ): FormError => {
   const [section, validIndex] = issue.path;
   if (section === 'items' && typeof validIndex === 'number') {
@@ -120,7 +121,12 @@ interface BillingProps {
   onSelectSender: () => void;
   onKeepEmitting?: () => void;
   onRefresh?: () => Promise<void> | void;
-  onSaveProduct?: (data: { description: string; unit: UnitOfMeasure; base_price: number; has_igv: boolean }) => Promise<void>;
+  onSaveProduct?: (data: {
+    description: string;
+    unit: UnitOfMeasure;
+    base_price: number;
+    has_igv: boolean;
+  }) => Promise<void>;
   onSaveCredentials?: (sunatUser: string, sunatPass: string) => Promise<void>;
   /** Id de la empresa cuando quien opera es un contador, no la propia empresa. */
   empresaUserId?: string;
@@ -169,7 +175,9 @@ const Billing: React.FC<BillingProps> = ({
   const [emissionStep, setEmissionStep] = useState(0);
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
-  const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | null>(null);
+  const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | null>(
+    null,
+  );
   const [emissionCurrentStep, setEmissionCurrentStep] = useState<string | null>(null);
   const [emissionFailedStep, setEmissionFailedStep] = useState<string | null>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
@@ -215,7 +223,8 @@ const Billing: React.FC<BillingProps> = ({
     }
 
     const key = billingDraftKey(sender.id);
-    const hasContent = clientData.name.trim() !== '' || clientData.document.trim() !== '' || items.length > 0;
+    const hasContent =
+      clientData.name.trim() !== '' || clientData.document.trim() !== '' || items.length > 0;
 
     if (!hasContent) {
       sessionStorage.removeItem(key);
@@ -230,7 +239,12 @@ const Billing: React.FC<BillingProps> = ({
   const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  React.useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
+  React.useEffect(
+    () => () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    },
+    [],
+  );
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const productsSectionRef = useRef<HTMLElement | null>(null);
@@ -243,7 +257,9 @@ const Billing: React.FC<BillingProps> = ({
     formSnapshotRef.current = { invoiceType, clientData };
   }, [invoiceType, clientData]);
 
-  const [documentLookup, setDocumentLookup] = useState<'idle' | 'searching' | 'found' | 'notfound'>('idle');
+  const [documentLookup, setDocumentLookup] = useState<'idle' | 'searching' | 'found' | 'notfound'>(
+    'idle',
+  );
 
   const handleDniMatch = useCallback(async (value: string) => {
     setDocumentLookup('searching');
@@ -277,9 +293,9 @@ const Billing: React.FC<BillingProps> = ({
       new Set(
         errors
           .map((error) => error.itemIndex)
-          .filter((index): index is number => index !== undefined)
+          .filter((index): index is number => index !== undefined),
       ),
-    [errors]
+    [errors],
   );
 
   const gravada = items
@@ -287,10 +303,7 @@ const Billing: React.FC<BillingProps> = ({
     .reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
 
   const exoneratedItems = items.filter((item) => !item.has_igv);
-  const exonerada = exoneratedItems.reduce(
-    (sum, item) => sum + item.unit_price * item.quantity,
-    0
-  );
+  const exonerada = exoneratedItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
 
   const igvTotal = gravada * 0.18;
   const total = gravada + exonerada + igvTotal;
@@ -304,13 +317,13 @@ const Billing: React.FC<BillingProps> = ({
 
   const scrollToProducts = () => {
     requestAnimationFrame(() =>
-      productsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      productsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
     );
   };
 
   const scrollToItem = (index: number) => {
     requestAnimationFrame(() =>
-      itemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      itemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
     );
   };
 
@@ -330,9 +343,7 @@ const Billing: React.FC<BillingProps> = ({
     setIaSuccess(null);
 
     const merged = mergeExtraction(result, formSnapshotRef.current, products);
-    const reviewNote = merged.ignored.length
-      ? ` Revisa: ${merged.ignored.join(', ')}.`
-      : '';
+    const reviewNote = merged.ignored.length ? ` Revisa: ${merged.ignored.join(', ')}.` : '';
 
     setInvoiceType(merged.invoiceType);
     setClientData(merged.clientData);
@@ -343,7 +354,7 @@ const Billing: React.FC<BillingProps> = ({
         (detectedName
           ? `Cliente "${detectedName}" detectado. No se identificaron productos — agrégalos manualmente.`
           : 'No se identificaron productos. Intenta dictar más claro o agrégalos manualmente.') +
-          reviewNote
+          reviewNote,
       );
       return;
     }
@@ -353,7 +364,7 @@ const Billing: React.FC<BillingProps> = ({
     const count = merged.items.length;
     setIaSuccess(
       `Listo — ${count} ${count === 1 ? 'producto detectado' : 'productos detectados'}.` +
-        `${reviewNote} Revisa los datos antes de emitir.`
+        `${reviewNote} Revisa los datos antes de emitir.`,
     );
     scrollToProducts();
   };
@@ -382,7 +393,7 @@ const Billing: React.FC<BillingProps> = ({
 
         if (audioBlob.size > MAX_AUDIO_BYTES) {
           setIaWarning(
-            'La grabación es muy larga. Dicta la venta en menos de un minuto e intenta de nuevo.'
+            'La grabación es muy larga. Dicta la venta en menos de un minuto e intenta de nuevo.',
           );
           return;
         }
@@ -500,7 +511,9 @@ const Billing: React.FC<BillingProps> = ({
           try {
             const updated = await invoiceService.getInvoice(invoiceId, sender?.id);
             if (updated.pdf_base64) setPdfBase64(updated.pdf_base64);
-          } catch { /* PDF opcional */ }
+          } catch {
+            /* PDF opcional */
+          }
         } else if (statusData.status === InvoiceStatus.FALLO) {
           stopPolling();
           setSunatMessage(statusData.sunat_message);
@@ -579,7 +592,7 @@ const Billing: React.FC<BillingProps> = ({
     if (!sender) return '00000001';
 
     const senderInvoices = invoices.filter(
-      (invoice) => invoice.sender_id === sender.id && invoice.invoice_type === invoiceType
+      (invoice) => invoice.sender_id === sender.id && invoice.invoice_type === invoiceType,
     );
 
     if (senderInvoices.length === 0) return '00000001';
@@ -609,7 +622,7 @@ const Billing: React.FC<BillingProps> = ({
     if (!result.success) {
       const itemIndexByValidIndex = validItemsWithIndex.map(({ index }) => index);
       const formErrors = result.error.issues.map((issue) =>
-        describeIssue(issue, itemIndexByValidIndex)
+        describeIssue(issue, itemIndexByValidIndex),
       );
       setErrors(formErrors);
       scrollToFirstIssue(formErrors);
@@ -680,7 +693,12 @@ const Billing: React.FC<BillingProps> = ({
       };
 
       await onSaveDraft(invoiceData);
-      setClientData({ name: '', document: '', phone: '', invoice_date: new Date().toLocaleDateString('en-CA') });
+      setClientData({
+        name: '',
+        document: '',
+        phone: '',
+        invoice_date: new Date().toLocaleDateString('en-CA'),
+      });
       setItems([]);
       setDocumentLookup('idle');
       setPreviewImage(null);
@@ -778,7 +796,6 @@ const Billing: React.FC<BillingProps> = ({
     const failInfo = getSunatError(emissionFailedStep);
     return (
       <div className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center animate-in fade-in duration-500">
-
         {/* ── PROCESANDO ── */}
         {emissionState === 'processing' && (
           <>
@@ -920,7 +937,6 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           </>
         )}
-
       </div>
     );
   }
@@ -951,8 +967,8 @@ const Billing: React.FC<BillingProps> = ({
                       isDone
                         ? 'bg-emerald-500 text-white'
                         : isActive
-                        ? 'bg-blue-600 text-white animate-pulse'
-                        : 'bg-slate-100 text-slate-400'
+                          ? 'bg-blue-600 text-white animate-pulse'
+                          : 'bg-slate-100 text-slate-400'
                     }`}
                   >
                     {isDone ? (
@@ -964,11 +980,7 @@ const Billing: React.FC<BillingProps> = ({
 
                   <span
                     className={`text-[10px] font-black uppercase tracking-widest ${
-                      isActive
-                        ? 'text-blue-600'
-                        : isDone
-                        ? 'text-emerald-600'
-                        : 'text-slate-400'
+                      isActive ? 'text-blue-600' : isDone ? 'text-emerald-600' : 'text-slate-400'
                     }`}
                   >
                     {label}
@@ -997,7 +1009,10 @@ const Billing: React.FC<BillingProps> = ({
 
             <ul className="space-y-1">
               {errors.map((error, index) => (
-                <li key={`${index}-${error.message}`} className="text-[11px] font-bold flex items-start gap-2">
+                <li
+                  key={`${index}-${error.message}`}
+                  className="text-[11px] font-bold flex items-start gap-2"
+                >
                   <span className="text-red-200">•</span> {error.message}
                 </li>
               ))}
@@ -1014,7 +1029,10 @@ const Billing: React.FC<BillingProps> = ({
               {iaWarning}
             </p>
           </div>
-          <button onClick={() => setIaWarning(null)} className="text-amber-400 hover:text-amber-600">
+          <button
+            onClick={() => setIaWarning(null)}
+            className="text-amber-400 hover:text-amber-600"
+          >
             <X size={14} />
           </button>
         </div>
@@ -1032,7 +1050,10 @@ const Billing: React.FC<BillingProps> = ({
               {iaSuccess}
             </p>
           </div>
-          <button onClick={() => setIaSuccess(null)} className="text-emerald-400 hover:text-emerald-600">
+          <button
+            onClick={() => setIaSuccess(null)}
+            className="text-emerald-400 hover:text-emerald-600"
+          >
             <X size={14} />
           </button>
           <style>{`
@@ -1046,9 +1067,7 @@ const Billing: React.FC<BillingProps> = ({
       )}
 
       <section className="bg-white p-5 rounded-[40px] shadow-sm border border-slate-100 relative overflow-hidden">
-        <div
-          className="w-full h-44 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative overflow-hidden mb-4"
-        >
+        <div className="w-full h-44 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative overflow-hidden mb-4">
           {previewImage ? (
             <div className="relative w-full h-full">
               <img
@@ -1080,93 +1099,138 @@ const Billing: React.FC<BillingProps> = ({
           ) : (
             <>
               {/* Circuit grid background */}
-              <svg className="absolute inset-0 w-full h-full opacity-[0.07] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                className="absolute inset-0 w-full h-full opacity-[0.07] pointer-events-none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <defs>
-                  <pattern id="ai-grid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
-                    <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#2563eb" strokeWidth="0.6"/>
-                    <circle cx="0" cy="0" r="1.4" fill="#2563eb"/>
-                    <circle cx="28" cy="0" r="1.4" fill="#2563eb"/>
-                    <circle cx="0" cy="28" r="1.4" fill="#2563eb"/>
-                    <circle cx="28" cy="28" r="1.4" fill="#2563eb"/>
+                  <pattern
+                    id="ai-grid"
+                    x="0"
+                    y="0"
+                    width="28"
+                    height="28"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#2563eb" strokeWidth="0.6" />
+                    <circle cx="0" cy="0" r="1.4" fill="#2563eb" />
+                    <circle cx="28" cy="0" r="1.4" fill="#2563eb" />
+                    <circle cx="0" cy="28" r="1.4" fill="#2563eb" />
+                    <circle cx="28" cy="28" r="1.4" fill="#2563eb" />
                   </pattern>
                 </defs>
-                <rect width="100%" height="100%" fill="url(#ai-grid)"/>
+                <rect width="100%" height="100%" fill="url(#ai-grid)" />
               </svg>
 
               {/* AI Star — estilo Gemini con colores del sistema */}
-              <div className="relative z-10 mb-1 flex items-center justify-center" style={{width:120, height:120}}>
-
+              <div
+                className="relative z-10 mb-1 flex items-center justify-center"
+                style={{ width: 120, height: 120 }}
+              >
                 {/* Halo exterior pulsante */}
-                <div style={{
-                  position:'absolute', inset:0,
-                  borderRadius:'50%',
-                  background:'radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.08) 50%, transparent 70%)',
-                  animation:'halo 3.5s ease-in-out infinite',
-                }}/>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '50%',
+                    background:
+                      'radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.08) 50%, transparent 70%)',
+                    animation: 'halo 3.5s ease-in-out infinite',
+                  }}
+                />
 
                 {/* Estrella principal — 4 pétalos curvos */}
-                <svg viewBox="0 0 120 120" width="100" height="100" style={{
-                  position:'absolute',
-                  animation:'starSpin 10s linear infinite',
-                  filter:'drop-shadow(0 0 14px rgba(59,130,246,0.55)) drop-shadow(0 0 4px rgba(99,102,241,0.4))',
-                }}>
+                <svg
+                  viewBox="0 0 120 120"
+                  width="100"
+                  height="100"
+                  style={{
+                    position: 'absolute',
+                    animation: 'starSpin 10s linear infinite',
+                    filter:
+                      'drop-shadow(0 0 14px rgba(59,130,246,0.55)) drop-shadow(0 0 4px rgba(99,102,241,0.4))',
+                  }}
+                >
                   <defs>
                     <linearGradient id="sg1" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%"   stopColor="#93c5fd"/>
-                      <stop offset="45%"  stopColor="#3b82f6"/>
-                      <stop offset="100%" stopColor="#1d4ed8"/>
+                      <stop offset="0%" stopColor="#93c5fd" />
+                      <stop offset="45%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#1d4ed8" />
                     </linearGradient>
                     <linearGradient id="sg2" x1="100%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%"   stopColor="#a5b4fc"/>
-                      <stop offset="45%"  stopColor="#6366f1"/>
-                      <stop offset="100%" stopColor="#3b82f6"/>
+                      <stop offset="0%" stopColor="#a5b4fc" />
+                      <stop offset="45%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#3b82f6" />
                     </linearGradient>
                     <radialGradient id="sg3" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%"   stopColor="#fff" stopOpacity="0.95"/>
-                      <stop offset="100%" stopColor="#bfdbfe" stopOpacity="0"/>
+                      <stop offset="0%" stopColor="#fff" stopOpacity="0.95" />
+                      <stop offset="100%" stopColor="#bfdbfe" stopOpacity="0" />
                     </radialGradient>
                   </defs>
 
                   {/* Pétalo vertical (arriba + abajo) */}
-                  <path d="M60 8 C63 34 63 34 60 60 C57 34 57 34 60 8Z" fill="url(#sg1)"/>
-                  <path d="M60 112 C63 86 63 86 60 60 C57 86 57 86 60 112Z" fill="url(#sg1)"/>
+                  <path d="M60 8 C63 34 63 34 60 60 C57 34 57 34 60 8Z" fill="url(#sg1)" />
+                  <path d="M60 112 C63 86 63 86 60 60 C57 86 57 86 60 112Z" fill="url(#sg1)" />
 
                   {/* Pétalo horizontal (izq + der) */}
-                  <path d="M8 60 C34 63 34 63 60 60 C34 57 34 57 8 60Z" fill="url(#sg2)"/>
-                  <path d="M112 60 C86 63 86 63 60 60 C86 57 86 57 112 60Z" fill="url(#sg2)"/>
+                  <path d="M8 60 C34 63 34 63 60 60 C34 57 34 57 8 60Z" fill="url(#sg2)" />
+                  <path d="M112 60 C86 63 86 63 60 60 C86 57 86 57 112 60Z" fill="url(#sg2)" />
 
                   {/* Núcleo brillante */}
-                  <circle cx="60" cy="60" r="7" fill="url(#sg3)"/>
+                  <circle cx="60" cy="60" r="7" fill="url(#sg3)" />
                 </svg>
 
                 {/* Estrella secundaria — 45° girada al revés, más pequeña */}
-                <svg viewBox="0 0 120 120" width="58" height="58" style={{
-                  position:'absolute',
-                  animation:'starSpin 7s linear infinite reverse',
-                  opacity:0.55,
-                  filter:'drop-shadow(0 0 6px rgba(99,102,241,0.5))',
-                }}>
-                  <path d="M60 22 C62 42 62 42 60 60 C58 42 58 42 60 22Z" fill="#a5b4fc"/>
-                  <path d="M60 98 C62 78 62 78 60 60 C58 78 58 78 60 98Z" fill="#a5b4fc"/>
-                  <path d="M22 60 C42 62 42 62 60 60 C42 58 42 58 22 60Z" fill="#818cf8"/>
-                  <path d="M98 60 C78 62 78 62 60 60 C78 58 78 58 98 60Z" fill="#818cf8"/>
+                <svg
+                  viewBox="0 0 120 120"
+                  width="58"
+                  height="58"
+                  style={{
+                    position: 'absolute',
+                    animation: 'starSpin 7s linear infinite reverse',
+                    opacity: 0.55,
+                    filter: 'drop-shadow(0 0 6px rgba(99,102,241,0.5))',
+                  }}
+                >
+                  <path d="M60 22 C62 42 62 42 60 60 C58 42 58 42 60 22Z" fill="#a5b4fc" />
+                  <path d="M60 98 C62 78 62 78 60 60 C58 78 58 78 60 98Z" fill="#a5b4fc" />
+                  <path d="M22 60 C42 62 42 62 60 60 C42 58 42 58 22 60Z" fill="#818cf8" />
+                  <path d="M98 60 C78 62 78 62 60 60 C78 58 78 58 98 60Z" fill="#818cf8" />
                 </svg>
 
                 {/* Partículas flotantes */}
-                {([
-                  {size:7,  cx:18, cy:22, color:'#93c5fd', delay:'0s',    dur:'2.6s'},
-                  {size:5,  cx:96, cy:18, color:'#a5b4fc', delay:'0.9s',  dur:'3.1s'},
-                  {size:6,  cx:104,cy:80, color:'#60a5fa', delay:'1.7s',  dur:'2.3s'},
-                  {size:4,  cx:14, cy:88, color:'#818cf8', delay:'0.4s',  dur:'3.8s'},
-                  {size:5,  cx:58, cy:8,  color:'#bfdbfe', delay:'1.2s',  dur:'2.9s'},
-                ] as {size:number,cx:number,cy:number,color:string,delay:string,dur:string}[]).map((p, i) => (
-                  <svg key={i} viewBox="0 0 10 10" width={p.size} height={p.size} style={{
-                    position:'absolute',
-                    left: p.cx - p.size/2,
-                    top:  p.cy - p.size/2,
-                    animation:`particle ${p.dur} ease-in-out ${p.delay} infinite`,
-                  }}>
-                    <path d="M5 0 L5.5 4.5 L10 5 L5.5 5.5 L5 10 L4.5 5.5 L0 5 L4.5 4.5Z" fill={p.color}/>
+                {(
+                  [
+                    { size: 7, cx: 18, cy: 22, color: '#93c5fd', delay: '0s', dur: '2.6s' },
+                    { size: 5, cx: 96, cy: 18, color: '#a5b4fc', delay: '0.9s', dur: '3.1s' },
+                    { size: 6, cx: 104, cy: 80, color: '#60a5fa', delay: '1.7s', dur: '2.3s' },
+                    { size: 4, cx: 14, cy: 88, color: '#818cf8', delay: '0.4s', dur: '3.8s' },
+                    { size: 5, cx: 58, cy: 8, color: '#bfdbfe', delay: '1.2s', dur: '2.9s' },
+                  ] as {
+                    size: number;
+                    cx: number;
+                    cy: number;
+                    color: string;
+                    delay: string;
+                    dur: string;
+                  }[]
+                ).map((p, i) => (
+                  <svg
+                    key={i}
+                    viewBox="0 0 10 10"
+                    width={p.size}
+                    height={p.size}
+                    style={{
+                      position: 'absolute',
+                      left: p.cx - p.size / 2,
+                      top: p.cy - p.size / 2,
+                      animation: `particle ${p.dur} ease-in-out ${p.delay} infinite`,
+                    }}
+                  >
+                    <path
+                      d="M5 0 L5.5 4.5 L10 5 L5.5 5.5 L5 10 L4.5 5.5 L0 5 L4.5 4.5Z"
+                      fill={p.color}
+                    />
                   </svg>
                 ))}
               </div>
@@ -1304,9 +1368,7 @@ const Billing: React.FC<BillingProps> = ({
       <section className="bg-white p-6 rounded-[36px] shadow-sm border border-slate-100">
         <div className="flex items-center gap-2 mb-4">
           <Layers size={18} className="text-blue-600" />
-          <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">
-            Documento
-          </h3>
+          <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Documento</h3>
         </div>
 
         <div className="space-y-4">
@@ -1360,15 +1422,16 @@ const Billing: React.FC<BillingProps> = ({
       <section className="bg-white p-6 rounded-[36px] shadow-sm border border-slate-100">
         <div className="flex items-center gap-2 mb-4">
           <User size={18} className="text-blue-600" />
-          <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">
-            Cliente
-          </h3>
+          <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Cliente</h3>
         </div>
 
         <div className="space-y-4">
           <div>
             <div className="relative">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+              />
               <input
                 value={clientData.document}
                 onChange={(event) => {
@@ -1376,7 +1439,9 @@ const Billing: React.FC<BillingProps> = ({
                   setClientData((prev) => ({ ...prev, document: digits }));
                   // RUC (11 digitos) solo puede ir en factura; cualquier otro caso (DNI,
                   // documento incompleto o solo nombre) es boleta.
-                  setInvoiceType(digits.length === RUC_LENGTH ? InvoiceType.FACTURA : InvoiceType.BOLETA);
+                  setInvoiceType(
+                    digits.length === RUC_LENGTH ? InvoiceType.FACTURA : InvoiceType.BOLETA,
+                  );
                   if (digits.length !== DNI_LENGTH && digits.length !== RUC_LENGTH) {
                     setDocumentLookup('idle');
                   }
@@ -1420,9 +1485,7 @@ const Billing: React.FC<BillingProps> = ({
 
           <input
             value={clientData.name}
-            onChange={(event) =>
-              setClientData((prev) => ({ ...prev, name: event.target.value }))
-            }
+            onChange={(event) => setClientData((prev) => ({ ...prev, name: event.target.value }))}
             className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 uppercase placeholder:text-slate-300"
             placeholder="Nombre / Razón Social"
           />
@@ -1445,9 +1508,7 @@ const Billing: React.FC<BillingProps> = ({
 
           <input
             value={clientData.phone}
-            onChange={(event) =>
-              setClientData((prev) => ({ ...prev, phone: event.target.value }))
-            }
+            onChange={(event) => setClientData((prev) => ({ ...prev, phone: event.target.value }))}
             inputMode="tel"
             className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 placeholder:text-slate-300"
             placeholder="Celular para envío WhatsApp"
@@ -1459,9 +1520,7 @@ const Billing: React.FC<BillingProps> = ({
         <div className="flex justify-between items-center px-4">
           <div className="flex items-center gap-2">
             <ShoppingCart size={18} className="text-blue-600" />
-            <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">
-              Detalle
-            </h3>
+            <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Detalle</h3>
           </div>
 
           <button
@@ -1484,7 +1543,9 @@ const Billing: React.FC<BillingProps> = ({
               <p className="text-sm font-black text-slate-500 uppercase tracking-wide">
                 Aún no agregaste productos
               </p>
-              <p className="text-xs font-bold text-slate-400 mt-1">Toca aquí para agregar el primero</p>
+              <p className="text-xs font-bold text-slate-400 mt-1">
+                Toca aquí para agregar el primero
+              </p>
             </div>
           </button>
         ) : (
@@ -1502,7 +1563,9 @@ const Billing: React.FC<BillingProps> = ({
                   }`}
                 >
                   <div className="shrink-0 w-14 text-center">
-                    <p className="text-lg font-black text-slate-800 leading-none">{item.quantity}</p>
+                    <p className="text-lg font-black text-slate-800 leading-none">
+                      {item.quantity}
+                    </p>
                     <p className="text-[9px] font-black text-slate-400 uppercase mt-1">
                       {unitLabel(item.unit)}
                     </p>
@@ -1513,12 +1576,15 @@ const Billing: React.FC<BillingProps> = ({
                       {item.description || 'Sin nombre'}
                     </p>
                     <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                      S/ {Number(item.unit_price).toFixed(2)} c/u · {item.has_igv ? 'IGV 18%' : 'Exonerado'}
+                      S/ {Number(item.unit_price).toFixed(2)} c/u ·{' '}
+                      {item.has_igv ? 'IGV 18%' : 'Exonerado'}
                     </p>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <p className="text-sm font-black text-blue-600">S/ {Number(item.total).toFixed(2)}</p>
+                    <p className="text-sm font-black text-blue-600">
+                      S/ {Number(item.total).toFixed(2)}
+                    </p>
                     <div className="flex items-center gap-1 mt-1 justify-end">
                       <button
                         onClick={() => openEditProduct(index)}
@@ -1649,8 +1715,12 @@ const Billing: React.FC<BillingProps> = ({
 
             <div className="bg-slate-50 rounded-[24px] p-5 mb-8 space-y-2 text-left">
               <div className="flex justify-between items-center gap-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">Cliente</span>
-                <span className="text-xs font-black text-slate-700 truncate">{clientData.name || '—'}</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">
+                  Cliente
+                </span>
+                <span className="text-xs font-black text-slate-700 truncate">
+                  {clientData.name || '—'}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Productos</span>
@@ -1658,7 +1728,9 @@ const Billing: React.FC<BillingProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Subtotal</span>
-                <span className="text-xs font-black text-slate-700">S/ {(gravada + exonerada).toFixed(2)}</span>
+                <span className="text-xs font-black text-slate-700">
+                  S/ {(gravada + exonerada).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
@@ -1720,8 +1792,12 @@ const Billing: React.FC<BillingProps> = ({
 
             <div className="bg-slate-50 rounded-[24px] p-5 mb-8 space-y-2 text-left">
               <div className="flex justify-between items-center gap-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">Cliente</span>
-                <span className="text-xs font-black text-slate-700 truncate">{clientData.name || '—'}</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">
+                  Cliente
+                </span>
+                <span className="text-xs font-black text-slate-700 truncate">
+                  {clientData.name || '—'}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Productos</span>
@@ -1729,7 +1805,9 @@ const Billing: React.FC<BillingProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">Subtotal</span>
-                <span className="text-xs font-black text-slate-700">S/ {(gravada + exonerada).toFixed(2)}</span>
+                <span className="text-xs font-black text-slate-700">
+                  S/ {(gravada + exonerada).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
@@ -1816,9 +1894,7 @@ const Billing: React.FC<BillingProps> = ({
       {productModal.open && (
         <ProductFormModal
           initialItem={productModal.index !== null ? items[productModal.index] : null}
-          products={products.filter(
-            (product) => String(product.sender_id) === String(sender?.id)
-          )}
+          products={products.filter((product) => String(product.sender_id) === String(sender?.id))}
           canSaveToCatalog={!!onSaveProduct}
           onSubmit={handleProductSubmit}
           onClose={closeProductModal}

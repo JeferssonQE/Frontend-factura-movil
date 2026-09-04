@@ -1,19 +1,21 @@
 // views/Inventory.tsx
-import React, { useState } from 'react';
+
 import {
-  Plus,
-  Boxes,
-  PackagePlus,
-  CalendarClock,
   AlertCircle,
-  X,
-  RefreshCw,
+  Boxes,
+  CalendarClock,
   Lock,
+  PackagePlus,
+  Plus,
+  RefreshCw,
+  X,
 } from 'lucide-react';
-import { InventoryProduct } from '../types';
+import type React from 'react';
+import { useState } from 'react';
 import { SUNAT_UNITS } from '../config/sunatUnits';
 import { inventoryProductSchema } from '../schemas/business';
-import { InventoryProductPayload } from '../services/business/inventoryService';
+import type { InventoryProductPayload } from '../services/business/inventoryService';
+import type { InventoryProduct } from '../types';
 
 interface InventoryProps {
   inventory: InventoryProduct[];
@@ -57,8 +59,7 @@ const Inventory: React.FC<InventoryProps> = ({
 
   const filteredInventory = inventory.filter(
     (item) =>
-      item.sender_id === senderId &&
-      item.nombre.toLowerCase().includes(search.toLowerCase())
+      item.sender_id === senderId && item.nombre.toLowerCase().includes(search.toLowerCase()),
   );
 
   const resetForm = () => {

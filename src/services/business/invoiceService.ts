@@ -1,12 +1,13 @@
 // services/business/invoiceService.ts
-import { apiClient } from '../core/apiClient';
-import {
+
+import type {
   CreditNoteReason,
   Invoice,
   InvoiceStatus,
   InvoiceType,
   UnitOfMeasure,
 } from '../../types';
+import { apiClient } from '../core/apiClient';
 
 export type InvoiceItemPayload = {
   product_id?: number | null;
@@ -63,7 +64,9 @@ export type CreateCreditNotePayload = {
 
 const qs = (params: Record<string, string | number | undefined>) => {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined);
-  return entries.length ? '?' + entries.map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join('&') : '';
+  return entries.length
+    ? `?${entries.map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join('&')}`
+    : '';
 };
 
 export const invoiceService = {
@@ -80,11 +83,15 @@ export const invoiceService = {
   },
 
   async emitInvoice(invoiceId: number, senderId?: number): Promise<EmitInvoiceResponse> {
-    return apiClient.put<EmitInvoiceResponse>(`/invoices/${invoiceId}/emit${qs({ sender_id: senderId })}`);
+    return apiClient.put<EmitInvoiceResponse>(
+      `/invoices/${invoiceId}/emit${qs({ sender_id: senderId })}`,
+    );
   },
 
   async getInvoiceStatus(invoiceId: number, senderId?: number): Promise<InvoiceStatusResponse> {
-    return apiClient.get<InvoiceStatusResponse>(`/invoices/${invoiceId}/status${qs({ sender_id: senderId })}`);
+    return apiClient.get<InvoiceStatusResponse>(
+      `/invoices/${invoiceId}/status${qs({ sender_id: senderId })}`,
+    );
   },
 
   async getInvoicePdf(invoiceId: number): Promise<Blob> {
@@ -93,7 +100,7 @@ export const invoiceService = {
 
   async getNumeroComprobante(invoiceId: number): Promise<InvoiceNumeroComprobanteResponse> {
     return apiClient.get<InvoiceNumeroComprobanteResponse>(
-      `/invoices/${invoiceId}/numero-comprobante`
+      `/invoices/${invoiceId}/numero-comprobante`,
     );
   },
 
@@ -102,7 +109,10 @@ export const invoiceService = {
     payload: CreateCreditNotePayload,
     senderId?: number,
   ): Promise<Invoice> {
-    return apiClient.post<Invoice>(`/invoices/${invoiceId}/credit-note${qs({ sender_id: senderId })}`, payload);
+    return apiClient.post<Invoice>(
+      `/invoices/${invoiceId}/credit-note${qs({ sender_id: senderId })}`,
+      payload,
+    );
   },
 
   async deleteInvoice(invoiceId: number, senderId?: number): Promise<void> {

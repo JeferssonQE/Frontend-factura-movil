@@ -1,6 +1,7 @@
 // components/Toast.tsx
-import React from 'react';
-import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
+
+import { AlertTriangle, CheckCircle2, X } from 'lucide-react';
+import type React from 'react';
 
 interface ToastProps {
   message: string;
@@ -16,7 +17,9 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
       <div
         role="alert"
         className={`pointer-events-auto w-full max-w-md flex items-center gap-3 rounded-[22px] px-5 py-4 shadow-2xl animate-in slide-in-from-top-4 fade-in duration-300 ${
-          isError ? 'bg-red-600 text-white shadow-red-200/50' : 'bg-slate-900 text-white shadow-slate-300/40'
+          isError
+            ? 'bg-red-600 text-white shadow-red-200/50'
+            : 'bg-slate-900 text-white shadow-slate-300/40'
         }`}
       >
         {isError ? (

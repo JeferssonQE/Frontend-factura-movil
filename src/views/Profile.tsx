@@ -1,21 +1,23 @@
 // views/Profile.tsx
-import React, { useState } from 'react';
+
 import {
-  Mail,
-  Building,
-  LogOut,
-  Edit3,
-  CheckCircle2,
-  ShieldCheck,
-  Crown,
-  ChevronRight,
-  ArrowLeftRight,
-  Pencil,
   AlertTriangle,
+  ArrowLeftRight,
+  Building,
+  CheckCircle2,
+  ChevronRight,
+  Crown,
+  Edit3,
   KeyRound,
+  LogOut,
+  Mail,
+  Pencil,
+  ShieldCheck,
 } from 'lucide-react';
-import { AuthUser, Sender, SenderUpsertInput, UserPlan } from '../types';
+import type React from 'react';
+import { useState } from 'react';
 import EmpresaModal from '../components/EmpresaModal';
+import { type AuthUser, type Sender, type SenderUpsertInput, UserPlan } from '../types';
 
 interface ProfileProps {
   user: AuthUser | null;
@@ -34,7 +36,10 @@ interface ProfileProps {
 const CredentialsBadge: React.FC<{ sender: Sender }> = ({ sender }) => {
   if (!sender.has_sunat_credentials) {
     return (
-      <BadgeShell tone="bg-amber-50 text-amber-700" icon={<KeyRound className="text-amber-500" size={18} />}>
+      <BadgeShell
+        tone="bg-amber-50 text-amber-700"
+        icon={<KeyRound className="text-amber-500" size={18} />}
+      >
         Credenciales SUNAT pendientes
       </BadgeShell>
     );
@@ -42,7 +47,10 @@ const CredentialsBadge: React.FC<{ sender: Sender }> = ({ sender }) => {
 
   if (sender.sunat_credentials_status === 'INVALIDA') {
     return (
-      <BadgeShell tone="bg-red-50 text-red-700" icon={<AlertTriangle className="text-red-500" size={18} />}>
+      <BadgeShell
+        tone="bg-red-50 text-red-700"
+        icon={<AlertTriangle className="text-red-500" size={18} />}
+      >
         SUNAT rechazó tus credenciales
       </BadgeShell>
     );
@@ -50,7 +58,10 @@ const CredentialsBadge: React.FC<{ sender: Sender }> = ({ sender }) => {
 
   if (sender.sunat_credentials_status === 'VALIDA') {
     return (
-      <BadgeShell tone="bg-emerald-50 text-emerald-700" icon={<CheckCircle2 className="text-emerald-500" size={18} />}>
+      <BadgeShell
+        tone="bg-emerald-50 text-emerald-700"
+        icon={<CheckCircle2 className="text-emerald-500" size={18} />}
+      >
         Acceso a SUNAT verificado
         {sender.sunat_credentials_checked_at && (
           <span className="block text-[9px] font-bold text-emerald-600/70 normal-case tracking-normal mt-0.5">
@@ -62,7 +73,10 @@ const CredentialsBadge: React.FC<{ sender: Sender }> = ({ sender }) => {
   }
 
   return (
-    <BadgeShell tone="bg-slate-100 text-slate-600" icon={<ShieldCheck className="text-slate-400" size={18} />}>
+    <BadgeShell
+      tone="bg-slate-100 text-slate-600"
+      icon={<ShieldCheck className="text-slate-400" size={18} />}
+    >
       Credenciales guardadas, sin verificar
     </BadgeShell>
   );
@@ -80,9 +94,9 @@ const BadgeShell: React.FC<{ tone: string; icon: React.ReactNode; children: Reac
 );
 
 const PLAN_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  free:       { bg: 'bg-slate-100',   text: 'text-slate-500',  label: 'FREE'       },
-  pro:        { bg: 'bg-blue-50',     text: 'text-blue-600',   label: 'PRO'        },
-  enterprise: { bg: 'bg-purple-50',   text: 'text-purple-600', label: 'ENTERPRISE' },
+  free: { bg: 'bg-slate-100', text: 'text-slate-500', label: 'FREE' },
+  pro: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'PRO' },
+  enterprise: { bg: 'bg-purple-50', text: 'text-purple-600', label: 'ENTERPRISE' },
 };
 
 const Profile: React.FC<ProfileProps> = ({
@@ -102,7 +116,13 @@ const Profile: React.FC<ProfileProps> = ({
   const getUserInitials = () => {
     const base = user?.name || user?.email || 'US';
     if (base.includes('@')) return base.substring(0, 2).toUpperCase();
-    return base.split(' ').filter(Boolean).map((p) => p[0]).join('').substring(0, 2).toUpperCase();
+    return base
+      .split(' ')
+      .filter(Boolean)
+      .map((p) => p[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
   };
 
   const plan = PLAN_STYLE[user?.plan as string] ?? PLAN_STYLE.free;
@@ -112,11 +132,12 @@ const Profile: React.FC<ProfileProps> = ({
 
   return (
     <div className="space-y-6">
-
       {/* ── User card ─────────────────────────────────────────── */}
       <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className={`w-16 h-16 rounded-[20px] flex items-center justify-center text-white font-black text-lg shrink-0 ${isAdmin ? 'bg-purple-700' : 'bg-slate-900'}`}>
+          <div
+            className={`w-16 h-16 rounded-[20px] flex items-center justify-center text-white font-black text-lg shrink-0 ${isAdmin ? 'bg-purple-700' : 'bg-slate-900'}`}
+          >
             {isAdmin ? <ShieldCheck size={28} /> : getUserInitials()}
           </div>
 
@@ -130,14 +151,24 @@ const Profile: React.FC<ProfileProps> = ({
             </p>
 
             <div className="flex items-center gap-2 mt-2">
-              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
-                isAdmin ? 'bg-purple-50 text-purple-700' : isContador ? 'bg-teal-50 text-teal-700' : 'bg-blue-50 text-blue-600'
-              }`}>
+              <span
+                className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
+                  isAdmin
+                    ? 'bg-purple-50 text-purple-700'
+                    : isContador
+                      ? 'bg-teal-50 text-teal-700'
+                      : 'bg-blue-50 text-blue-600'
+                }`}
+              >
                 {isAdmin ? 'Admin' : isContador ? 'Contador' : 'Empresa'}
               </span>
 
-              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex items-center gap-1 ${plan.bg} ${plan.text}`}>
-                {user?.plan === UserPlan.PRO || user?.plan === UserPlan.ENTERPRISE ? <Crown size={10} /> : null}
+              <span
+                className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex items-center gap-1 ${plan.bg} ${plan.text}`}
+              >
+                {user?.plan === UserPlan.PRO || user?.plan === UserPlan.ENTERPRISE ? (
+                  <Crown size={10} />
+                ) : null}
                 {plan.label}
               </span>
             </div>
@@ -156,7 +187,9 @@ const Profile: React.FC<ProfileProps> = ({
               <ShieldCheck size={20} />
             </div>
             <div className="text-left">
-              <p className="text-[11px] font-black text-purple-800 uppercase tracking-widest">Panel de Usuarios</p>
+              <p className="text-[11px] font-black text-purple-800 uppercase tracking-widest">
+                Panel de Usuarios
+              </p>
               <p className="text-[9px] text-purple-500 mt-0.5">Gestionar cuentas y planes</p>
             </div>
           </div>
@@ -184,7 +217,9 @@ const Profile: React.FC<ProfileProps> = ({
 
           {!sender && isContador && (
             <div className="text-center py-6 space-y-3">
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest">Sin empresa activa</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                Sin empresa activa
+              </p>
               {onChangeSender && (
                 <button
                   onClick={onChangeSender}
@@ -230,7 +265,9 @@ const Profile: React.FC<ProfileProps> = ({
                 className="w-full flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[9px] font-black text-blue-600 uppercase tracking-widest active:scale-[0.98] transition-transform hover:border-slate-300"
               >
                 <Pencil size={12} strokeWidth={3} />
-                {sender.has_sunat_credentials ? 'Editar datos y credenciales' : 'Configurar credenciales SUNAT'}
+                {sender.has_sunat_credentials
+                  ? 'Editar datos y credenciales'
+                  : 'Configurar credenciales SUNAT'}
               </button>
 
               {isContador && onChangeSender && (

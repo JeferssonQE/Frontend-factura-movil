@@ -1,8 +1,10 @@
 // components/SunatCredentialsGate.tsx
-import React, { useEffect } from 'react';
+
 import { CheckCircle2, CloudOff, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
-import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
+import type React from 'react';
+import { useEffect } from 'react';
 import { CREDENTIALS_VERDICT } from '../config/sunatCredentials';
+import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
 
 interface SunatCredentialsGateProps {
   empresaName: string;
@@ -113,7 +115,9 @@ const IconBadge: React.FC<{ className: string; children: React.ReactNode }> = ({
   className,
   children,
 }) => (
-  <div className={`w-20 h-20 mx-auto mb-6 rounded-[32px] flex items-center justify-center ${className}`}>
+  <div
+    className={`w-20 h-20 mx-auto mb-6 rounded-[32px] flex items-center justify-center ${className}`}
+  >
     {children}
   </div>
 );

@@ -9,14 +9,14 @@
 import { isSunatUnit } from '../../config/sunatUnits';
 import { isWithinEmissionWindow } from '../../schemas/business';
 import {
-  BillingClientData,
-  ExtractedClient,
-  ExtractedProduct,
-  IAExtractionResult,
-  InvoiceItem,
+  type BillingClientData,
+  type ExtractedClient,
+  type ExtractedProduct,
+  type IAExtractionResult,
+  type InvoiceItem,
   InvoiceType,
-  Product,
-  UnitOfMeasure,
+  type Product,
+  type UnitOfMeasure,
 } from '../../types';
 
 const DNI_LENGTH = 8;
@@ -55,9 +55,7 @@ const isRealDate = (value: string): boolean => {
   const [year, month, day] = value.split('-').map(Number);
   const parsed = new Date(year, month - 1, day);
   return (
-    parsed.getFullYear() === year &&
-    parsed.getMonth() === month - 1 &&
-    parsed.getDate() === day
+    parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day
   );
 };
 
@@ -67,7 +65,7 @@ const isEmittableDate = (value: string): boolean =>
 const mergeClient = (
   extracted: ExtractedClient,
   current: BillingClientData,
-  ignored: string[]
+  ignored: string[],
 ): BillingClientData => {
   const name = extracted.nombre.trim();
   const document = onlyDigits(extracted.documento);
@@ -92,7 +90,7 @@ const mergeClient = (
 const resolveInvoiceType = (
   document: string,
   extractedType: IAExtractionResult['tipo_documento'],
-  current: InvoiceType
+  current: InvoiceType,
 ): InvoiceType => {
   if (document.length === RUC_LENGTH) return InvoiceType.FACTURA;
   if (document.length === DNI_LENGTH) return InvoiceType.BOLETA;
@@ -104,7 +102,7 @@ const resolveUnit = (
   matched: Product | undefined,
   extracted: ExtractedProduct,
   description: string,
-  ignored: string[]
+  ignored: string[],
 ): UnitOfMeasure => {
   if (matched) return matched.unit;
 
@@ -118,7 +116,7 @@ const resolveUnit = (
 const toInvoiceItem = (
   extracted: ExtractedProduct,
   catalog: Product[],
-  ignored: string[]
+  ignored: string[],
 ): InvoiceItem | null => {
   const matched = catalog.find((product) => String(product.id) === extracted.product_id);
   const description = (matched?.description ?? extracted.descripcion).trim();
@@ -132,7 +130,7 @@ const toInvoiceItem = (
 
   const hasIgv = matched ? matched.has_igv : extracted.has_igv;
   const unitPrice =
-    extracted.precio_unitario > 0 ? extracted.precio_unitario : matched?.base_price ?? 0;
+    extracted.precio_unitario > 0 ? extracted.precio_unitario : (matched?.base_price ?? 0);
   if (unitPrice <= 0) ignored.push(`precio de "${description}"`);
 
   return {
@@ -149,7 +147,7 @@ const toInvoiceItem = (
 export const mergeExtraction = (
   extraction: IAExtractionResult,
   current: FormSnapshot,
-  catalog: Product[]
+  catalog: Product[],
 ): MergeResult => {
   const ignored: string[] = [];
   const clientData = mergeClient(extraction.cliente, current.clientData, ignored);
@@ -161,7 +159,7 @@ export const mergeExtraction = (
     invoiceType: resolveInvoiceType(
       clientData.document,
       extraction.tipo_documento,
-      current.invoiceType
+      current.invoiceType,
     ),
     clientData,
     items,

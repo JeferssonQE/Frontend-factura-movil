@@ -1,6 +1,7 @@
 // services/business/senderService.ts
+
+import type { Sender, SenderUpsertInput, SunatCredentialsValidation } from '../../types';
 import { apiClient } from '../core/apiClient';
-import { Sender, SenderUpsertInput, SunatCredentialsValidation } from '../../types';
 
 export const senderService = {
   async getSender(): Promise<Sender | null> {
@@ -31,6 +32,8 @@ export const senderService = {
   },
 
   async getSunatCredentialsValidation(taskId: string): Promise<SunatCredentialsValidation> {
-    return apiClient.get<SunatCredentialsValidation>(`/sender/sunat-credentials/validation/${taskId}`);
+    return apiClient.get<SunatCredentialsValidation>(
+      `/sender/sunat-credentials/validation/${taskId}`,
+    );
   },
 };

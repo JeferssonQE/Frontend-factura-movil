@@ -49,9 +49,10 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
         <span
           className="text-[10px] font-medium tracking-[4px] uppercase text-blue-600"
           style={{
-            animation: animClass === 'in'
-              ? 'fm-text-in 0.35s ease forwards'
-              : 'fm-text-out 0.35s ease forwards',
+            animation:
+              animClass === 'in'
+                ? 'fm-text-in 0.35s ease forwards'
+                : 'fm-text-out 0.35s ease forwards',
           }}
         >
           {displayText}

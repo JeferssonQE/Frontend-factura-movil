@@ -1,6 +1,6 @@
-import React from 'react';
 import * as Sentry from '@sentry/react';
 import { RefreshCw } from 'lucide-react';
+import type React from 'react';
 
 const ErrorFallback: React.FC = () => (
   <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-8 text-center gap-6">
@@ -15,8 +15,8 @@ const ErrorFallback: React.FC = () => (
         Algo salió mal
       </p>
       <p className="text-[11px] text-slate-400 font-medium leading-relaxed max-w-xs">
-        Tuvimos un problema inesperado. Nuestro equipo ya fue notificado.
-        Intenta recargar la aplicación.
+        Tuvimos un problema inesperado. Nuestro equipo ya fue notificado. Intenta recargar la
+        aplicación.
       </p>
     </div>
     <button
@@ -30,7 +30,5 @@ const ErrorFallback: React.FC = () => (
 );
 
 export const AppErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
-    {children}
-  </Sentry.ErrorBoundary>
+  <Sentry.ErrorBoundary fallback={<ErrorFallback />}>{children}</Sentry.ErrorBoundary>
 );

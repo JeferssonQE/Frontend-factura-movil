@@ -1,10 +1,7 @@
 // schemas/business.ts
 import { z } from 'zod';
-import {
-  InvoiceType,
-  CreditNoteReason,
-} from '../types';
 import { SUNAT_UNITS } from '../config/sunatUnits';
+import { CreditNoteReason, InvoiceType } from '../types';
 
 // ==================== HELPERS ====================
 // null y undefined se normalizan a '': el "vacio" tiene una sola representacion en
@@ -12,7 +9,7 @@ import { SUNAT_UNITS } from '../config/sunatUnits';
 // producia el mensaje generico "Invalid input" sin decir que campo fallaba.
 const optionalText = z.preprocess(
   (value) => value ?? '',
-  z.string({ error: 'Debe ser texto' }).trim()
+  z.string({ error: 'Debe ser texto' }).trim(),
 );
 
 const unitEnum = z.enum(SUNAT_UNITS);
@@ -24,7 +21,7 @@ const currency = (label: string) =>
     .max(999999.99, `${label} muy alto`);
 
 const creditNoteReasonEnum = z.enum(
-  Object.values(CreditNoteReason) as [CreditNoteReason, ...CreditNoteReason[]]
+  Object.values(CreditNoteReason) as [CreditNoteReason, ...CreditNoteReason[]],
 );
 
 const MAX_BACKDATED_DAYS = 2;
@@ -67,27 +64,20 @@ export const clientSchema = z
       .transform((value) => value.toUpperCase()),
     dni: optionalText.refine(
       (value) => !value || /^\d{8}$/.test(value),
-      'DNI debe tener exactamente 8 dígitos'
+      'DNI debe tener exactamente 8 dígitos',
     ),
     ruc: optionalText.refine(
       (value) => !value || /^\d{11}$/.test(value),
-      'RUC debe tener exactamente 11 dígitos'
+      'RUC debe tener exactamente 11 dígitos',
     ),
-    phone: optionalText.refine(
-      (value) => !value || /^[0-9\s\-+()]+$/.test(value),
-      'Teléfono inválido'
-    ).refine(
-      (value) => !value || value.length <= 20,
-      'Máximo 20 caracteres'
-    ),
+    phone: optionalText
+      .refine((value) => !value || /^[0-9\s\-+()]+$/.test(value), 'Teléfono inválido')
+      .refine((value) => !value || value.length <= 20, 'Máximo 20 caracteres'),
   })
-  .refine(
-    (data) => !(data.dni && data.ruc),
-    {
-      message: 'Ingresa DNI o RUC, no ambos',
-      path: ['dni'],
-    }
-  );
+  .refine((data) => !(data.dni && data.ruc), {
+    message: 'Ingresa DNI o RUC, no ambos',
+    path: ['dni'],
+  });
 
 export type ClientInput = z.infer<typeof clientSchema>;
 
@@ -100,10 +90,7 @@ export const productSchema = z.object({
     .max(200, 'Máximo 200 caracteres')
     .transform((value) => value.toUpperCase()),
   unit: unitEnum,
-  base_price: z
-    .number()
-    .min(0, 'Precio no puede ser negativo')
-    .max(999999.99, 'Precio muy alto'),
+  base_price: z.number().min(0, 'Precio no puede ser negativo').max(999999.99, 'Precio muy alto'),
   has_igv: z.boolean(),
 });
 
@@ -119,10 +106,7 @@ export const inventoryProductSchema = z.object({
     .transform((value) => value.toUpperCase()),
   categoria: optionalText,
   unidad_medida: unitEnum,
-  precio_venta: z
-    .number()
-    .min(0, 'Precio no puede ser negativo')
-    .max(999999.99, 'Precio muy alto'),
+  precio_venta: z.number().min(0, 'Precio no puede ser negativo').max(999999.99, 'Precio muy alto'),
   cantidad_inicial: z
     .number()
     .min(0.001, 'La cantidad debe ser mayor a 0')
@@ -134,7 +118,7 @@ export const inventoryProductSchema = z.object({
     .optional(),
   fecha_vencimiento: optionalText.refine(
     (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
-    'Fecha inválida (YYYY-MM-DD)'
+    'Fecha inválida (YYYY-MM-DD)',
   ),
 });
 
@@ -169,15 +153,11 @@ export const invoiceClientDataSchema = z.object({
     .transform((value) => value.toUpperCase()),
   document: optionalText.refine(
     (value) => !value || /^\d+$/.test(value),
-    'Documento solo debe contener números'
+    'Documento solo debe contener números',
   ),
-  phone: optionalText.refine(
-    (value) => !value || /^[0-9\s\-+()]+$/.test(value),
-    'Teléfono inválido'
-  ).refine(
-    (value) => !value || value.length <= 20,
-    'Máximo 20 caracteres'
-  ),
+  phone: optionalText
+    .refine((value) => !value || /^[0-9\s\-+()]+$/.test(value), 'Teléfono inválido')
+    .refine((value) => !value || value.length <= 20, 'Máximo 20 caracteres'),
   invoice_date: z
     .string()
     .trim()
@@ -192,9 +172,7 @@ export const invoiceEmissionSchema = z
   .object({
     invoice_type: z.enum([InvoiceType.BOLETA, InvoiceType.FACTURA]),
     clientData: invoiceClientDataSchema,
-    items: z
-      .array(invoiceItemSchema)
-      .min(1, 'Debe agregar al menos un producto'),
+    items: z.array(invoiceItemSchema).min(1, 'Debe agregar al menos un producto'),
   })
   .refine(
     (data) => {
@@ -209,7 +187,7 @@ export const invoiceEmissionSchema = z
     {
       message: 'Para FACTURA el cliente debe tener RUC de 11 dígitos',
       path: ['clientData.document'],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -224,7 +202,7 @@ export const invoiceEmissionSchema = z
     {
       message: 'Para BOLETA el documento debe ser DNI de 8 dígitos o RUC de 11 dígitos',
       path: ['clientData.document'],
-    }
+    },
   );
 
 export type InvoiceEmissionInput = z.infer<typeof invoiceEmissionSchema>;

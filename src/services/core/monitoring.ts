@@ -14,10 +14,7 @@ export const initMonitoring = (): void => {
   });
 };
 
-export const reportError = (
-  error: unknown,
-  context?: Record<string, unknown>
-): void => {
+export const reportError = (error: unknown, context?: Record<string, unknown>): void => {
   if (!DSN) return;
   Sentry.captureException(error, context ? { extra: context } : undefined);
 };

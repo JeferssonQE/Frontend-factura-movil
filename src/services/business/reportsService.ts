@@ -47,7 +47,7 @@ export const reportsService = {
   async getTopProducts(limit = 10, senderId?: number): Promise<TopProductItem[]> {
     const base = qs(senderId);
     return apiClient.get<TopProductItem[]>(
-      `/reports/top-products${base}${base ? '&' : '?'}limit=${encodeURIComponent(limit)}`
+      `/reports/top-products${base}${base ? '&' : '?'}limit=${encodeURIComponent(limit)}`,
     );
   },
 
@@ -59,7 +59,7 @@ export const reportsService = {
     const base = qs(senderId);
     const sep = base ? '&' : '?';
     return apiClient.get<IgvSummary>(
-      `/reports/igv-summary${base}${sep}date_from=${dateFrom}&date_to=${dateTo}`
+      `/reports/igv-summary${base}${sep}date_from=${dateFrom}&date_to=${dateTo}`,
     );
   },
 };

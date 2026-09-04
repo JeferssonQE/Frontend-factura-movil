@@ -1,20 +1,22 @@
 // views/Products.tsx
-import React, { useEffect, useState } from 'react';
+
 import {
-  Plus,
-  Trash2,
-  Pencil,
-  Package,
-  CheckCircle2,
   AlertCircle,
-  X,
   AlertTriangle,
+  CheckCircle2,
+  Package,
+  Pencil,
+  Plus,
   RefreshCw,
+  Trash2,
+  X,
 } from 'lucide-react';
-import { Product, UnitOfMeasure } from '../types';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import ProductSearchSelector from '../components/ProductSearchSelector';
 import { SUNAT_UNITS } from '../config/sunatUnits';
 import { productSchema } from '../schemas/business';
-import ProductSearchSelector from '../components/ProductSearchSelector';
+import type { Product, UnitOfMeasure } from '../types';
 
 interface ProductsProps {
   products: Product[];
@@ -37,7 +39,7 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
   const filteredProducts = products.filter(
     (product) =>
       product.sender_id === senderId &&
-      product.description.toLowerCase().includes(search.toLowerCase())
+      product.description.toLowerCase().includes(search.toLowerCase()),
   );
 
   useEffect(() => {
@@ -331,7 +333,9 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                   </div>
                 </div>
 
-                <div className={`w-12 h-6 rounded-full relative ${hasIgv ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                <div
+                  className={`w-12 h-6 rounded-full relative ${hasIgv ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                >
                   <div
                     className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${
                       hasIgv ? 'left-7' : 'left-1'
@@ -349,19 +353,27 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                     Valor de venta
                   </span>
-                  <span className="text-xs font-black text-slate-700">S/ {basePrice.toFixed(2)}</span>
+                  <span className="text-xs font-black text-slate-700">
+                    S/ {basePrice.toFixed(2)}
+                  </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                     {hasIgv ? 'IGV (18%)' : 'IGV (exonerado)'}
                   </span>
-                  <span className="text-xs font-black text-slate-700">S/ {igvAmount.toFixed(2)}</span>
+                  <span className="text-xs font-black text-slate-700">
+                    S/ {igvAmount.toFixed(2)}
+                  </span>
                 </div>
 
                 <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">Total</span>
-                  <span className="text-sm font-black text-blue-600">S/ {salePriceNumber.toFixed(2)}</span>
+                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
+                    Total
+                  </span>
+                  <span className="text-sm font-black text-blue-600">
+                    S/ {salePriceNumber.toFixed(2)}
+                  </span>
                 </div>
               </div>
 

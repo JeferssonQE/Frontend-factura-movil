@@ -1,17 +1,19 @@
 // views/Clients.tsx
-import React, { useState } from 'react';
+
 import {
-  UserPlus,
-  Trash2,
-  Pencil,
-  Users,
-  AlertTriangle,
   AlertCircle,
-  Search,
+  AlertTriangle,
+  Pencil,
   RefreshCw,
+  Search,
+  Trash2,
+  UserPlus,
+  Users,
 } from 'lucide-react';
-import { Client } from '../types';
+import type React from 'react';
+import { useState } from 'react';
 import ClientFormModal from '../components/ClientFormModal';
+import type { Client } from '../types';
 
 interface ClientsProps {
   clients: Client[];
@@ -32,7 +34,7 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, 
       client.sender_id === senderId &&
       (client.name.toLowerCase().includes(search.toLowerCase()) ||
         (client.dni || '').includes(search) ||
-        (client.ruc || '').includes(search))
+        (client.ruc || '').includes(search)),
   );
 
   const closeModal = () => {
@@ -112,8 +114,8 @@ const Clients: React.FC<ClientsProps> = ({ clients, senderId, onSave, onDelete, 
                     {client.dni
                       ? `DNI: ${client.dni}`
                       : client.ruc
-                      ? `RUC: ${client.ruc}`
-                      : 'SIN DOCUMENTO'}
+                        ? `RUC: ${client.ruc}`
+                        : 'SIN DOCUMENTO'}
                   </span>
 
                   {client.phone && (

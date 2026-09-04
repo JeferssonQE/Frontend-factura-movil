@@ -46,7 +46,7 @@ const toJpegDataUrl = async (file: File): Promise<string> => {
   bitmap.close();
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, PREPARED_IMAGE_MIME, JPEG_QUALITY)
+    canvas.toBlob(resolve, PREPARED_IMAGE_MIME, JPEG_QUALITY),
   );
   if (!blob) throw new Error('No se pudo recomprimir la imagen');
 

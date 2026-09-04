@@ -1,24 +1,23 @@
 // routes/AppRouter.tsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from './ProtectedRoute';
-import AdminRoute from './AdminRoute';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
-
+import AboutPage from '../pages/AboutPage';
+import AdminUsersPage from '../pages/AdminUsersPage';
+import BillingPage from '../pages/BillingPage';
+import ClientsPage from '../pages/ClientsPage';
+import ContadorSendersPage from '../pages/ContadorSendersPage';
+import DashboardPage from '../pages/DashboardPage';
+import FeedbackPage from '../pages/FeedbackPage';
+import HistoryPage from '../pages/HistoryPage';
+import InventoryPage from '../pages/InventoryPage';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
-import DashboardPage from '../pages/DashboardPage';
-import BillingPage from '../pages/BillingPage';
-import HistoryPage from '../pages/HistoryPage';
-import ProductsPage from '../pages/ProductsPage';
-import InventoryPage from '../pages/InventoryPage';
-import ClientsPage from '../pages/ClientsPage';
-import ProfilePage from '../pages/ProfilePage';
 import OnboardingPage from '../pages/OnboardingPage';
-import AdminUsersPage from '../pages/AdminUsersPage';
-import FeedbackPage from '../pages/FeedbackPage';
-import AboutPage from '../pages/AboutPage';
-import ContadorSendersPage from '../pages/ContadorSendersPage';
+import ProductsPage from '../pages/ProductsPage';
+import ProfilePage from '../pages/ProfilePage';
+import AdminRoute from './AdminRoute';
 import ContadorRoute from './ContadorRoute';
+import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRouter() {
   return (

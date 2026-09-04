@@ -71,5 +71,4 @@ export type UnitOfMeasure = (typeof SUNAT_UNITS)[number];
 
 const SUNAT_UNITS_SET: ReadonlySet<string> = new Set(SUNAT_UNITS);
 
-export const isSunatUnit = (value: string): value is UnitOfMeasure =>
-  SUNAT_UNITS_SET.has(value);
+export const isSunatUnit = (value: string): value is UnitOfMeasure => SUNAT_UNITS_SET.has(value);

@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { UserRole } from '../types';

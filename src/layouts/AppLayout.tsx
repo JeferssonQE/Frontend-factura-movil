@@ -5,54 +5,55 @@ import Toast from '../components/Toast';
 import { useAppData } from '../context/AppDataContext';
 
 const titles: Record<string, string> = {
-  '/dashboard':         'Resumen',
-  '/billing':           'Emitir Documento',
-  '/history':           'Historial',
-  '/products':          'Productos',
-  '/inventory':         'Inventario',
-  '/clients':           'Clientes',
-  '/profile':           'Mi Perfil',
-  '/agent':             'Agente SUNAT IA',
-  '/feedback':          'Opiniones',
-  '/about':             'Sobre Nosotros',
-  '/admin/users':       'Gestión de Usuarios',
-  '/contador/senders':  'Mis Empresas',
+  '/dashboard': 'Resumen',
+  '/billing': 'Emitir Documento',
+  '/history': 'Historial',
+  '/products': 'Productos',
+  '/inventory': 'Inventario',
+  '/clients': 'Clientes',
+  '/profile': 'Mi Perfil',
+  '/agent': 'Agente SUNAT IA',
+  '/feedback': 'Opiniones',
+  '/about': 'Sobre Nosotros',
+  '/admin/users': 'Gestión de Usuarios',
+  '/contador/senders': 'Mis Empresas',
 };
 
 const activeTabMap: Record<string, string> = {
-  '/dashboard':         'dashboard',
-  '/billing':           'billing',
-  '/history':           'history',
-  '/products':          'products',
-  '/inventory':         'inventory',
-  '/clients':           'clients',
-  '/profile':           'profile',
-  '/agent':             'agent',
-  '/feedback':          'feedback',
-  '/about':             'about',
-  '/admin/users':       'admin-users',
-  '/contador/senders':  'contador-senders',
+  '/dashboard': 'dashboard',
+  '/billing': 'billing',
+  '/history': 'history',
+  '/products': 'products',
+  '/inventory': 'inventory',
+  '/clients': 'clients',
+  '/profile': 'profile',
+  '/agent': 'agent',
+  '/feedback': 'feedback',
+  '/about': 'about',
+  '/admin/users': 'admin-users',
+  '/contador/senders': 'contador-senders',
 };
 
 const routeMap: Record<string, string> = {
-  dashboard:            '/dashboard',
-  billing:              '/billing',
-  history:              '/history',
-  products:             '/products',
-  inventory:            '/inventory',
-  clients:              '/clients',
-  profile:              '/profile',
-  agent:                '/agent',
-  feedback:             '/feedback',
-  about:                '/about',
-  'admin-users':        '/admin/users',
-  'contador-senders':   '/contador/senders',
+  dashboard: '/dashboard',
+  billing: '/billing',
+  history: '/history',
+  products: '/products',
+  inventory: '/inventory',
+  clients: '/clients',
+  profile: '/profile',
+  agent: '/agent',
+  feedback: '/feedback',
+  about: '/about',
+  'admin-users': '/admin/users',
+  'contador-senders': '/contador/senders',
 };
 
 export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAdmin, isContador, activeSender, toast, setToast, inventoryEnabled } = useAppData();
+  const { user, isAdmin, isContador, activeSender, toast, setToast, inventoryEnabled } =
+    useAppData();
 
   const pathname = location.pathname;
   const title = titles[pathname] || 'FactuMovil';
@@ -90,9 +91,7 @@ export default function AppLayout() {
         <Outlet />
       </Layout>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
 }

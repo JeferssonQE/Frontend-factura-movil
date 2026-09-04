@@ -1,8 +1,8 @@
 // src/pages/LoginPage.tsx
-import React from 'react';
+import type React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Login from '../views/Login';
 import { useAppData } from '../context/AppDataContext';
+import Login from '../views/Login';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();

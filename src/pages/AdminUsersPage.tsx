@@ -1,5 +1,5 @@
 // src/pages/AdminUsersPage.tsx
-import React from 'react';
+import type React from 'react';
 import { useAppData } from '../context/AppDataContext';
 import AdminUsers from '../views/AdminUsers';
 

@@ -7,7 +7,7 @@ export function useDebouncedLookup(
   value: string,
   expectedLength: number,
   onMatch: (value: string) => void,
-  delayMs: number = DEFAULT_DELAY_MS
+  delayMs: number = DEFAULT_DELAY_MS,
 ): void {
   const onMatchRef = useRef(onMatch);
   onMatchRef.current = onMatch;

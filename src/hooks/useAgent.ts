@@ -1,6 +1,10 @@
 // hooks/useAgent.ts
-import { useState, useCallback } from 'react';
-import { ChatMessage, ChatRole, queryLocalKnowledge } from '../services/integrations/agentService';
+import { useCallback, useState } from 'react';
+import {
+  type ChatMessage,
+  type ChatRole,
+  queryLocalKnowledge,
+} from '../services/integrations/agentService';
 
 export type { ChatRole };
 
@@ -34,7 +38,13 @@ export function useAgent() {
   const addLoadingPlaceholder = useCallback(() => {
     setMessages((prev) => [
       ...prev,
-      { id: LOADING_MESSAGE_ID, role: 'model' as ChatRole, text: '', isLoading: true, timestamp: new Date() },
+      {
+        id: LOADING_MESSAGE_ID,
+        role: 'model' as ChatRole,
+        text: '',
+        isLoading: true,
+        timestamp: new Date(),
+      },
     ]);
   }, []);
 
@@ -66,7 +76,7 @@ export function useAgent() {
         setIsLoading(false);
       }
     },
-    [isLoading, addMessage, addLoadingPlaceholder, removeLoadingMessage]
+    [isLoading, addMessage, addLoadingPlaceholder, removeLoadingMessage],
   );
 
   return {

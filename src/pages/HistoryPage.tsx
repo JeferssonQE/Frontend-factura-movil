@@ -1,18 +1,28 @@
 // src/pages/HistoryPage.tsx
-import React, { useEffect, useRef } from 'react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import History from '../views/History';
 import { useAppData } from '../context/AppDataContext';
 import { invoiceService } from '../services/business/invoiceService';
 import { pdfCache } from '../services/business/pdfCache';
 import { InvoiceStatus } from '../types';
+import History from '../views/History';
 
 const POLL_INTERVAL_MS = 4_000; // 4 segundos
 const PREFETCH_PDF_COUNT = 5;
 
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { invoices, emitCreditNote, emitDraft, deleteInvoice, refreshAllData, patchInvoice, activeSenderId, activeSender } = useAppData();
+  const {
+    invoices,
+    emitCreditNote,
+    emitDraft,
+    deleteInvoice,
+    refreshAllData,
+    patchInvoice,
+    activeSenderId,
+    activeSender,
+  } = useAppData();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const procesandoIds = invoices
@@ -39,8 +49,10 @@ const HistoryPage: React.FC = () => {
             } else {
               statusChanged = true;
             }
-          } catch { /* ignorar errores individuales */ }
-        })
+          } catch {
+            /* ignorar errores individuales */
+          }
+        }),
       );
       if (statusChanged) await refreshAllData();
     };
@@ -62,12 +74,21 @@ const HistoryPage: React.FC = () => {
       .slice(0, PREFETCH_PDF_COUNT)
       .filter((inv) => !pdfCache.has(inv.id));
     if (recientes.length === 0) return;
-    Promise.allSettled(
-      recientes.map((inv) => pdfCache.load(inv.id, activeSenderId ?? undefined))
-    );
+    Promise.allSettled(recientes.map((inv) => pdfCache.load(inv.id, activeSenderId ?? undefined)));
   }, [invoices, activeSenderId]);
 
-  return <History invoices={invoices} activeSenderId={activeSenderId} credentialsInvalid={activeSender?.sunat_credentials_invalid} onEmitCreditNote={emitCreditNote} onEmitDraft={emitDraft} onDeleteInvoice={deleteInvoice} onFixCredentials={() => navigate('/profile')} onRefresh={refreshAllData} />;
+  return (
+    <History
+      invoices={invoices}
+      activeSenderId={activeSenderId}
+      credentialsInvalid={activeSender?.sunat_credentials_invalid}
+      onEmitCreditNote={emitCreditNote}
+      onEmitDraft={emitDraft}
+      onDeleteInvoice={deleteInvoice}
+      onFixCredentials={() => navigate('/profile')}
+      onRefresh={refreshAllData}
+    />
+  );
 };
 
 export default HistoryPage;

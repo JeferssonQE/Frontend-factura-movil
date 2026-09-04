@@ -1,15 +1,9 @@
 // schemas/auth.ts
 import { z } from 'zod';
 
-export const emailSchema = z
-  .string()
-  .email('Email inválido')
-  .min(1, 'Email es requerido');
+export const emailSchema = z.string().email('Email inválido').min(1, 'Email es requerido');
 
-export const passwordSchema = z
-  .string()
-  .min(6, 'Mínimo 6 caracteres')
-
+export const passwordSchema = z.string().min(6, 'Mínimo 6 caracteres');
 
 export const nameSchema = z
   .string()

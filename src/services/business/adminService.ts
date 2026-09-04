@@ -1,6 +1,7 @@
 // services/business/adminService.ts
+
+import type { AdminUserRow, Sender, UserPlan, UserRole } from '../../types';
 import { apiClient } from '../core/apiClient';
-import { AdminUserRow, Sender, UserRole, UserPlan } from '../../types';
 
 export type UpdateCompanyPayload = {
   name: string;

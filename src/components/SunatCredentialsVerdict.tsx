@@ -1,9 +1,10 @@
 // components/SunatCredentialsVerdict.tsx
-import React from 'react';
+
 import { AlertCircle, CheckCircle2, CloudOff, Loader2 } from 'lucide-react';
+import type React from 'react';
 import { CHECKING_CREDENTIALS_MESSAGE, CREDENTIALS_VERDICT } from '../config/sunatCredentials';
-import { CheckPhase } from '../hooks/useSunatCredentialsCheck';
-import { SunatCredentialsStatus } from '../types';
+import type { CheckPhase } from '../hooks/useSunatCredentialsCheck';
+import type { SunatCredentialsStatus } from '../types';
 
 interface SunatCredentialsVerdictProps {
   phase: CheckPhase;
@@ -91,7 +92,9 @@ const Body: React.FC<{
   message: string;
 }> = ({ tone, icon, title, message }) => (
   <div className="py-4 text-center mb-4">
-    <div className={`w-16 h-16 mx-auto mb-6 rounded-[26px] flex items-center justify-center ${tone}`}>
+    <div
+      className={`w-16 h-16 mx-auto mb-6 rounded-[26px] flex items-center justify-center ${tone}`}
+    >
       {icon}
     </div>
     <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-2">{title}</h3>

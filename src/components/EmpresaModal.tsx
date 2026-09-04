@@ -1,10 +1,12 @@
 // components/EmpresaModal.tsx
-import React, { useState } from 'react';
-import { Building2, X, AlertCircle, Eye, EyeOff, Loader2, Lock, Search } from 'lucide-react';
-import { Sender, SenderUpsertInput } from '../types';
-import { lookupService } from '../services/business/lookupService';
+
+import { AlertCircle, Building2, Eye, EyeOff, Loader2, Lock, Search, X } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
+import { lookupService } from '../services/business/lookupService';
+import type { Sender, SenderUpsertInput } from '../types';
 import SunatCredentialsVerdict from './SunatCredentialsVerdict';
 
 const RUC_LENGTH = 11;
@@ -37,7 +39,10 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
 
   const [verdictSeen, setVerdictSeen] = useState(false);
-  const { phase, status, message, check, reset } = useSunatCredentialsCheck(() => setVerdictSeen(true), empresaUserId);
+  const { phase, status, message, check, reset } = useSunatCredentialsCheck(
+    () => setVerdictSeen(true),
+    empresaUserId,
+  );
 
   const hasCredentials = sender?.has_sunat_credentials === true;
 
@@ -176,7 +181,9 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
               inputMode="numeric"
               placeholder="20123456789"
               className={`w-full border-none rounded-2xl p-4 text-sm font-black text-slate-800 outline-none ${
-                canEditIdentity ? 'bg-slate-50 focus:ring-2 focus:ring-blue-500' : 'bg-slate-100 text-slate-500'
+                canEditIdentity
+                  ? 'bg-slate-50 focus:ring-2 focus:ring-blue-500'
+                  : 'bg-slate-100 text-slate-500'
               }`}
             />
             {!canEditIdentity && (
@@ -199,7 +206,10 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
                 className="w-full bg-slate-100 border-none rounded-2xl p-4 pr-10 text-sm font-black text-slate-600 outline-none truncate"
               />
               {canEditIdentity && (
-                <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                <Search
+                  size={16}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"
+                />
               )}
             </div>
           </div>

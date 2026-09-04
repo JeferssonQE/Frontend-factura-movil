@@ -1,6 +1,8 @@
 // components/SunatCredentialsModal.tsx
-import React, { useState } from 'react';
-import { ShieldCheck, X, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+
+import { AlertCircle, Eye, EyeOff, Loader2, ShieldCheck, X } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
 import SunatCredentialsVerdict from './SunatCredentialsVerdict';
 
@@ -32,7 +34,10 @@ const SunatCredentialsModal: React.FC<SunatCredentialsModalProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
 
   const [verdictSeen, setVerdictSeen] = useState(false);
-  const { phase, status, message, check, reset } = useSunatCredentialsCheck(() => setVerdictSeen(true), empresaUserId);
+  const { phase, status, message, check, reset } = useSunatCredentialsCheck(
+    () => setVerdictSeen(true),
+    empresaUserId,
+  );
 
   const busy = saving || phase === 'checking';
 

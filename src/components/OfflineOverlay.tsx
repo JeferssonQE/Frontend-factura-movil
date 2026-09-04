@@ -18,8 +18,7 @@ const OfflineOverlay = () => {
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{
-          background:
-            'radial-gradient(circle at 50% 38%, rgba(43,127,255,0.22), transparent 60%)',
+          background: 'radial-gradient(circle at 50% 38%, rgba(43,127,255,0.22), transparent 60%)',
         }}
       />
 
@@ -39,14 +38,12 @@ const OfflineOverlay = () => {
       </h2>
 
       <p className="relative mt-3 max-w-xs text-center text-sm leading-relaxed text-white/70">
-        Revisa tu internet para seguir. Tu sesión sigue activa: no necesitas
-        volver a iniciar sesión.
+        Revisa tu internet para seguir. Tu sesión sigue activa: no necesitas volver a iniciar
+        sesión.
       </p>
 
       <div className="relative mt-9 flex items-center gap-2.5 text-white/45">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.15em]">
-          Reconectando
-        </span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.15em]">Reconectando</span>
         <span className="flex gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.3s]" />
           <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.15s]" />

@@ -1,4 +1,5 @@
-import React, {
+import type React from 'react';
+import {
   createContext,
   useCallback,
   useContext,
@@ -7,24 +8,27 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { authService } from '../services/core/authService';
-import { getUserMessage } from '../services/core/apiClient';
-import { senderService } from '../services/business/senderService';
-import { productsService } from '../services/business/productsService';
 import { clientsService } from '../services/business/clientsService';
-import { invoiceService } from '../services/business/invoiceService';
 import { contadorService } from '../services/business/contadorService';
-import { inventoryService, InventoryProductPayload } from '../services/business/inventoryService';
-import { pdfCache } from '../services/business/pdfCache';
 import {
-  Sender,
-  SenderUpsertInput,
-  Product,
-  Client,
-  Invoice,
-  InventoryProduct,
-  CreditNoteReason,
-  AuthUser,
+  type InventoryProductPayload,
+  inventoryService,
+} from '../services/business/inventoryService';
+import { invoiceService } from '../services/business/invoiceService';
+import { pdfCache } from '../services/business/pdfCache';
+import { productsService } from '../services/business/productsService';
+import { senderService } from '../services/business/senderService';
+import { getUserMessage } from '../services/core/apiClient';
+import { authService } from '../services/core/authService';
+import {
+  type AuthUser,
+  type Client,
+  type CreditNoteReason,
+  type InventoryProduct,
+  type Invoice,
+  type Product,
+  type Sender,
+  type SenderUpsertInput,
   UserRole,
 } from '../types';
 
@@ -93,9 +97,7 @@ type AppDataContextValue = {
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
-export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataReady, setDataReady] = useState(false);
@@ -119,16 +121,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const activeSender = useMemo(
     () => senders.find((sender) => sender.id === activeSenderId) ?? null,
-    [senders, activeSenderId]
+    [senders, activeSenderId],
   );
 
-  const showToast = useCallback(
-    (message: string, type: 'success' | 'error' = 'success') => {
-      setToast({ message, type });
-      window.setTimeout(() => setToast(null), 3000);
-    },
-    []
-  );
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const loadSenderData = useCallback(async (senderId?: number) => {
     const [loadedProducts, loadedClients, loadedInvoices] = await Promise.all([
@@ -143,7 +142,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const refreshProducts = useCallback(async () => {
-    const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+    const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
     const loadedProducts = await productsService.getProducts(senderId);
     setProducts(loadedProducts);
   }, [isContador]);
@@ -165,7 +164,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
                     setSenders([freshSender]);
                     localStorage.setItem(
                       'fm_contador_active_sender',
-                      JSON.stringify({ senderId: freshSender.id, sender: freshSender })
+                      JSON.stringify({ senderId: freshSender.id, sender: freshSender }),
                     );
                   }
                 }
@@ -237,7 +236,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       showToast(`Operando como: ${name}`);
     },
-    [loadSenderData, senders, showToast]
+    [loadSenderData, senders, showToast],
   );
 
   const changeSender = useCallback(
@@ -248,7 +247,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       await loadSenderData(isContador ? senderId : undefined);
       showToast(`Empresa: ${senderName}`);
     },
-    [loadSenderData, senders, showToast, isContador]
+    [loadSenderData, senders, showToast, isContador],
   );
 
   const saveSender = useCallback(
@@ -269,7 +268,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
             if (snap.senderId === updated.id) {
               localStorage.setItem(
                 'fm_contador_active_sender',
-                JSON.stringify({ senderId: updated.id, sender: { ...snap.sender, ...updated } })
+                JSON.stringify({ senderId: updated.id, sender: { ...snap.sender, ...updated } }),
               );
             }
           } catch {
@@ -285,7 +284,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       await refreshAllData();
       showToast('CREDENCIALES GUARDADAS');
     },
-    [activeSender, isContador, refreshAllData, showToast]
+    [activeSender, isContador, refreshAllData, showToast],
   );
 
   const deleteSender = useCallback(
@@ -294,13 +293,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       await refreshAllData();
       showToast('EMPRESA ELIMINADA');
     },
-    [refreshAllData, showToast]
+    [refreshAllData, showToast],
   );
 
   const saveProduct = useCallback(
     async (product: Product) => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
         const exists = products.some((current) => current.id === product.id);
 
         if (exists) {
@@ -312,7 +311,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               base_price: product.base_price,
               has_igv: product.has_igv,
             },
-            senderId
+            senderId,
           );
         } else {
           await productsService.createProduct(
@@ -322,7 +321,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               base_price: product.base_price,
               has_igv: product.has_igv,
             },
-            senderId
+            senderId,
           );
         }
 
@@ -332,13 +331,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(getUserMessage(error, 'No se pudo guardar el producto.'), 'error');
       }
     },
-    [products, refreshProducts, showToast, isContador]
+    [products, refreshProducts, showToast, isContador],
   );
 
   const saveProductSilent = useCallback(
     async (product: Product) => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
         const exists = products.some((current) => current.id === product.id);
 
         if (exists) {
@@ -350,7 +349,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               base_price: product.base_price,
               has_igv: product.has_igv,
             },
-            senderId
+            senderId,
           );
         } else {
           await productsService.createProduct(
@@ -360,24 +359,24 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               base_price: product.base_price,
               has_igv: product.has_igv,
             },
-            senderId
+            senderId,
           );
         }
       } catch {
         // silencioso — no interrumpe el flujo de emisión
       }
     },
-    [products, isContador]
+    [products, isContador],
   );
 
   const deleteProduct = useCallback(
     async (id: number) => {
-      const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+      const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
       await productsService.deleteProduct(id, senderId);
       await refreshAllData();
       showToast('PRODUCTO ELIMINADO');
     },
-    [refreshAllData, showToast, isContador]
+    [refreshAllData, showToast, isContador],
   );
 
   const refreshInventory = useCallback(async () => {
@@ -386,7 +385,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       setInventoryEnabled(false);
       return;
     }
-    const senderId = isContador ? activeSenderId ?? undefined : undefined;
+    const senderId = isContador ? (activeSenderId ?? undefined) : undefined;
     try {
       const loaded = await inventoryService.getInventory(senderId);
       setInventory(loaded);
@@ -400,7 +399,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const saveInventoryItem = useCallback(
     async (payload: InventoryProductPayload) => {
       try {
-        const senderId = isContador ? activeSenderId ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderId ?? undefined) : undefined;
         await inventoryService.createProduct(payload, senderId);
         await refreshInventory();
         showToast('PRODUCTO AGREGADO AL INVENTARIO');
@@ -408,13 +407,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(getUserMessage(error, 'No se pudo agregar el producto.'), 'error');
       }
     },
-    [isContador, activeSenderId, refreshInventory, showToast]
+    [isContador, activeSenderId, refreshInventory, showToast],
   );
 
   const saveClient = useCallback(
     async (client: Client) => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
         const exists = clients.some((current) => current.id === client.id);
 
         if (exists) {
@@ -426,7 +425,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               ruc: client.ruc || undefined,
               phone: client.phone || undefined,
             },
-            senderId
+            senderId,
           );
         } else {
           await clientsService.createClient(
@@ -436,7 +435,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               ruc: client.ruc || undefined,
               phone: client.phone || undefined,
             },
-            senderId
+            senderId,
           );
         }
 
@@ -446,29 +445,29 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(getUserMessage(error, 'No se pudo guardar el cliente.'), 'error');
       }
     },
-    [clients, refreshAllData, showToast, isContador]
+    [clients, refreshAllData, showToast, isContador],
   );
 
   const deleteClient = useCallback(
     async (id: number) => {
-      const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+      const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
       await clientsService.deleteClient(id, senderId);
       await refreshAllData();
       showToast('CLIENTE ELIMINADO');
     },
-    [refreshAllData, showToast, isContador]
+    [refreshAllData, showToast, isContador],
   );
 
   const patchInvoice = useCallback((invoiceId: number, patch: Partial<Invoice>) => {
     setInvoices((prev) =>
-      prev.map((invoice) => (invoice.id === invoiceId ? { ...invoice, ...patch } : invoice))
+      prev.map((invoice) => (invoice.id === invoiceId ? { ...invoice, ...patch } : invoice)),
     );
   }, []);
 
   const persistInvoice = useCallback(
     async (invoice: Invoice): Promise<Invoice | null> => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
 
         const createdInvoice = await invoiceService.createInvoice(
           {
@@ -486,7 +485,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               has_igv: item.has_igv,
             })),
           },
-          senderId
+          senderId,
         );
 
         await invoiceService.emitInvoice(createdInvoice.id, senderId);
@@ -499,13 +498,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
     },
-    [refreshAllData, showToast, isContador]
+    [refreshAllData, showToast, isContador],
   );
 
   const saveDraft = useCallback(
     async (invoice: Invoice): Promise<Invoice | null> => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
 
         const createdInvoice = await invoiceService.createInvoice(
           {
@@ -523,7 +522,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
               has_igv: item.has_igv,
             })),
           },
-          senderId
+          senderId,
         );
 
         await refreshAllData();
@@ -535,13 +534,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         return null;
       }
     },
-    [refreshAllData, showToast, isContador]
+    [refreshAllData, showToast, isContador],
   );
 
   const emitDraft = useCallback(
     async (invoiceId: number): Promise<void> => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
         await invoiceService.emitInvoice(invoiceId, senderId);
         await refreshAllData();
         showToast('DOCUMENTO ENVIADO A SUNAT');
@@ -550,13 +549,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(getUserMessage(error, 'No se pudo emitir el documento.'), 'error');
       }
     },
-    [refreshAllData, showToast, isContador]
+    [refreshAllData, showToast, isContador],
   );
 
   const deleteInvoice = useCallback(
     async (invoiceId: number): Promise<void> => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
         await invoiceService.deleteInvoice(invoiceId, senderId);
         await refreshAllData();
         showToast('DOCUMENTO ELIMINADO');
@@ -565,7 +564,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(getUserMessage(error, 'No se pudo eliminar el documento.'), 'error');
       }
     },
-    [refreshAllData, showToast, isContador]
+    [refreshAllData, showToast, isContador],
   );
 
   const CREDIT_NOTE_SUSTENTO: Record<string, string> = {
@@ -579,7 +578,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const emitCreditNote = useCallback(
     async (baseInvoice: Invoice, reason: CreditNoteReason) => {
       try {
-        const senderId = isContador ? activeSenderIdRef.current ?? undefined : undefined;
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
         await invoiceService.createCreditNote(
           baseInvoice.id,
           {
@@ -587,7 +586,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
             reason,
             sustento: CREDIT_NOTE_SUSTENTO[reason] ?? 'Anulacion de la Operacion',
           },
-          senderId
+          senderId,
         );
 
         await refreshAllData();
@@ -597,7 +596,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
         showToast(getUserMessage(error, 'No se pudo crear la nota de crédito.'), 'error');
       }
     },
-    [refreshAllData, showToast, isContador]
+    [refreshAllData, showToast, isContador],
   );
 
   const login = useCallback(async (email: string, password: string) => {
@@ -645,12 +644,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
     bootstrap();
 
-    const activityEvents: Array<keyof WindowEventMap> = [
-      'click',
-      'keydown',
-      'mousemove',
-      'scroll',
-    ];
+    const activityEvents: Array<keyof WindowEventMap> = ['click', 'keydown', 'mousemove', 'scroll'];
 
     const touch = () => {
       if (authService.hasSession()) {
@@ -659,13 +653,11 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     activityEvents.forEach((eventName) =>
-      window.addEventListener(eventName, touch, { passive: true })
+      window.addEventListener(eventName, touch, { passive: true }),
     );
 
     return () => {
-      activityEvents.forEach((eventName) =>
-        window.removeEventListener(eventName, touch)
-      );
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, touch));
     };
   }, []);
 
@@ -768,7 +760,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({
       emitCreditNote,
       patchInvoice,
       logout,
-    ]
+    ],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

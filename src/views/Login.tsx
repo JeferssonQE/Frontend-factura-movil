@@ -1,17 +1,9 @@
 // views/Login.tsx
+
+import { AlertTriangle, Eye, EyeOff, Loader2, Lock, LogIn, Mail, Shield } from 'lucide-react';
 import React, { useState } from 'react';
-import {
-  Mail,
-  Lock,
-  Loader2,
-  LogIn,
-  Eye,
-  EyeOff,
-  Shield,
-  AlertTriangle,
-} from 'lucide-react';
-import { z } from 'zod';
-import { emailSchema, passwordSchema, loginSchema } from '../schemas/auth';
+import type { z } from 'zod';
+import { emailSchema, loginSchema, passwordSchema } from '../schemas/auth';
 
 interface LoginProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -19,7 +11,7 @@ interface LoginProps {
 
 const validateField = (
   schema: z.ZodSchema,
-  value: unknown
+  value: unknown,
 ): { isValid: boolean; error?: string } => {
   const result = schema.safeParse(value);
 
@@ -107,8 +99,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       <div className="mb-8 text-center">
-        <img src="/logo-icon.png" alt="FactuMovil AI" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
-        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">FactuMovil AI</h1>
+        <img
+          src="/logo-icon.png"
+          alt="FactuMovil AI"
+          className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
+        />
+        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
+          FactuMovil AI
+        </h1>
         <p className="text-[10px] text-slate-400 mt-1">Facturación Electrónica Segura</p>
       </div>
 
@@ -135,9 +133,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Lock className="text-red-600" size={14} />
-              <span className="text-[9px] font-bold text-red-700 uppercase">
-                Cuenta Bloqueada
-              </span>
+              <span className="text-[9px] font-bold text-red-700 uppercase">Cuenta Bloqueada</span>
             </div>
             <p className="text-[8px] text-red-600">Tiempo restante: {formatTime(blockTimeLeft)}</p>
           </div>
@@ -149,10 +145,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               Email
             </label>
             <div className="relative">
-              <Mail
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={18}
-              />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type="email"
                 value={email}
@@ -176,10 +169,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               Contraseña
             </label>
             <div className="relative">
-              <Lock
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={18}
-              />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -214,7 +204,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
           <button
             type="submit"
-            disabled={loading || isBlocked || !emailValidation.isValid || !passwordValidation.isValid}
+            disabled={
+              loading || isBlocked || !emailValidation.isValid || !passwordValidation.isValid
+            }
             className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (

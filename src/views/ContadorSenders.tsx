@@ -1,8 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { Building2, CheckCircle2, RefreshCw, ChevronRight, Save, ShieldCheck, Play, AlertTriangle, Pencil } from 'lucide-react';
-import { Sender, AuthUser, AdminUserRow } from '../types';
-import { SenderFormData } from '../services/business/contadorService';
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  ChevronRight,
+  Pencil,
+  Play,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+} from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import SunatCredentialsModal from '../components/SunatCredentialsModal';
+import type { SenderFormData } from '../services/business/contadorService';
+import type { AdminUserRow, AuthUser, Sender } from '../types';
 
 interface ContadorSendersProps {
   user: AuthUser;
@@ -74,7 +85,12 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
   };
 
   const handleSaveCredentials = async (sunatUser: string, sunatPass: string) => {
-    await onSaveSender({ name: name.trim(), ruc: ruc.trim(), sunat_user: sunatUser, sunat_pass: sunatPass });
+    await onSaveSender({
+      name: name.trim(),
+      ruc: ruc.trim(),
+      sunat_user: sunatUser,
+      sunat_pass: sunatPass,
+    });
   };
 
   if (loading) {
@@ -126,14 +142,14 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
 
   return (
     <div className="space-y-5 pb-8">
-
       {/* Header */}
       <div className="pt-2 pb-1">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
           Hola, {firstName}
         </p>
         <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight mt-0.5">
-          {empresas.length} empresa{empresas.length !== 1 ? 's' : ''} asignada{empresas.length !== 1 ? 's' : ''}
+          {empresas.length} empresa{empresas.length !== 1 ? 's' : ''} asignada
+          {empresas.length !== 1 ? 's' : ''}
         </p>
       </div>
 
@@ -213,7 +229,10 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="bg-white rounded-[22px] border border-slate-100 shadow-sm p-5 space-y-4">
+            <form
+              onSubmit={handleSubmit}
+              className="bg-white rounded-[22px] border border-slate-100 shadow-sm p-5 space-y-4"
+            >
               {hasCredentials ? (
                 <div className="flex items-center gap-2 bg-emerald-50 rounded-2xl px-3 py-2.5">
                   <ShieldCheck size={13} className="text-emerald-500 shrink-0" strokeWidth={3} />
@@ -238,11 +257,16 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: '' })); }}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setErrors((p) => ({ ...p, name: '' }));
+                    }}
                     placeholder={sender?.name || 'Nombre de la empresa'}
                     className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.name ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
                   />
-                  {errors.name && <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.name}</p>}
+                  {errors.name && (
+                    <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.name}</p>
+                  )}
                 </div>
 
                 <div>
@@ -252,12 +276,17 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
                   <input
                     type="text"
                     value={ruc}
-                    onChange={(e) => { setRuc(e.target.value.replace(/\D/g, '')); setErrors((p) => ({ ...p, ruc: '' })); }}
+                    onChange={(e) => {
+                      setRuc(e.target.value.replace(/\D/g, ''));
+                      setErrors((p) => ({ ...p, ruc: '' }));
+                    }}
                     placeholder={sender?.ruc || '20123456789'}
                     maxLength={11}
                     className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.ruc ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
                   />
-                  {errors.ruc && <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.ruc}</p>}
+                  {errors.ruc && (
+                    <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.ruc}</p>
+                  )}
                 </div>
 
                 <div className="pt-1">

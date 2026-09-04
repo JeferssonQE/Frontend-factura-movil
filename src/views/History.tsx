@@ -1,36 +1,38 @@
 // views/History.tsx
-import React, { useState, useEffect } from 'react';
+
 import {
-  Search,
-  FileText,
-  X,
-  Download,
-  CheckCircle2,
-  Printer,
-  ArrowLeftRight,
-  FileCheck,
-  ArrowDownLeft,
-  ShieldCheck,
-  CornerUpLeft,
-  Share2,
-  RefreshCw,
-  Zap,
-  Loader2,
-  KeyRound,
-  PackageX,
-  FileX,
   AlertTriangle,
-  HelpCircle,
-  Trash2,
-  MessageCircle,
-  UserX,
-  CalendarX,
+  ArrowDownLeft,
+  ArrowLeftRight,
   Calculator,
+  CalendarX,
+  CheckCircle2,
+  CornerUpLeft,
+  Download,
+  FileCheck,
+  FileText,
+  FileX,
+  HelpCircle,
+  KeyRound,
+  Loader2,
+  MessageCircle,
+  PackageX,
+  Printer,
+  RefreshCw,
+  Search,
+  Share2,
+  ShieldCheck,
+  Trash2,
+  UserX,
+  X,
+  Zap,
 } from 'lucide-react';
-import { Invoice, InvoiceStatus, InvoiceType, CreditNoteReason } from '../types';
-import { PDFService } from '../services/integrations/pdfService';
-import { pdfCache } from '../services/business/pdfCache';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { emissionProgress } from '../config/emissionProgress';
+import { pdfCache } from '../services/business/pdfCache';
+import { PDFService } from '../services/integrations/pdfService';
+import { CreditNoteReason, type Invoice, InvoiceStatus, InvoiceType } from '../types';
 
 const NOTA_CREDITO_ENABLED = false; // en debug — reactivar cuando el flujo de NC esté estable
 
@@ -144,7 +146,7 @@ const normalizeFailedStep = (step: string | null | undefined): string =>
   (step ?? '').replace(/^(boleta|factura)_/, '');
 
 const getFailedStepConfig = (step: string | null | undefined): FailedStepConfig =>
-  FAILED_STEP_CONFIG[normalizeFailedStep(step)] ?? FAILED_STEP_CONFIG['desconocido'];
+  FAILED_STEP_CONFIG[normalizeFailedStep(step)] ?? FAILED_STEP_CONFIG.desconocido;
 
 export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
   const styles: Record<InvoiceStatus, string> = {
@@ -197,7 +199,16 @@ const ProcessingRing: React.FC<{ percent: number }> = ({ percent }) => {
   );
 };
 
-const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentialsInvalid, onEmitCreditNote, onEmitDraft, onDeleteInvoice, onFixCredentials, onRefresh }) => {
+const History: React.FC<HistoryProps> = ({
+  invoices,
+  activeSenderId,
+  credentialsInvalid,
+  onEmitCreditNote,
+  onEmitDraft,
+  onDeleteInvoice,
+  onFixCredentials,
+  onRefresh,
+}) => {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -223,10 +234,18 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
     let cancelled = false;
     pdfCache
       .load(id, activeSenderId ?? undefined)
-      .then((base64) => { if (!cancelled) setSelectedInvoicePdf(base64); })
-      .catch(() => { if (!cancelled) setSelectedInvoicePdf(null); })
-      .finally(() => { if (!cancelled) setIsPdfLoading(false); });
-    return () => { cancelled = true; };
+      .then((base64) => {
+        if (!cancelled) setSelectedInvoicePdf(base64);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedInvoicePdf(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsPdfLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedInvoice?.id, activeSenderId]);
 
   const filtered = invoices.filter((invoice) => {
@@ -274,19 +293,21 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
 
         <div className="overflow-x-auto hide-scrollbar -mx-2 px-2">
           <div className="flex gap-2 p-1.5 bg-slate-100/50 rounded-[24px] min-w-max">
-            {['ALL', 'BOLETA', 'FACTURA', ...(NOTA_CREDITO_ENABLED ? ['NOTA_CREDITO'] : [])].map((type) => (
-              <button
-                key={type}
-                onClick={() => setFilterType(type as 'ALL' | InvoiceType)}
-                className={`py-2.5 px-6 rounded-[18px] text-[10px] font-black uppercase tracking-tighter transition-all whitespace-nowrap ${
-                  filterType === type
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {type === 'ALL' ? 'Todos' : type.replace('_', ' ')}
-              </button>
-            ))}
+            {['ALL', 'BOLETA', 'FACTURA', ...(NOTA_CREDITO_ENABLED ? ['NOTA_CREDITO'] : [])].map(
+              (type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type as 'ALL' | InvoiceType)}
+                  className={`py-2.5 px-6 rounded-[18px] text-[10px] font-black uppercase tracking-tighter transition-all whitespace-nowrap ${
+                    filterType === type
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {type === 'ALL' ? 'Todos' : type.replace('_', ' ')}
+                </button>
+              ),
+            )}
           </div>
         </div>
       </div>
@@ -321,8 +342,8 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                       invoice.invoice_type === InvoiceType.BOLETA
                         ? 'bg-blue-50 text-blue-600'
                         : invoice.invoice_type === InvoiceType.FACTURA
-                        ? 'bg-indigo-50 text-indigo-600'
-                        : 'bg-amber-100 text-amber-600'
+                          ? 'bg-indigo-50 text-indigo-600'
+                          : 'bg-amber-100 text-amber-600'
                     }`}
                   >
                     {invoice.invoice_type === InvoiceType.NOTA_CREDITO ? (
@@ -399,7 +420,10 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
 
       {selectedInvoice && (
         <div className="fixed inset-0 bg-slate-900/40 z-[200] backdrop-blur-sm flex items-end animate-in fade-in duration-200">
-          <div id="ticket-print" className="bg-white w-full max-w-md mx-auto rounded-t-[48px] p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto max-h-[90vh]">
+          <div
+            id="ticket-print"
+            className="bg-white w-full max-w-md mx-auto rounded-t-[48px] p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto max-h-[90vh]"
+          >
             <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-6 print:hidden" />
 
             <div className="flex justify-between items-center mb-6 px-2">
@@ -450,16 +474,17 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                     {selectedInvoice.invoice_date}
                   </span>
                 </div>
-                {selectedInvoice.status === InvoiceStatus.EMITIDO && selectedInvoice.nro_comprobante_sunat && (
-                  <div className="mt-3 pt-3 border-t border-slate-200 flex justify-between items-center">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                      Nº SUNAT
-                    </span>
-                    <span className="text-[11px] font-black text-blue-600 select-all">
-                      {selectedInvoice.nro_comprobante_sunat}
-                    </span>
-                  </div>
-                )}
+                {selectedInvoice.status === InvoiceStatus.EMITIDO &&
+                  selectedInvoice.nro_comprobante_sunat && (
+                    <div className="mt-3 pt-3 border-t border-slate-200 flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        Nº SUNAT
+                      </span>
+                      <span className="text-[11px] font-black text-blue-600 select-all">
+                        {selectedInvoice.nro_comprobante_sunat}
+                      </span>
+                    </div>
+                  )}
               </div>
 
               <div className="px-2">
@@ -469,13 +494,17 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
 
                 <div className="space-y-5 pr-2 custom-scrollbar">
                   {selectedInvoice.items.map((item, index) => (
-                    <div key={index} className="flex justify-between items-start gap-4 text-xs group">
+                    <div
+                      key={index}
+                      className="flex justify-between items-start gap-4 text-xs group"
+                    >
                       <div className="min-w-0 flex-1">
                         <span className="text-slate-800 font-black uppercase block truncate text-sm">
                           {item.description}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                          Cant: {item.quantity} {item.unit} • S/ {Number(item.unit_price).toFixed(2)} c/u
+                          Cant: {item.quantity} {item.unit} • S/{' '}
+                          {Number(item.unit_price).toFixed(2)} c/u
                         </span>
                       </div>
                       <div className="text-right shrink-0">
@@ -523,57 +552,58 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                 </div>
               </div>
 
-              {selectedInvoice.status === InvoiceStatus.FALLO && (() => {
-                const cfg = getFailedStepConfig(selectedInvoice.sunat_failed_step);
-                return (
-                  <div
-                    className={`rounded-[24px] overflow-hidden border ${
-                      cfg.isWarning ? 'border-amber-200' : 'border-red-100'
-                    }`}
-                  >
+              {selectedInvoice.status === InvoiceStatus.FALLO &&
+                (() => {
+                  const cfg = getFailedStepConfig(selectedInvoice.sunat_failed_step);
+                  return (
                     <div
-                      className={`flex items-center gap-2.5 px-5 py-3.5 ${
-                        cfg.isWarning ? 'bg-amber-50' : 'bg-red-50'
+                      className={`rounded-[24px] overflow-hidden border ${
+                        cfg.isWarning ? 'border-amber-200' : 'border-red-100'
                       }`}
                     >
-                      <span
-                        className={`shrink-0 ${cfg.isWarning ? 'text-amber-600' : 'text-red-500'}`}
+                      <div
+                        className={`flex items-center gap-2.5 px-5 py-3.5 ${
+                          cfg.isWarning ? 'bg-amber-50' : 'bg-red-50'
+                        }`}
                       >
-                        {cfg.icon}
-                      </span>
-                      <div className="flex-1">
-                        <p
-                          className={`text-[11px] font-black uppercase tracking-tight leading-none ${
-                            cfg.isWarning ? 'text-amber-700' : 'text-red-700'
-                          }`}
+                        <span
+                          className={`shrink-0 ${cfg.isWarning ? 'text-amber-600' : 'text-red-500'}`}
                         >
-                          {cfg.label}
-                        </p>
-                        <p
-                          className={`text-[10px] font-bold mt-0.5 leading-snug ${
-                            cfg.isWarning ? 'text-amber-600' : 'text-red-500'
-                          }`}
-                        >
-                          {cfg.hint}
-                        </p>
+                          {cfg.icon}
+                        </span>
+                        <div className="flex-1">
+                          <p
+                            className={`text-[11px] font-black uppercase tracking-tight leading-none ${
+                              cfg.isWarning ? 'text-amber-700' : 'text-red-700'
+                            }`}
+                          >
+                            {cfg.label}
+                          </p>
+                          <p
+                            className={`text-[10px] font-bold mt-0.5 leading-snug ${
+                              cfg.isWarning ? 'text-amber-600' : 'text-red-500'
+                            }`}
+                          >
+                            {cfg.hint}
+                          </p>
+                        </div>
+                        <span className="text-[9px] font-mono text-slate-400 select-all shrink-0">
+                          #{selectedInvoice.id}
+                        </span>
                       </div>
-                      <span className="text-[9px] font-mono text-slate-400 select-all shrink-0">
-                        #{selectedInvoice.id}
-                      </span>
+                      {selectedInvoice.sunat_message && (
+                        <div className="bg-white px-5 py-3 border-t border-dashed border-slate-100">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            Detalle técnico
+                          </p>
+                          <p className="text-[10px] font-mono text-slate-500 leading-relaxed break-words">
+                            {selectedInvoice.sunat_message}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    {selectedInvoice.sunat_message && (
-                      <div className="bg-white px-5 py-3 border-t border-dashed border-slate-100">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                          Detalle técnico
-                        </p>
-                        <p className="text-[10px] font-mono text-slate-500 leading-relaxed break-words">
-                          {selectedInvoice.sunat_message}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+                  );
+                })()}
 
               {showReasonSelect ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 px-2 print:hidden">
@@ -617,11 +647,15 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                         isPdfLoading
                           ? 'bg-blue-600/60 text-white border-transparent cursor-wait'
                           : selectedInvoicePdf
-                          ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-200'
-                          : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
+                            ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-200'
+                            : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
                       }`}
                     >
-                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <FileText size={20} />}
+                      {isPdfLoading ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <FileText size={20} />
+                      )}
                       <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
                         {isPdfLoading ? 'Cargando' : 'Ver PDF'}
                       </span>
@@ -631,11 +665,19 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                       onClick={() => window.print()}
                       disabled={isPdfLoading}
                       className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border border-transparent ${
-                        isPdfLoading ? 'bg-slate-50 text-slate-300 cursor-wait' : 'bg-slate-100 text-slate-700 active:bg-slate-200'
+                        isPdfLoading
+                          ? 'bg-slate-50 text-slate-300 cursor-wait'
+                          : 'bg-slate-100 text-slate-700 active:bg-slate-200'
                       }`}
                     >
-                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <Printer size={20} />}
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Imprimir</span>
+                      {isPdfLoading ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <Printer size={20} />
+                      )}
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
+                        Imprimir
+                      </span>
                     </button>
 
                     <button
@@ -643,7 +685,7 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                         if (selectedInvoicePdf) {
                           PDFService.downloadPDF(
                             selectedInvoicePdf!,
-                            `${selectedInvoice.series}-${selectedInvoice.number}.pdf`
+                            `${selectedInvoice.series}-${selectedInvoice.number}.pdf`,
                           );
                         }
                       }}
@@ -652,19 +694,29 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                         isPdfLoading
                           ? 'bg-slate-50 text-slate-300 border-transparent cursor-wait'
                           : selectedInvoicePdf
-                          ? 'bg-slate-100 text-slate-700 border-transparent active:bg-slate-200'
-                          : 'bg-slate-50 text-slate-300 border-transparent cursor-not-allowed'
+                            ? 'bg-slate-100 text-slate-700 border-transparent active:bg-slate-200'
+                            : 'bg-slate-50 text-slate-300 border-transparent cursor-not-allowed'
                       }`}
                     >
-                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Descargar</span>
+                      {isPdfLoading ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <Download size={20} />
+                      )}
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
+                        Descargar
+                      </span>
                     </button>
 
                     <button
                       onClick={async () => {
                         if (!selectedInvoicePdf) return;
                         const filename = `${selectedInvoice.series}-${selectedInvoice.number}.pdf`;
-                        const shared = await PDFService.shareNative(selectedInvoicePdf!, filename, `Comprobante ${filename}`);
+                        const shared = await PDFService.shareNative(
+                          selectedInvoicePdf!,
+                          filename,
+                          `Comprobante ${filename}`,
+                        );
                         if (shared) return;
                         PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoicePdf!);
                       }}
@@ -673,12 +725,18 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                         isPdfLoading
                           ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-wait'
                           : selectedInvoicePdf
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 active:bg-emerald-100'
-                          : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100 active:bg-emerald-100'
+                            : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
                       }`}
                     >
-                      {isPdfLoading ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">Compartir</span>
+                      {isPdfLoading ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <Share2 size={20} />
+                      )}
+                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
+                        Compartir
+                      </span>
                     </button>
                   </div>
 
@@ -690,7 +748,8 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                           <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
                             <AlertTriangle size={14} className="text-amber-500 shrink-0" />
                             <p className="text-[10px] font-bold text-amber-700 leading-snug">
-                              Este comprobante puede ya estar emitido en SUNAT. Verifique en el portal antes de reintentar.
+                              Este comprobante puede ya estar emitido en SUNAT. Verifique en el
+                              portal antes de reintentar.
                             </p>
                           </div>
                         )}
@@ -726,8 +785,8 @@ const History: React.FC<HistoryProps> = ({ invoices, activeSenderId, credentials
                           {isEmittingDraft
                             ? 'Enviando a SUNAT...'
                             : selectedInvoice.status === InvoiceStatus.FALLO
-                            ? 'Reintentar SUNAT'
-                            : 'Emitir a SUNAT'}
+                              ? 'Reintentar SUNAT'
+                              : 'Emitir a SUNAT'}
                         </button>
                       )}
                     </>

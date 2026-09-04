@@ -1,8 +1,10 @@
 // views/Agent.tsx
-import React, { useEffect, useRef } from 'react';
-import { Send, Mic, X } from 'lucide-react';
+
+import { Mic, Send, X } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
 import { useAgent } from '../hooks/useAgent';
-import { ChatMessage } from '../services/integrations/agentService';
+import type { ChatMessage } from '../services/integrations/agentService';
 
 // ---------------------------------------------------------------------------
 // Quick-topic chips
@@ -72,15 +74,7 @@ const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
 // ---------------------------------------------------------------------------
 
 const AgentView: React.FC = () => {
-  const {
-    messages,
-    inputText,
-    setInputText,
-    isLoading,
-    error,
-    setError,
-    sendMessage,
-  } = useAgent();
+  const { messages, inputText, setInputText, isLoading, error, setError, sendMessage } = useAgent();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -118,7 +112,6 @@ const AgentView: React.FC = () => {
 
   return (
     <div className="flex flex-col -mx-4 -mt-4" style={{ height: 'calc(100% + 1rem)' }}>
-
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2 space-y-3">
         {messages.map((msg) => (

@@ -1,24 +1,23 @@
 // services/pdfService.ts - Manejo de PDFs para compartir
 
 export class PDFService {
-  
   /**
    * Convierte base64 a blob y crea URL temporal
    */
   static createPDFUrl(base64: string): string {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
-    
+
     for (let i = 0; i < byteCharacters.length; i++) {
       byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-    
+
     const byteArray = new Uint8Array(byteNumbers);
     const blob = new Blob([byteArray], { type: 'application/pdf' });
-    
+
     return URL.createObjectURL(blob);
   }
-  
+
   /**
    * Descarga PDF directamente
    */
@@ -32,7 +31,7 @@ export class PDFService {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
-  
+
   /**
    * Abre PDF en nueva pestaña
    */
@@ -40,7 +39,7 @@ export class PDFService {
     const url = this.createPDFUrl(base64);
     window.open(url, '_blank');
   }
-  
+
   /**
    * Convierte base64 a Blob
    */
@@ -94,23 +93,23 @@ _Mensaje automático de FactuMovil AI_`;
     if (pdfBase64) {
       this.downloadPDF(pdfBase64, `${invoice.series}-${invoice.number}.pdf`);
     }
-    
+
     // Abrir WhatsApp
     const phone = clientPhone?.replace(/\D/g, '') || '';
     let whatsappUrl;
-    
+
     if (phone) {
-      whatsappUrl = `https://wa.me/${phone.startsWith('51') ? phone : '51' + phone}?text=${encodeURIComponent(message)}`;
+      whatsappUrl = `https://wa.me/${phone.startsWith('51') ? phone : `51${phone}`}?text=${encodeURIComponent(message)}`;
     } else {
       // Si no hay teléfono, abrir WhatsApp Web con el mensaje copiado
       whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     }
-    
+
     setTimeout(() => {
       window.open(whatsappUrl, '_blank');
     }, 500); // Delay para que termine la descarga
   }
-  
+
   /**
    * Copia enlace temporal del PDF (para compartir por otros medios)
    */
@@ -119,10 +118,10 @@ _Mensaje automático de FactuMovil AI_`;
     // - Supabase Storage (público por 24h)
     // - Cloudinary
     // - AWS S3 con URL firmada
-    
+
     // Por ahora, crear URL local temporal
     const url = this.createPDFUrl(base64);
-    
+
     try {
       await navigator.clipboard.writeText(url);
       return url;

@@ -1,5 +1,5 @@
 // services/utils/invoiceMath.ts
-import { InvoiceItem, UnitOfMeasure } from '../../types';
+import type { InvoiceItem, UnitOfMeasure } from '../../types';
 
 const IGV_RATE = 1.18;
 const CALC_DECIMALS = 4;
@@ -9,8 +9,7 @@ const ceilTo = (value: number, decimals: number = CALC_DECIMALS): number => {
   return Math.ceil(Number((value * factor).toPrecision(12))) / factor;
 };
 
-export const unitLabel = (unit: UnitOfMeasure): string =>
-  unit === 'KILOGRAMO' ? 'KILOG.' : unit;
+export const unitLabel = (unit: UnitOfMeasure): string => (unit === 'KILOGRAMO' ? 'KILOG.' : unit);
 
 export const createEmptyItem = (): InvoiceItem => ({
   product_id: null,

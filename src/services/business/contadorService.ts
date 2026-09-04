@@ -1,5 +1,5 @@
+import type { AdminUserRow, Sender, SunatCredentialsValidation } from '../../types';
 import { apiClient } from '../core/apiClient';
-import { Sender, AdminUserRow, SunatCredentialsValidation } from '../../types';
 
 export type ContadorAssignment = {
   contador_user_id: string;
@@ -35,13 +35,16 @@ export const contadorService = {
   async startSunatCredentialsValidation(empresaUserId: string): Promise<{ task_id: string }> {
     return apiClient.post<{ task_id: string }>(
       `/contadores/me/empresas/${empresaUserId}/sunat-credentials/validate`,
-      {}
+      {},
     );
   },
 
-  async getSunatCredentialsValidation(empresaUserId: string, taskId: string): Promise<SunatCredentialsValidation> {
+  async getSunatCredentialsValidation(
+    empresaUserId: string,
+    taskId: string,
+  ): Promise<SunatCredentialsValidation> {
     return apiClient.get<SunatCredentialsValidation>(
-      `/contadores/me/empresas/${empresaUserId}/sunat-credentials/validation/${taskId}`
+      `/contadores/me/empresas/${empresaUserId}/sunat-credentials/validation/${taskId}`,
     );
   },
 

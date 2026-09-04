@@ -1,6 +1,8 @@
 // views/ResetPassword.tsx
-import React, { useState } from 'react';
-import { Lock, Eye, EyeOff, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import { authService } from '../services/core/authService';
 
 interface ResetPasswordProps {
@@ -9,9 +11,9 @@ interface ResetPasswordProps {
 
 const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
-  
+
   if (password.length < 4) errors.push('Mínimo 4 caracteres');
-  
+
   return { isValid: errors.length === 0, errors };
 };
 
@@ -31,7 +33,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formValid) {
       setError('Por favor corrige los errores antes de continuar');
       return;
@@ -43,7 +45,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
     try {
       await authService.updatePassword(password);
       setSuccess(true);
-      
+
       // Redirigir después de 2 segundos
       setTimeout(() => {
         onSuccess();
@@ -67,7 +69,8 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
             ¡Contraseña Actualizada!
           </h2>
           <p className="text-[10px] text-slate-600 mb-6">
-            Tu contraseña ha sido cambiada exitosamente.<br />
+            Tu contraseña ha sido cambiada exitosamente.
+            <br />
             <span className="text-emerald-600 font-bold">Redirigiendo al sistema...</span>
           </p>
           <div className="flex items-center justify-center">
@@ -82,8 +85,14 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       {/* Logo */}
       <div className="mb-8 text-center">
-        <img src="/logo-icon.png" alt="FactuMovil AI" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
-        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">FactuMovil AI</h1>
+        <img
+          src="/logo-icon.png"
+          alt="FactuMovil AI"
+          className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
+        />
+        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
+          FactuMovil AI
+        </h1>
         <p className="text-[10px] text-slate-400 mt-1">Cambiar Contraseña</p>
       </div>
 
@@ -98,7 +107,8 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
           <p className="text-[9px] text-blue-700 text-center">
-            <strong>Crea una nueva contraseña</strong><br />
+            <strong>Crea una nueva contraseña</strong>
+            <br />
             Mínimo 4 caracteres para acceso rápido
           </p>
         </div>
@@ -117,7 +127,9 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
                 placeholder="••••••••"
                 required
                 className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  password && !passwordValidation.isValid ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
+                  password && !passwordValidation.isValid
+                    ? 'border-red-300 focus:ring-red-500'
+                    : 'border-slate-200 focus:ring-blue-500'
                 }`}
               />
               <button
@@ -131,7 +143,9 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
             {password && !passwordValidation.isValid && (
               <div className="mt-2 space-y-1">
                 {passwordValidation.errors.map((error, index) => (
-                  <p key={index} className="text-[8px] text-red-600">• {error}</p>
+                  <p key={index} className="text-[8px] text-red-600">
+                    • {error}
+                  </p>
                 ))}
               </div>
             )}
@@ -150,7 +164,9 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
                 placeholder="••••••••"
                 required
                 className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  confirmPassword && !passwordsMatch ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
+                  confirmPassword && !passwordsMatch
+                    ? 'border-red-300 focus:ring-red-500'
+                    : 'border-slate-200 focus:ring-blue-500'
                 }`}
               />
               <button
@@ -168,14 +184,18 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
 
           {/* Indicador de validación */}
           {password && confirmPassword && (
-            <div className={`rounded-xl p-3 ${formValid ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+            <div
+              className={`rounded-xl p-3 ${formValid ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}
+            >
               <div className="flex items-center gap-2">
                 {formValid ? (
                   <CheckCircle2 className="text-emerald-600" size={14} />
                 ) : (
                   <AlertTriangle className="text-amber-600" size={14} />
                 )}
-                <span className={`text-[9px] font-bold ${formValid ? 'text-emerald-700' : 'text-amber-700'}`}>
+                <span
+                  className={`text-[9px] font-bold ${formValid ? 'text-emerald-700' : 'text-amber-700'}`}
+                >
                   {formValid ? 'Contraseña válida' : 'Revisa los errores'}
                 </span>
               </div>

@@ -1,6 +1,7 @@
 // types.ts
 import type { UnitOfMeasure } from './config/sunatUnits';
-export { SUNAT_UNITS, isSunatUnit } from './config/sunatUnits';
+
+export { isSunatUnit, SUNAT_UNITS } from './config/sunatUnits';
 export type { UnitOfMeasure };
 
 export enum InvoiceType {

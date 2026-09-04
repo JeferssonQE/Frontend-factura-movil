@@ -1,9 +1,9 @@
 // src/pages/OnboardingPage.tsx
-import React from 'react';
+import type React from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import Onboarding from '../views/Onboarding';
 import { useAppData } from '../context/AppDataContext';
 import { authService } from '../services/core/authService';
+import Onboarding from '../views/Onboarding';
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();

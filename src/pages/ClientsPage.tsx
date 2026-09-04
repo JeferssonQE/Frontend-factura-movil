@@ -1,7 +1,7 @@
 // src/pages/ClientsPage.tsx
-import React from 'react';
-import Clients from '../views/Clients';
+import type React from 'react';
 import { useAppData } from '../context/AppDataContext';
+import Clients from '../views/Clients';
 
 const ClientsPage: React.FC = () => {
   const { clients, activeSenderId, saveClient, deleteClient, refreshAllData } = useAppData();

@@ -1,6 +1,7 @@
 // services/authService.ts
-import { apiClient, storageKeys, saveTokens, ApiError } from './apiClient';
-import { AuthUser } from '../../types';
+
+import type { AuthUser } from '../../types';
+import { ApiError, apiClient, saveTokens, storageKeys } from './apiClient';
 
 const INACTIVITY_LIMIT_MS = 30 * 24 * 60 * 60 * 1000;
 

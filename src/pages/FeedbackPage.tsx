@@ -1,17 +1,19 @@
 // src/pages/FeedbackPage.tsx
-import React, { useState } from 'react';
-import { Star, Send, RefreshCw, CheckCircle, MessageCircle } from 'lucide-react';
+
+import { CheckCircle, MessageCircle, RefreshCw, Send, Star } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import { feedbackService } from '../services/business/feedbackService';
 
 const FeedbackPage: React.FC = () => {
   const { activeSenderId, showToast } = useAppData();
-  const [rating, setRating]     = useState(0);
-  const [hovered, setHovered]   = useState(0);
-  const [name, setName]         = useState('');
-  const [message, setMessage]   = useState('');
-  const [busy, setBusy]         = useState(false);
-  const [sent, setSent]         = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hovered, setHovered] = useState(0);
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const handleSubmit = async () => {
     if (!message.trim()) return;
@@ -38,11 +40,20 @@ const FeedbackPage: React.FC = () => {
           <CheckCircle size={36} className="text-emerald-500" strokeWidth={2} />
         </div>
         <div>
-          <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">¡Gracias!</h2>
-          <p className="text-[11px] text-slate-400 font-medium mt-1 uppercase tracking-widest">Tu opinión fue enviada</p>
+          <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">
+            ¡Gracias!
+          </h2>
+          <p className="text-[11px] text-slate-400 font-medium mt-1 uppercase tracking-widest">
+            Tu opinión fue enviada
+          </p>
         </div>
         <button
-          onClick={() => { setSent(false); setRating(0); setName(''); setMessage(''); }}
+          onClick={() => {
+            setSent(false);
+            setRating(0);
+            setName('');
+            setMessage('');
+          }}
           className="text-[10px] font-black text-blue-500 uppercase tracking-widest"
         >
           Enviar otra opinión
@@ -53,21 +64,26 @@ const FeedbackPage: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-8">
-
       {/* Header */}
       <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
           <MessageCircle size={22} className="text-blue-500" strokeWidth={2} />
         </div>
         <div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">Tu opinión nos mejora :)</h2>
-          <p className="text-[10px] text-slate-400 mt-0.5">Cuéntanos cómo fue tu experiencia con FactuMovil</p>
+          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">
+            Tu opinión nos mejora :)
+          </h2>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Cuéntanos cómo fue tu experiencia con FactuMovil
+          </p>
         </div>
       </div>
 
       {/* Rating */}
       <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">¿Cómo calificarías FactuMovil?</p>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
+          ¿Cómo calificarías FactuMovil?
+        </p>
         <div className="flex gap-2 justify-center">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
@@ -131,7 +147,6 @@ const FeedbackPage: React.FC = () => {
           {busy ? 'Enviando...' : 'Enviar Opinión'}
         </button>
       </div>
-
     </div>
   );
 };

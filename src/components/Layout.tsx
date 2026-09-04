@@ -1,22 +1,24 @@
 // components/Layout.tsx
-import React, { useState } from 'react';
+
 import {
-  Home,
-  Package,
-  Boxes,
-  Users,
-  History,
-  PlusSquare,
-  Menu,
-  X,
-  UserCircle,
-  ChevronLeft,
-  ShieldCheck,
-  MessageCircle,
-  Building2,
   ArrowLeftRight,
+  Boxes,
+  Building2,
+  ChevronLeft,
+  History,
+  Home,
+  Menu,
+  MessageCircle,
+  Package,
+  PlusSquare,
+  ShieldCheck,
+  UserCircle,
+  Users,
+  X,
 } from 'lucide-react';
-import { Sender } from '../types';
+import type React from 'react';
+import { useState } from 'react';
+import type { Sender } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -56,10 +58,10 @@ const Layout: React.FC<LayoutProps> = ({
   ];
 
   const sidebarLinks = [
-    { id: 'products',  icon: Package,        label: 'Productos'  },
+    { id: 'products', icon: Package, label: 'Productos' },
     ...(showInventory ? [{ id: 'inventory', icon: Boxes, label: 'Inventario' }] : []),
-    { id: 'clients',   icon: Users,          label: 'Clientes'   },
-    { id: 'history',   icon: History,        label: 'Historial'  },
+    { id: 'clients', icon: Users, label: 'Clientes' },
+    { id: 'history', icon: History, label: 'Historial' },
   ];
 
   const handleLinkClick = (id: string) => {
@@ -109,7 +111,9 @@ const Layout: React.FC<LayoutProps> = ({
                 }`}
               >
                 <Building2 size={20} />
-                <span className="text-[11px] uppercase font-black tracking-widest">Mis Empresas</span>
+                <span className="text-[11px] uppercase font-black tracking-widest">
+                  Mis Empresas
+                </span>
               </button>
               <div className="h-px bg-slate-100 my-4 mx-4" />
             </>
@@ -252,55 +256,57 @@ const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto px-4 pt-4 ${hideBottomNav ? 'pb-4' : 'pb-32'}`}>{children}</main>
+      <main className={`flex-1 overflow-y-auto px-4 pt-4 ${hideBottomNav ? 'pb-4' : 'pb-32'}`}>
+        {children}
+      </main>
 
       {/* Bottom Navigation */}
       {!hideBottomNav && (
-      <nav className="bg-white/95 backdrop-blur-xl border-t border-slate-50 px-8 py-4 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-30 flex justify-between items-center rounded-t-[40px] shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
-        {bottomTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+        <nav className="bg-white/95 backdrop-blur-xl border-t border-slate-50 px-8 py-4 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-30 flex justify-between items-center rounded-t-[40px] shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+          {bottomTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
 
-          if (tab.primary) {
+            if (tab.primary) {
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className="relative -top-8 flex flex-col items-center"
+                >
+                  <div
+                    className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-2xl transition-all active:scale-90 ${
+                      isActive
+                        ? 'bg-blue-600 text-white scale-110 shadow-blue-200'
+                        : 'bg-slate-900 text-white'
+                    }`}
+                  >
+                    <Icon size={32} strokeWidth={2.5} />
+                  </div>
+                </button>
+              );
+            }
+
             return (
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className="relative -top-8 flex flex-col items-center"
-              >
-                <div
-                  className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-2xl transition-all active:scale-90 ${
-                    isActive
-                      ? 'bg-blue-600 text-white scale-110 shadow-blue-200'
-                      : 'bg-slate-900 text-white'
-                  }`}
-                >
-                  <Icon size={32} strokeWidth={2.5} />
-                </div>
-              </button>
-            );
-          }
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center transition-all ${
-                isActive ? 'text-blue-600' : 'text-slate-300'
-              }`}
-            >
-              <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-              <span
-                className={`text-[9px] mt-1.5 font-black uppercase tracking-widest ${
-                  isActive ? 'opacity-100' : 'opacity-0'
+                className={`flex flex-col items-center justify-center transition-all ${
+                  isActive ? 'text-blue-600' : 'text-slate-300'
                 }`}
               >
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+                <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                <span
+                  className={`text-[9px] mt-1.5 font-black uppercase tracking-widest ${
+                    isActive ? 'opacity-100' : 'opacity-0'
+                  }`}
+                >
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
       )}
     </div>
   );

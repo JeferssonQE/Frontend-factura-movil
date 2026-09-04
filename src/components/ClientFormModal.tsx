@@ -1,10 +1,12 @@
 // components/ClientFormModal.tsx
-import React, { useCallback, useState } from 'react';
-import { UserPlus, X, AlertCircle, Loader2 } from 'lucide-react';
-import { clientSchema } from '../schemas/business';
-import { Client } from '../types';
-import { lookupService } from '../services/business/lookupService';
+
+import { AlertCircle, Loader2, UserPlus, X } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useState } from 'react';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
+import { clientSchema } from '../schemas/business';
+import { lookupService } from '../services/business/lookupService';
+import type { Client } from '../types';
 
 interface ClientFormModalProps {
   editingClient: Client | null;

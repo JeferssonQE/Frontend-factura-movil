@@ -1,19 +1,21 @@
 // views/Onboarding.tsx
-import React, { useState } from 'react';
+
 import {
-  Lock,
+  AlertTriangle,
+  ArrowRight,
+  Building,
+  CheckCircle2,
   Eye,
   EyeOff,
-  CheckCircle2,
   Loader2,
+  Lock,
   ShieldCheck,
-  Building,
-  ArrowRight,
-  AlertTriangle,
 } from 'lucide-react';
-import { Sender, SunatCredentialsStatus } from '../types';
-import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
+import type React from 'react';
+import { useState } from 'react';
 import { CHECKING_CREDENTIALS_MESSAGE, CREDENTIALS_VERDICT } from '../config/sunatCredentials';
+import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
+import type { Sender, SunatCredentialsStatus } from '../types';
 
 interface OnboardingProps {
   sender: Sender | null;
@@ -28,14 +30,20 @@ type Step = 1 | 2;
 
 const StepDots: React.FC<{ step: Step }> = ({ step }) => (
   <div className="flex items-center justify-center gap-2 mb-6">
-    <span className={`h-2 rounded-full transition-all ${step === 1 ? 'w-8 bg-slate-900' : 'w-2 bg-emerald-500'}`} />
-    <span className={`h-2 rounded-full transition-all ${step === 2 ? 'w-8 bg-slate-900' : 'w-2 bg-slate-200'}`} />
+    <span
+      className={`h-2 rounded-full transition-all ${step === 1 ? 'w-8 bg-slate-900' : 'w-2 bg-emerald-500'}`}
+    />
+    <span
+      className={`h-2 rounded-full transition-all ${step === 2 ? 'w-8 bg-slate-900' : 'w-2 bg-slate-200'}`}
+    />
   </div>
 );
 
 const ReadOnlyField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
-    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">{label}</label>
+    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+      {label}
+    </label>
     <div className="w-full bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-500">
       {value}
     </div>
@@ -56,10 +64,14 @@ const VerdictBlock: React.FC<{
   onContinue: () => void;
 }> = ({ status, title, message, onRetry, onContinue }) => (
   <div className="py-4 text-center">
-    <div className={`w-16 h-16 mx-auto mb-5 rounded-[26px] flex items-center justify-center ${VERDICT_TONES[status]}`}>
+    <div
+      className={`w-16 h-16 mx-auto mb-5 rounded-[26px] flex items-center justify-center ${VERDICT_TONES[status]}`}
+    >
       {status === 'VALIDA' ? <CheckCircle2 size={28} /> : <AlertTriangle size={28} />}
     </div>
-    <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest mb-2">{title}</h2>
+    <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest mb-2">
+      {title}
+    </h2>
     <p className="text-[10px] text-slate-400 font-semibold leading-relaxed mb-6">{message}</p>
 
     {status === 'INVALIDA' ? (
@@ -82,7 +94,12 @@ const VerdictBlock: React.FC<{
   </div>
 );
 
-const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSaveSunat, onFinish }) => {
+const Onboarding: React.FC<OnboardingProps> = ({
+  sender,
+  onChangePassword,
+  onSaveSunat,
+  onFinish,
+}) => {
   const [step, setStep] = useState<Step>(1);
 
   const [password, setPassword] = useState('');
@@ -111,7 +128,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
   // El contador pudo haber conectado SUNAT antes de este primer ingreso: no pedirle
   // de nuevo la Clave SOL, solo mostrar el estado que ya existe para esa empresa.
   const alreadyConnected = Boolean(sender?.has_sunat_credentials) && !showCaptureForm;
-  const preConnectedStatus: SunatCredentialsStatus = sender?.sunat_credentials_status ?? 'PENDIENTE';
+  const preConnectedStatus: SunatCredentialsStatus =
+    sender?.sunat_credentials_status ?? 'PENDIENTE';
   const preConnectedCopy = CREDENTIALS_VERDICT[preConnectedStatus];
 
   const handleSubmitPassword = async () => {
@@ -148,8 +166,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       <div className="mb-8 text-center">
-        <img src="/logo-icon.png" alt="FactuMovil AI" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
-        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">FactuMovil AI</h1>
+        <img
+          src="/logo-icon.png"
+          alt="FactuMovil AI"
+          className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
+        />
+        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
+          FactuMovil AI
+        </h1>
         <p className="text-[10px] text-slate-400 mt-1">
           {step === 1 ? 'Paso 1 de 2 · Protege tu cuenta' : 'Paso 2 de 2 · Conecta tu SUNAT'}
         </p>
@@ -162,11 +186,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
           <>
             <div className="flex items-center justify-center gap-2 mb-3">
               <ShieldCheck className="text-blue-600" size={16} />
-              <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">Nueva Contraseña</h2>
+              <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
+                Nueva Contraseña
+              </h2>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
               <p className="text-[9px] text-blue-700 text-center leading-relaxed">
-                Estás usando una contraseña temporal.<br />
+                Estás usando una contraseña temporal.
+                <br />
                 Crea una nueva para continuar (mínimo {MIN_PASSWORD_LENGTH} caracteres).
               </p>
             </div>
@@ -177,7 +204,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
                   Nueva Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
@@ -185,7 +215,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
                     placeholder="••••••••"
                     autoComplete="new-password"
                     className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                      passwordTooShort ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
+                      passwordTooShort
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-slate-200 focus:ring-blue-500'
                     }`}
                   />
                   <button
@@ -197,7 +229,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
                   </button>
                 </div>
                 {passwordTooShort && (
-                  <p className="text-[8px] text-red-600 mt-1">Mínimo {MIN_PASSWORD_LENGTH} caracteres</p>
+                  <p className="text-[8px] text-red-600 mt-1">
+                    Mínimo {MIN_PASSWORD_LENGTH} caracteres
+                  </p>
                 )}
               </div>
 
@@ -206,7 +240,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
                   Confirmar Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
@@ -214,7 +251,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
                     placeholder="••••••••"
                     autoComplete="new-password"
                     className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                      passwordsMismatch ? 'border-red-300 focus:ring-red-500' : 'border-slate-200 focus:ring-blue-500'
+                      passwordsMismatch
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-slate-200 focus:ring-blue-500'
                     }`}
                   />
                 </div>
@@ -235,7 +274,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
                 disabled={loading || !passwordValid}
                 className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : <><span>Guardar y continuar</span><ArrowRight size={18} /></>}
+                {loading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    <span>Guardar y continuar</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
               </button>
 
               <button
@@ -288,11 +334,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
           <>
             <div className="flex items-center justify-center gap-2 mb-3">
               <Building className="text-blue-600" size={16} />
-              <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">Conecta tu SUNAT</h2>
+              <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
+                Conecta tu SUNAT
+              </h2>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
               <p className="text-[9px] text-blue-700 text-center leading-relaxed">
-                Necesitas tu Clave SOL para emitir comprobantes.<br />
+                Necesitas tu Clave SOL para emitir comprobantes.
+                <br />
                 Puedes hacerlo ahora o más tarde desde tu perfil.
               </p>
             </div>
@@ -350,7 +399,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onSav
                 disabled={loading || !sunatValid}
                 className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle2 size={18} /><span>Conectar</span></>}
+                {loading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} />
+                    <span>Conectar</span>
+                  </>
+                )}
               </button>
 
               <button

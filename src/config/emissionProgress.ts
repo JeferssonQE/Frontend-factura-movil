@@ -17,7 +17,7 @@ export const EMISSION_STEPS: EmissionStepInfo[] = [
 const DEFAULT_PROGRESS = { percent: 12, label: 'Procesando en SUNAT' };
 
 export const emissionProgress = (
-  currentStep?: string | null
+  currentStep?: string | null,
 ): { percent: number; label: string } => {
   if (!currentStep) return DEFAULT_PROGRESS;
   const match = EMISSION_STEPS.find((step) => step.key === currentStep);

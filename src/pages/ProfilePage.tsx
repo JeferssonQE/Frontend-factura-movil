@@ -1,12 +1,13 @@
 // src/pages/ProfilePage.tsx
-import React from 'react';
+import type React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Profile from '../views/Profile';
 import { useAppData } from '../context/AppDataContext';
+import Profile from '../views/Profile';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeSender, saveSender, logout, isAdmin, isContador, refreshAllData } = useAppData();
+  const { user, activeSender, saveSender, logout, isAdmin, isContador, refreshAllData } =
+    useAppData();
 
   const canEditIdentity = isAdmin;
 

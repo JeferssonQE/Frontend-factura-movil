@@ -1,19 +1,25 @@
 // views/Dashboard.tsx
-import React, { useState } from 'react';
+
+import { FileText, ShoppingBag, Target, TrendingUp, Zap } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
 } from 'recharts';
-import { TrendingUp, FileText, ShoppingBag, Target, Zap } from 'lucide-react';
-import { Invoice, Sender, InvoiceType } from '../types';
+import type {
+  DashboardSummary,
+  IgvSummary,
+  SalesByMonthItem,
+} from '../services/business/reportsService';
+import { type Invoice, InvoiceType, type Sender } from '../types';
 import { StatusBadge } from './History';
-import { DashboardSummary, IgvSummary, SalesByMonthItem } from '../services/business/reportsService';
 
 interface DashboardProps {
   invoices: Invoice[];
@@ -39,7 +45,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [activeCard, setActiveCard] = useState<ActiveCard>(null);
 
   const handleCardClick = (card: ActiveCard) => {
-    setActiveCard(prev => (prev === card ? null : card));
+    setActiveCard((prev) => (prev === card ? null : card));
   };
 
   const formatMonthLabel = (monthIso: string): string =>
@@ -122,7 +128,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             <FileText size={20} strokeWidth={2.5} />
           </div>
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
-            Tickets<br />del mes
+            Tickets
+            <br />
+            del mes
           </p>
           <p className="text-xs font-black text-slate-900 tracking-tight">
             {igvSummary?.invoice_count ?? 0}
@@ -132,14 +140,18 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div
           onClick={() => handleCardClick('igv')}
           className={`bg-white p-5 rounded-[32px] shadow-sm border transition-all cursor-pointer flex flex-col items-center text-center ${
-            activeCard === 'igv' ? 'border-blue-500 shadow-blue-100' : 'border-slate-100 hover:border-blue-100'
+            activeCard === 'igv'
+              ? 'border-blue-500 shadow-blue-100'
+              : 'border-slate-100 hover:border-blue-100'
           }`}
         >
           <div className="bg-violet-500/10 text-violet-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
             <Zap size={20} strokeWidth={2.5} />
           </div>
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
-            IGV<br />del mes
+            IGV
+            <br />
+            del mes
           </p>
           <p className="text-xs font-black text-slate-900 tracking-tight">
             {igvSummary ? `S/ ${igvSummary.total_igv.toFixed(2)}` : '—'}
@@ -149,14 +161,18 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div
           onClick={() => handleCardClick('total')}
           className={`bg-white p-5 rounded-[32px] shadow-sm border transition-all cursor-pointer flex flex-col items-center text-center ${
-            activeCard === 'total' ? 'border-blue-500 shadow-blue-100' : 'border-slate-100 hover:border-blue-100'
+            activeCard === 'total'
+              ? 'border-blue-500 shadow-blue-100'
+              : 'border-slate-100 hover:border-blue-100'
           }`}
         >
           <div className="bg-emerald-500/10 text-emerald-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
             <Target size={20} strokeWidth={2.5} />
           </div>
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
-            Total<br />ventas
+            Total
+            <br />
+            ventas
           </p>
           <p className="text-xs font-black text-slate-900 tracking-tight">
             {igvSummary ? `S/ ${igvSummary.total_ventas.toFixed(2)}` : '—'}
@@ -169,15 +185,21 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 space-y-1">
           <div className="flex justify-between items-center py-2 border-b border-slate-50">
             <span className="text-[10px] font-semibold text-slate-400">Base imponible</span>
-            <span className="text-[11px] font-black text-slate-700">S/ {igvSummary.total_sin_igv.toFixed(2)}</span>
+            <span className="text-[11px] font-black text-slate-700">
+              S/ {igvSummary.total_sin_igv.toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-slate-50">
             <span className="text-[10px] font-semibold text-slate-400">IGV 18%</span>
-            <span className="text-[11px] font-black text-blue-600">S/ {igvSummary.total_igv.toFixed(2)}</span>
+            <span className="text-[11px] font-black text-blue-600">
+              S/ {igvSummary.total_igv.toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-[10px] font-black text-slate-600">Total facturado</span>
-            <span className="text-[13px] font-black text-slate-900">S/ {igvSummary.total_ventas.toFixed(2)}</span>
+            <span className="text-[13px] font-black text-slate-900">
+              S/ {igvSummary.total_ventas.toFixed(2)}
+            </span>
           </div>
         </div>
       )}
@@ -185,11 +207,19 @@ const Dashboard: React.FC<DashboardProps> = ({
       {activeCard === 'total' && salesByMonth.length > 0 && (
         <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 space-y-1">
           {salesByMonth.slice(-4).map((item) => (
-            <div key={item.month} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+            <div
+              key={item.month}
+              className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0"
+            >
               <span className="text-[10px] font-semibold text-slate-400">
-                {new Date(item.month).toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}
+                {new Date(item.month).toLocaleDateString('es-PE', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
               </span>
-              <span className="text-[11px] font-black text-slate-700">S/ {Number(item.total_sales).toFixed(2)}</span>
+              <span className="text-[11px] font-black text-slate-700">
+                S/ {Number(item.total_sales).toFixed(2)}
+              </span>
             </div>
           ))}
         </div>
@@ -199,13 +229,30 @@ const Dashboard: React.FC<DashboardProps> = ({
       {summary && (
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Emitidos', value: summary.emitted_invoices, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Procesando', value: summary.pending_invoices, color: 'text-amber-600', bg: 'bg-amber-50' },
-            { label: 'Fallidos', value: summary.failed_invoices, color: 'text-red-500', bg: 'bg-red-50' },
+            {
+              label: 'Emitidos',
+              value: summary.emitted_invoices,
+              color: 'text-emerald-600',
+              bg: 'bg-emerald-50',
+            },
+            {
+              label: 'Procesando',
+              value: summary.pending_invoices,
+              color: 'text-amber-600',
+              bg: 'bg-amber-50',
+            },
+            {
+              label: 'Fallidos',
+              value: summary.failed_invoices,
+              color: 'text-red-500',
+              bg: 'bg-red-50',
+            },
           ].map((s) => (
             <div key={s.label} className={`${s.bg} rounded-[24px] p-3 text-center`}>
               <p className={`text-base font-black ${s.color}`}>{s.value}</p>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-0.5">{s.label}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-0.5">
+                {s.label}
+              </p>
             </div>
           ))}
         </div>
@@ -322,7 +369,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-black text-slate-900">S/ {Number(inv.total).toFixed(2)}</p>
+                    <p className="text-sm font-black text-slate-900">
+                      S/ {Number(inv.total).toFixed(2)}
+                    </p>
                     <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
                       {inv.series}-{inv.number}
                     </p>

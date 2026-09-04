@@ -1,6 +1,7 @@
 // services/business/productsService.ts
+
+import type { Product, UnitOfMeasure } from '../../types';
 import { apiClient } from '../core/apiClient';
-import { Product, UnitOfMeasure } from '../../types';
 
 export type ProductPayload = {
   description: string;
@@ -26,8 +27,14 @@ export const productsService = {
     return normalizeProduct(await apiClient.post<Product>(`/products${qs(senderId)}`, payload));
   },
 
-  async updateProduct(productId: number, payload: ProductPayload, senderId?: number): Promise<Product> {
-    return normalizeProduct(await apiClient.put<Product>(`/products/${productId}${qs(senderId)}`, payload));
+  async updateProduct(
+    productId: number,
+    payload: ProductPayload,
+    senderId?: number,
+  ): Promise<Product> {
+    return normalizeProduct(
+      await apiClient.put<Product>(`/products/${productId}${qs(senderId)}`, payload),
+    );
   },
 
   async deleteProduct(productId: number, senderId?: number): Promise<void> {

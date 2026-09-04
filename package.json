@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "biome check src vite.config.ts",
+    "lint:fix": "biome check --write src vite.config.ts",
+    "format": "biome format --write src vite.config.ts"
   },
   "dependencies": {
     "@sentry/react": "^10.66.0",
@@ -21,6 +24,7 @@
     "serialize-javascript": ">=7.0.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.12",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.7",

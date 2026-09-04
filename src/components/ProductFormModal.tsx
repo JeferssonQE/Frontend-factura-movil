@@ -1,9 +1,11 @@
 // components/ProductFormModal.tsx
-import React, { useState } from 'react';
+
 import { ShoppingCart, X } from 'lucide-react';
-import { InvoiceItem, Product, UnitOfMeasure } from '../types';
+import type React from 'react';
+import { useState } from 'react';
 import { SUNAT_UNITS } from '../config/sunatUnits';
-import { recalcItem, createEmptyItem, unitLabel } from '../services/utils/invoiceMath';
+import { createEmptyItem, recalcItem, unitLabel } from '../services/utils/invoiceMath';
+import type { InvoiceItem, Product, UnitOfMeasure } from '../types';
 import ProductSearchSelector from './ProductSearchSelector';
 
 interface ProductFormModalProps {
@@ -45,8 +47,8 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
           unit: product.unit,
           has_igv: product.has_igv,
         },
-        { unit_price: product.base_price }
-      )
+        { unit_price: product.base_price },
+      ),
     );
   };
 
@@ -57,7 +59,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
     if (!canSubmit) return;
     onSubmit(
       { ...draft, description: draft.description.trim().toUpperCase() },
-      saveToCatalog && offerSaveToCatalog
+      saveToCatalog && offerSaveToCatalog,
     );
   };
 
@@ -161,7 +163,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <button
                 onClick={() => chooseIgv(true)}
                 className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
-                  igvChosen && draft.has_igv ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'
+                  igvChosen && draft.has_igv
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-400'
                 }`}
               >
                 IGV 18%
@@ -169,7 +173,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <button
                 onClick={() => chooseIgv(false)}
                 className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
-                  igvChosen && !draft.has_igv ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-400'
+                  igvChosen && !draft.has_igv
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-slate-100 text-slate-400'
                 }`}
               >
                 Exonerado

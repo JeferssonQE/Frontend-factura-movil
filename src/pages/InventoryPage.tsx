@@ -1,7 +1,8 @@
 // src/pages/InventoryPage.tsx
-import React, { useEffect } from 'react';
-import Inventory from '../views/Inventory';
+import type React from 'react';
+import { useEffect } from 'react';
 import { useAppData } from '../context/AppDataContext';
+import Inventory from '../views/Inventory';
 
 const InventoryPage: React.FC = () => {
   const { inventory, inventoryEnabled, activeSenderId, saveInventoryItem, refreshInventory } =

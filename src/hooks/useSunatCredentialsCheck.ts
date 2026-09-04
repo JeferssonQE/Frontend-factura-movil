@@ -1,8 +1,8 @@
 // hooks/useSunatCredentialsCheck.ts
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { senderService } from '../services/business/senderService';
 import { contadorService } from '../services/business/contadorService';
-import { SunatCredentialsStatus, SunatCredentialsValidation } from '../types';
+import { senderService } from '../services/business/senderService';
+import type { SunatCredentialsStatus, SunatCredentialsValidation } from '../types';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -30,7 +30,7 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
  */
 export function useSunatCredentialsCheck(
   onFinished?: (status: SunatCredentialsStatus) => void,
-  empresaUserId?: string
+  empresaUserId?: string,
 ) {
   const [state, setState] = useState<CredentialsCheckState>(INITIAL_STATE);
   const cancelled = useRef(false);
@@ -50,18 +50,21 @@ export function useSunatCredentialsCheck(
 
   useEffect(() => cancel, [cancel]);
 
-  const waitForVerdict = useCallback(async (taskId: string): Promise<SunatCredentialsValidation | null> => {
-    while (!cancelled.current) {
-      await sleep(POLL_INTERVAL_MS);
-      if (cancelled.current) return null;
+  const waitForVerdict = useCallback(
+    async (taskId: string): Promise<SunatCredentialsValidation | null> => {
+      while (!cancelled.current) {
+        await sleep(POLL_INTERVAL_MS);
+        if (cancelled.current) return null;
 
-      const validation = empresaUserId
-        ? await contadorService.getSunatCredentialsValidation(empresaUserId, taskId)
-        : await senderService.getSunatCredentialsValidation(taskId);
-      if (validation.finished) return validation;
-    }
-    return null;
-  }, [empresaUserId]);
+        const validation = empresaUserId
+          ? await contadorService.getSunatCredentialsValidation(empresaUserId, taskId)
+          : await senderService.getSunatCredentialsValidation(taskId);
+        if (validation.finished) return validation;
+      }
+      return null;
+    },
+    [empresaUserId],
+  );
 
   const check = useCallback(async () => {
     if (running.current) return;
@@ -76,7 +79,11 @@ export function useSunatCredentialsCheck(
       const validation = await waitForVerdict(task_id);
       if (!validation) return;
 
-      setState({ phase: 'done', status: validation.credentials_status, message: validation.message });
+      setState({
+        phase: 'done',
+        status: validation.credentials_status,
+        message: validation.message,
+      });
       onFinishedRef.current?.(validation.credentials_status);
     } catch (error: any) {
       if (cancelled.current) return;

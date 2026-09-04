@@ -1,13 +1,9 @@
 // routes/ProtectedRoute.tsx
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAppData } from '../context/AppDataContext';
 import LoadingScreen from '../components/LoadingScreen';
+import { useAppData } from '../context/AppDataContext';
 
-export default function ProtectedRoute({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { authLoading, dataReady, user } = useAppData();
   const location = useLocation();
 

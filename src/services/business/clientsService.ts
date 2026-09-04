@@ -1,6 +1,7 @@
 // services/business/clientsService.ts
+
+import type { Client } from '../../types';
 import { apiClient } from '../core/apiClient';
-import { Client } from '../../types';
 
 export type ClientPayload = {
   name: string;

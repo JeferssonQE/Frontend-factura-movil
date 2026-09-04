@@ -1,7 +1,9 @@
 // components/ProductSearchSelector.tsx
-import React, { useState, useEffect } from 'react';
+
 import { ChevronDown } from 'lucide-react';
-import { Product } from '../types';
+import type React from 'react';
+import { useState } from 'react';
+import type { Product } from '../types';
 
 interface ProductSearchSelectorProps {
   products: Product[];
@@ -17,16 +19,16 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
   products,
   onSelectProduct,
   onSearchChange,
-  placeholder = "NOMBRE DEL PRODUCTO",
+  placeholder = 'NOMBRE DEL PRODUCTO',
   value = '',
   onChange,
-  showDropdownButton = true
+  showDropdownButton = true,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-  
-  const filteredProducts = products.filter(product =>
-    product.description.toLowerCase().includes(value.toLowerCase())
+
+  const filteredProducts = products.filter((product) =>
+    product.description.toLowerCase().includes(value.toLowerCase()),
   );
 
   const handleInputChange = (inputValue: string) => {
@@ -62,7 +64,7 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
           placeholder={placeholder}
           className="w-full bg-white border-2 border-blue-500 rounded-[28px] px-4 py-3 pr-16 text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder:text-slate-400 uppercase"
         />
-        
+
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {showDropdownButton && products.length > 0 && (
             <button
@@ -70,9 +72,9 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
               onClick={handleCatalogToggle}
               className="p-2 hover:bg-blue-50 rounded-full transition-colors"
             >
-              <ChevronDown 
-                size={18} 
-                className={`text-blue-500 transition-transform ${isCatalogOpen ? 'rotate-180' : ''}`} 
+              <ChevronDown
+                size={18}
+                className={`text-blue-500 transition-transform ${isCatalogOpen ? 'rotate-180' : ''}`}
               />
             </button>
           )}
@@ -104,11 +106,13 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}
                       </span>
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                        product.has_igv
-                          ? 'text-emerald-600 bg-emerald-50'
-                          : 'text-slate-400 bg-slate-50'
-                      }`}>
+                      <span
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
+                          product.has_igv
+                            ? 'text-emerald-600 bg-emerald-50'
+                            : 'text-slate-400 bg-slate-50'
+                        }`}
+                      >
                         {product.has_igv ? 'Afecto' : 'Exonerado'}
                       </span>
                     </div>
@@ -145,11 +149,13 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}
                       </span>
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                        product.has_igv
-                          ? 'text-emerald-600 bg-emerald-50'
-                          : 'text-slate-400 bg-slate-50'
-                      }`}>
+                      <span
+                        className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
+                          product.has_igv
+                            ? 'text-emerald-600 bg-emerald-50'
+                            : 'text-slate-400 bg-slate-50'
+                        }`}
+                      >
                         {product.has_igv ? 'Afecto' : 'Exonerado'}
                       </span>
                     </div>
@@ -163,8 +169,8 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
 
       {/* Overlay para cerrar dropdowns */}
       {(shouldShowSearchDropdown || shouldShowCatalogDropdown) && (
-        <div 
-          className="fixed inset-0 z-40" 
+        <div
+          className="fixed inset-0 z-40"
           onClick={() => {
             setIsDropdownOpen(false);
             setIsCatalogOpen(false);
