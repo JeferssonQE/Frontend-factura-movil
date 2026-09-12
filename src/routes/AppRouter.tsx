@@ -9,7 +9,6 @@ import ContadorSendersPage from '../pages/ContadorSendersPage';
 import DashboardPage from '../pages/DashboardPage';
 import FeedbackPage from '../pages/FeedbackPage';
 import HistoryPage from '../pages/HistoryPage';
-import InventoryPage from '../pages/InventoryPage';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import OnboardingPage from '../pages/OnboardingPage';
@@ -46,7 +45,6 @@ export default function AppRouter() {
           <Route path="/billing" element={<BillingPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/products" element={<ProductsPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/feedback" element={<FeedbackPage />} />

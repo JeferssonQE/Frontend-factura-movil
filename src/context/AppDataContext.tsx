@@ -10,10 +10,6 @@ import {
 } from 'react';
 import { clientsService } from '../services/business/clientsService';
 import { contadorService } from '../services/business/contadorService';
-import {
-  type InventoryProductPayload,
-  inventoryService,
-} from '../services/business/inventoryService';
 import { invoiceService } from '../services/business/invoiceService';
 import { pdfCache } from '../services/business/pdfCache';
 import { productsService } from '../services/business/productsService';
@@ -24,7 +20,6 @@ import {
   type AuthUser,
   type Client,
   type CreditNoteReason,
-  type InventoryProduct,
   type Invoice,
   type Product,
   type Sender,
@@ -62,11 +57,6 @@ type AppDataContextValue = {
   products: Product[];
   clients: Client[];
   invoices: Invoice[];
-
-  inventory: InventoryProduct[];
-  inventoryEnabled: boolean;
-  refreshInventory: () => Promise<void>;
-  saveInventoryItem: (payload: InventoryProductPayload) => Promise<void>;
 
   setToast: React.Dispatch<React.SetStateAction<ToastState>>;
   showToast: (message: string, type?: 'success' | 'error') => void;
@@ -108,8 +98,6 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [inventory, setInventory] = useState<InventoryProduct[]>([]);
-  const [inventoryEnabled, setInventoryEnabled] = useState(false);
 
   const activeSenderIdRef = useRef<number | null>(null);
   useEffect(() => {
@@ -379,37 +367,6 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [refreshAllData, showToast, isContador],
   );
 
-  const refreshInventory = useCallback(async () => {
-    if (isContador && !activeSenderId) {
-      setInventory([]);
-      setInventoryEnabled(false);
-      return;
-    }
-    const senderId = isContador ? (activeSenderId ?? undefined) : undefined;
-    try {
-      const loaded = await inventoryService.getInventory(senderId);
-      setInventory(loaded);
-      setInventoryEnabled(true);
-    } catch {
-      setInventory([]);
-      setInventoryEnabled(false);
-    }
-  }, [isContador, activeSenderId]);
-
-  const saveInventoryItem = useCallback(
-    async (payload: InventoryProductPayload) => {
-      try {
-        const senderId = isContador ? (activeSenderId ?? undefined) : undefined;
-        await inventoryService.createProduct(payload, senderId);
-        await refreshInventory();
-        showToast('PRODUCTO AGREGADO AL INVENTARIO');
-      } catch (error) {
-        showToast(getUserMessage(error, 'No se pudo agregar el producto.'), 'error');
-      }
-    },
-    [isContador, activeSenderId, refreshInventory, showToast],
-  );
-
   const saveClient = useCallback(
     async (client: Client) => {
       try {
@@ -618,8 +575,6 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProducts([]);
     setClients([]);
     setInvoices([]);
-    setInventory([]);
-    setInventoryEnabled(false);
     setActiveSenderId(null);
     setDataReady(false);
   }, []);
@@ -667,12 +622,6 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [user, refreshAllData]);
 
-  useEffect(() => {
-    if (user) {
-      refreshInventory();
-    }
-  }, [user, activeSenderId, refreshInventory]);
-
   const value = useMemo<AppDataContextValue>(
     () => ({
       user,
@@ -689,11 +638,6 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       products,
       clients,
       invoices,
-
-      inventory,
-      inventoryEnabled,
-      refreshInventory,
-      saveInventoryItem,
 
       setToast,
       showToast,
@@ -736,10 +680,6 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       products,
       clients,
       invoices,
-      inventory,
-      inventoryEnabled,
-      refreshInventory,
-      saveInventoryItem,
       showToast,
       login,
       refreshUser,

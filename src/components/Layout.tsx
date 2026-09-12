@@ -2,7 +2,6 @@
 
 import {
   ArrowLeftRight,
-  Boxes,
   Building2,
   ChevronLeft,
   History,
@@ -32,7 +31,6 @@ interface LayoutProps {
   activeSender?: Sender | null;
   userInitials?: string;
   hideBottomNav?: boolean;
-  showInventory?: boolean;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -47,7 +45,6 @@ const Layout: React.FC<LayoutProps> = ({
   activeSender = null,
   userInitials = 'US',
   hideBottomNav = false,
-  showInventory = false,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -59,7 +56,6 @@ const Layout: React.FC<LayoutProps> = ({
 
   const sidebarLinks = [
     { id: 'products', icon: Package, label: 'Productos' },
-    ...(showInventory ? [{ id: 'inventory', icon: Boxes, label: 'Inventario' }] : []),
     { id: 'clients', icon: Users, label: 'Clientes' },
     { id: 'history', icon: History, label: 'Historial' },
   ];
