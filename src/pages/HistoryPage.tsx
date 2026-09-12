@@ -11,6 +11,11 @@ import History from '../views/History';
 const POLL_INTERVAL_MS = 4_000; // 4 segundos
 const PREFETCH_PDF_COUNT = 5;
 
+// Una emisión tarda ~40s; cinco minutos es holgado. Pasado ese punto el backend ya cerró la
+// factura o nunca lo hará, y seguir sondeando solo castiga al servidor: la pantalla queda a la
+// espera del refresco manual.
+const MAX_POLL_ATTEMPTS = 75;
+
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const {
@@ -30,15 +35,28 @@ const HistoryPage: React.FC = () => {
     .map((inv) => inv.id);
 
   useEffect(() => {
-    if (procesandoIds.length === 0) {
+    const stopPolling = () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+    };
+
+    if (procesandoIds.length === 0) {
+      stopPolling();
       return;
     }
 
+    let attempts = 0;
+
     const poll = async () => {
+      attempts += 1;
+      if (attempts > MAX_POLL_ATTEMPTS) {
+        stopPolling();
+        await refreshAllData();
+        return;
+      }
+
       let statusChanged = false;
       await Promise.allSettled(
         procesandoIds.map(async (id) => {
@@ -60,12 +78,7 @@ const HistoryPage: React.FC = () => {
     poll();
     timerRef.current = setInterval(poll, POLL_INTERVAL_MS);
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
+    return stopPolling;
   }, [procesandoIds.join(','), refreshAllData, patchInvoice, activeSenderId]); // eslint-disable-line
 
   useEffect(() => {

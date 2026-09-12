@@ -41,6 +41,11 @@ const SUNAT_ERRORS: Record<string, SunatErrorInfo> = {
     title: 'Emitido, PDF no disponible',
     message: 'El comprobante pudo emitirse en SUNAT. Verifícalo en el portal antes de reintentar.',
   },
+  tarea_perdida: {
+    title: 'Emisión sin confirmar',
+    message:
+      'Se perdió el rastro de esta emisión. Búscala en el portal de SUNAT antes de volver a emitirla.',
+  },
 };
 
 const DEFAULT_ERROR: SunatErrorInfo = {

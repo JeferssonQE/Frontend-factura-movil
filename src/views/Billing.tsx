@@ -6,7 +6,9 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
+  Clock,
   Download,
+  FlaskConical,
   Images,
   KeyRound,
   Layers,
@@ -57,6 +59,23 @@ import {
 const DNI_LENGTH = 8;
 const RUC_LENGTH = 11;
 const onlyDigits = (value: string): string => value.replace(/\D/g, '');
+
+type EmissionState = 'processing' | 'emitido' | 'fallo' | 'prueba' | 'sin_confirmar' | null;
+
+// Desenlaces que no son ni exito ni error: nada se emitio, pero tampoco fallo nada. Comparten
+// pantalla porque el usuario necesita lo mismo en ambos — saber que paso y adonde ir.
+const NEUTRAL_OUTCOMES = {
+  prueba: {
+    title: 'Prueba completada',
+    message:
+      'El comprobante recorrió todo el flujo en SUNAT sin llegar a emitirse. Quedó como borrador en el historial.',
+  },
+  sin_confirmar: {
+    title: 'Sigue procesando',
+    message:
+      'SUNAT está tardando más de lo normal. Revisa el estado del comprobante en el historial en unos minutos.',
+  },
+} as const;
 
 // Borrador no guardado (cliente + productos a medio llenar): sobrevive a una navegacion
 // accidental dentro de la misma pestana, pero no mas alla — para eso existe "Guardar
@@ -175,9 +194,7 @@ const Billing: React.FC<BillingProps> = ({
   const [emissionStep, setEmissionStep] = useState(0);
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
-  const [emissionState, setEmissionState] = useState<'processing' | 'emitido' | 'fallo' | null>(
-    null,
-  );
+  const [emissionState, setEmissionState] = useState<EmissionState>(null);
   const [emissionCurrentStep, setEmissionCurrentStep] = useState<string | null>(null);
   const [emissionFailedStep, setEmissionFailedStep] = useState<string | null>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
@@ -497,10 +514,21 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   const POLL_INTERVAL_MS = 4_000;
+  const MAX_POLL_ATTEMPTS = 75; // ~5 minutos; una emisión normal tarda menos de uno
 
   const startPolling = (invoiceId: number) => {
     stopPolling();
+    let attempts = 0;
+
     pollingRef.current = setInterval(async () => {
+      attempts += 1;
+      if (attempts > MAX_POLL_ATTEMPTS) {
+        stopPolling();
+        if (onRefresh) await onRefresh();
+        setEmissionState('sin_confirmar');
+        return;
+      }
+
       try {
         const statusData = await invoiceService.getInvoiceStatus(invoiceId, sender?.id);
         if (statusData.status === InvoiceStatus.EMITIDO) {
@@ -520,6 +548,11 @@ const Billing: React.FC<BillingProps> = ({
           setEmissionFailedStep(statusData.sunat_failed_step);
           if (onRefresh) await onRefresh();
           setEmissionState('fallo');
+        } else if (statusData.status === InvoiceStatus.BORRADOR) {
+          stopPolling();
+          setSunatMessage(statusData.sunat_message);
+          if (onRefresh) await onRefresh();
+          setEmissionState('prueba');
         } else {
           setEmissionCurrentStep(statusData.current_step);
         }
@@ -931,6 +964,34 @@ const Billing: React.FC<BillingProps> = ({
               <button
                 onClick={resetForm}
                 className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
+              >
+                <RotateCcw size={18} /> Nueva Venta
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── SIN EMITIR: prueba o espera sin confirmar ── */}
+        {(emissionState === 'prueba' || emissionState === 'sin_confirmar') && (
+          <>
+            <div className="w-24 h-24 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mb-8">
+              {emissionState === 'prueba' ? (
+                <FlaskConical size={52} strokeWidth={2} />
+              ) : (
+                <Clock size={52} strokeWidth={2} />
+              )}
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-slate-800">
+              {NEUTRAL_OUTCOMES[emissionState].title}
+            </h2>
+            <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
+              {NEUTRAL_OUTCOMES[emissionState].message}
+            </p>
+
+            <div className="w-full max-w-xs">
+              <button
+                onClick={resetForm}
+                className="w-full bg-[#112657] text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all"
               >
                 <RotateCcw size={18} /> Nueva Venta
               </button>

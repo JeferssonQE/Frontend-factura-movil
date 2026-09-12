@@ -134,6 +134,12 @@ const FAILED_STEP_CONFIG: Record<string, FailedStepConfig> = {
     isWarning: true,
     icon: <AlertTriangle size={14} />,
   },
+  tarea_perdida: {
+    label: 'Emisión sin confirmar',
+    hint: 'Se perdió el rastro de esta emisión. Búsquela en el portal de SUNAT antes de volver a emitirla.',
+    isWarning: true,
+    icon: <AlertTriangle size={14} />,
+  },
   desconocido: {
     label: 'Error inesperado',
     hint: 'Ocurrió un error no esperado. Si el problema persiste, contacte soporte.',
