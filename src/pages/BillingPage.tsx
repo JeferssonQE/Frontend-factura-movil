@@ -47,8 +47,8 @@ const BillingPage: React.FC = () => {
           sender_id: activeSender.id,
           description: data.description,
           unit: data.unit,
-          base_price: data.base_price,
-          has_igv: data.has_igv,
+          sale_price: data.sale_price,
+          igv_type: data.igv_type,
         });
       }}
       onSaveCredentials={async (sunatUser, sunatPass) => {

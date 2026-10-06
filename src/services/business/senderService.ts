@@ -1,6 +1,11 @@
 // services/business/senderService.ts
 
-import type { Sender, SenderUpsertInput, SunatCredentialsValidation } from '../../types';
+import type {
+  EmissionUsage,
+  Sender,
+  SenderUpsertInput,
+  SunatCredentialsValidation,
+} from '../../types';
 import { apiClient } from '../core/apiClient';
 
 export const senderService = {
@@ -21,6 +26,11 @@ export const senderService = {
 
   async updateSender(payload: SenderUpsertInput): Promise<Sender> {
     return apiClient.put<Sender>('/sender', payload);
+  },
+
+  /** Cuanto lleva emitido este mes contra su limite. Lo cuenta el backend. */
+  async getEmissionUsage(): Promise<EmissionUsage> {
+    return apiClient.get<EmissionUsage>('/sender/usage');
   },
 
   async deleteSender(): Promise<void> {

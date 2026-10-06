@@ -53,6 +53,18 @@ export class PDFService {
   }
 
   /**
+   * Convierte Blob a base64, sin el prefijo data:
+   */
+  static blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /**
    * Comparte el PDF usando la Web Share API nativa (móvil).
    * Retorna true si tuvo éxito, false si no está disponible (usar fallback).
    */

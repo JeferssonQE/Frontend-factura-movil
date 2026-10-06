@@ -2,6 +2,7 @@
 
 import type {
   CreditNoteReason,
+  IgvType,
   Invoice,
   InvoiceStatus,
   InvoiceType,
@@ -14,8 +15,25 @@ export type InvoiceItemPayload = {
   description: string;
   quantity: number;
   unit: UnitOfMeasure;
-  unit_price: number;
-  has_igv: boolean;
+  sale_price: number;
+  igv_type: IgvType;
+};
+
+/** Una linea declarada: la base, el IGV y el importe que calculo Factu API para un item. */
+export type InvoicePreviewLine = {
+  unit_value: string;
+  igv: string;
+  total: string;
+};
+
+/** Lo que se declararia. Lo calcula Factu API; el frontend solo lo pinta. */
+export type InvoicePreview = {
+  taxed_amount: string;
+  exempt_amount: string;
+  unaffected_amount: string;
+  igv: string;
+  total: string;
+  items: InvoicePreviewLine[];
 };
 
 export type CreateInvoicePayload = {
@@ -76,6 +94,10 @@ export const invoiceService = {
 
   async getInvoice(invoiceId: number, senderId?: number): Promise<Invoice> {
     return apiClient.get<Invoice>(`/invoices/${invoiceId}${qs({ sender_id: senderId })}`);
+  },
+
+  async previewInvoice(payload: CreateInvoicePayload, senderId?: number): Promise<InvoicePreview> {
+    return apiClient.post<InvoicePreview>(`/invoices/preview${qs({ sender_id: senderId })}`, payload);
   },
 
   async createInvoice(payload: CreateInvoicePayload, senderId?: number): Promise<Invoice> {

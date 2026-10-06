@@ -36,17 +36,22 @@ import { getSunatError } from '../config/sunatErrors';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import { invoiceEmissionSchema } from '../schemas/business';
 import { invoiceService } from '../services/business/invoiceService';
+import { pdfCache } from '../services/business/pdfCache';
 import { lookupService } from '../services/business/lookupService';
 import { ApiError, getUserMessage } from '../services/core/apiClient';
 import { type FormSnapshot, mergeExtraction } from '../services/integrations/aiExtractionMerge';
 import { processInvoiceAudio, processInvoiceImage } from '../services/integrations/geminiService';
 import { PDFService } from '../services/integrations/pdfService';
 import { prepareImageForAI } from '../services/utils/imagePrep';
-import { unitLabel } from '../services/utils/invoiceMath';
+import { igvTypeLabel, unitLabel } from '../services/utils/invoiceMath';
+import { useInvoicePreview } from '../hooks/useInvoicePreview';
+import { useEmissionUsage } from '../hooks/useEmissionUsage';
+import { cachedUnits } from '../hooks/useUnits';
 import {
   type BillingClientData,
   type Client,
   type IAExtractionResult,
+  type IgvType,
   type Invoice,
   type InvoiceItem,
   InvoiceStatus,
@@ -143,8 +148,8 @@ interface BillingProps {
   onSaveProduct?: (data: {
     description: string;
     unit: UnitOfMeasure;
-    base_price: number;
-    has_igv: boolean;
+    sale_price: number;
+    igv_type: IgvType;
   }) => Promise<void>;
   onSaveCredentials?: (sunatUser: string, sunatPass: string) => Promise<void>;
   /** Id de la empresa cuando quien opera es un contador, no la propia empresa. */
@@ -315,15 +320,38 @@ const Billing: React.FC<BillingProps> = ({
     [errors],
   );
 
-  const gravada = items
-    .filter((item) => item.has_igv)
-    .reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  // Los montos declarados los calcula Factu API: aca no hay ningun 0.18 ni ningun 1.18, y
+  // no debe volver a haberlo. Mientras no llega la respuesta, la pantalla dice que esta
+  // calculando en vez de mostrar un numero propio: que la caja y el comprobante dijeran
+  // cosas distintas es exactamente el bug que esto cierra.
+  const {
+    preview,
+    lineOf,
+    isCalculating: isCalculatingTotals,
+    failed: totalsFailed,
+  } = useInvoicePreview({
+    senderId: sender?.id,
+    invoiceType,
+    invoiceDate: clientData.invoice_date,
+    clientName: clientData.name,
+    clientDocument: clientData.document,
+    items,
+  });
 
-  const exoneratedItems = items.filter((item) => !item.has_igv);
-  const exonerada = exoneratedItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  // El cupo del mes. Solo informa: el bloqueo lo decide el backend al emitir, con la misma
+  // cuenta. Aca no se resta nada.
+  const { usage, refresh: refreshUsage } = useEmissionUsage();
+  const showUsage = usage?.enforced === true;
+  const lowOnQuota = showUsage && usage.remaining <= 10;
 
-  const igvTotal = gravada * 0.18;
-  const total = gravada + exonerada + igvTotal;
+  const hasTotals = preview !== null;
+  const gravada = Number(preview?.taxed_amount ?? 0);
+  const exonerada = Number(preview?.exempt_amount ?? 0);
+  const inafecta = Number(preview?.unaffected_amount ?? 0);
+  const igvTotal = Number(preview?.igv ?? 0);
+  const total = Number(preview?.total ?? 0);
+
+  const exoneratedItems = items.filter((item) => item.igv_type !== 'GRAVADO');
 
   const maxInvoiceDate = new Date().toLocaleDateString('en-CA');
   const minInvoiceDate = (() => {
@@ -359,7 +387,7 @@ const Billing: React.FC<BillingProps> = ({
     setIaWarning(null);
     setIaSuccess(null);
 
-    const merged = mergeExtraction(result, formSnapshotRef.current, products);
+    const merged = mergeExtraction(result, formSnapshotRef.current, products, cachedUnits());
     const reviewNote = merged.ignored.length ? ` Revisa: ${merged.ignored.join(', ')}.` : '';
 
     setInvoiceType(merged.invoiceType);
@@ -499,8 +527,8 @@ const Billing: React.FC<BillingProps> = ({
       onSaveProduct({
         description: item.description,
         unit: item.unit,
-        base_price: item.unit_price,
-        has_igv: item.has_igv,
+        sale_price: item.sale_price,
+        igv_type: item.igv_type,
       });
     }
     closeProductModal();
@@ -536,9 +564,12 @@ const Billing: React.FC<BillingProps> = ({
           setNumeroComprobante(statusData.nro_comprobante_sunat);
           setSunatMessage(statusData.sunat_message);
           setEmissionState('emitido');
+          void refreshUsage();
           try {
-            const updated = await invoiceService.getInvoice(invoiceId, sender?.id);
-            if (updated.pdf_base64) setPdfBase64(updated.pdf_base64);
+            // El PDF ya no viaja dentro de la factura: se baja del endpoint, que lo trae
+            // del link que guardo Factu API.
+            const base64 = await pdfCache.load(invoiceId, sender?.id);
+            if (base64) setPdfBase64(base64);
           } catch {
             /* PDF opcional */
           }
@@ -647,8 +678,8 @@ const Billing: React.FC<BillingProps> = ({
         description: item.description,
         quantity: item.quantity,
         unit: item.unit,
-        unit_price: item.unit_price,
-        has_igv: item.has_igv,
+        sale_price: item.sale_price,
+        igv_type: item.igv_type,
       })),
     });
 
@@ -671,13 +702,28 @@ const Billing: React.FC<BillingProps> = ({
 
     const itemsWithoutPrice = items
       .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.description.trim().length > 0 && item.unit_price <= 0);
+      .filter(({ item }) => item.description.trim().length > 0 && item.sale_price <= 0);
 
     if (itemsWithoutPrice.length > 0) {
       const formErrors = itemsWithoutPrice.map(({ index }) => ({
         message: `Producto ${index + 1}: asígnale un precio antes de emitir (S/ 0.00).`,
         itemIndex: index,
       }));
+      setErrors(formErrors);
+      scrollToFirstIssue(formErrors);
+      return;
+    }
+
+    // Sin total no se emite: el cajero tiene que ver cuanto cobra antes de que el
+    // comprobante exista. Lo calcula Factu API, asi que si no respondio, se espera.
+    if (!hasTotals) {
+      const formErrors = [
+        {
+          message: isCalculatingTotals
+            ? 'Espera a que termine de calcularse el total.'
+            : 'No se pudo calcular el total. Revisa tu conexión e intenta de nuevo.',
+        },
+      ];
       setErrors(formErrors);
       scrollToFirstIssue(formErrors);
       return;
@@ -710,12 +756,15 @@ const Billing: React.FC<BillingProps> = ({
         number: nextNumber,
         nro_comprobante_sunat: null,
         invoice_date: clientData.invoice_date,
-        subtotal: gravada + exonerada,
+        taxed_amount: gravada,
+        exempt_amount: exonerada,
+        unaffected_amount: inafecta,
         igv: igvTotal,
         total,
         status: InvoiceStatus.BORRADOR,
         task_id: null,
-        pdf_base64: null,
+        pdf_url: null,
+        pdf_a4_url: null,
         sunat_message: null,
         sunat_failed_step: null,
         sunat_current_step: null,
@@ -763,12 +812,15 @@ const Billing: React.FC<BillingProps> = ({
         number: nextNumber,
         nro_comprobante_sunat: null,
         invoice_date: clientData.invoice_date,
-        subtotal: gravada + exonerada,
+        taxed_amount: gravada,
+        exempt_amount: exonerada,
+        unaffected_amount: inafecta,
         igv: igvTotal,
         total,
         status: InvoiceStatus.BORRADOR,
         task_id: null,
-        pdf_base64: null,
+        pdf_url: null,
+        pdf_a4_url: null,
         sunat_message: null,
         sunat_failed_step: null,
         sunat_current_step: null,
@@ -1637,14 +1689,13 @@ const Billing: React.FC<BillingProps> = ({
                       {item.description || 'Sin nombre'}
                     </p>
                     <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                      S/ {Number(item.unit_price).toFixed(2)} c/u ·{' '}
-                      {item.has_igv ? 'IGV 18%' : 'Exonerado'}
+                      S/ {Number(item.sale_price).toFixed(2)} c/u · {igvTypeLabel(item.igv_type)}
                     </p>
                   </div>
 
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-black text-blue-600">
-                      S/ {Number(item.total).toFixed(2)}
+                      S/ {Number(lineOf(index)?.total ?? item.total).toFixed(2)}
                     </p>
                     <div className="flex items-center gap-1 mt-1 justify-end">
                       <button
@@ -1689,11 +1740,27 @@ const Billing: React.FC<BillingProps> = ({
 
           <div className="space-y-4 mb-6">
             <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm font-bold text-slate-600">Subtotal</span>
-              <span className="text-sm font-black text-slate-800">
-                S/ {(gravada + exonerada).toFixed(2)}
-              </span>
+              <span className="text-sm font-bold text-slate-600">Op. Gravadas</span>
+              <span className="text-sm font-black text-slate-800">S/ {gravada.toFixed(2)}</span>
             </div>
+
+            {exonerada > 0 && (
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm font-bold text-slate-600">Op. Exoneradas</span>
+                <span className="text-sm font-black text-slate-800">
+                  S/ {exonerada.toFixed(2)}
+                </span>
+              </div>
+            )}
+
+            {inafecta > 0 && (
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm font-bold text-slate-600">Op. Inafectas</span>
+                <span className="text-sm font-black text-slate-800">
+                  S/ {inafecta.toFixed(2)}
+                </span>
+              </div>
+            )}
 
             <div className="flex justify-between items-center py-2 border-b border-slate-100">
               <span className="text-sm font-bold text-slate-600">IGV (18%)</span>
@@ -1701,13 +1768,46 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           </div>
 
+          {showUsage && (
+            <div
+              className={`flex items-center justify-between rounded-2xl px-4 py-3 mb-4 border ${
+                lowOnQuota
+                  ? 'bg-amber-50 border-amber-100 text-amber-700'
+                  : 'bg-slate-50 border-slate-100 text-slate-500'
+              }`}
+            >
+              <span className="text-[11px] font-black uppercase tracking-wide">
+                Comprobantes de este mes
+              </span>
+              <span className="text-[11px] font-black">
+                Te quedan {usage.remaining} de {usage.limit}
+              </span>
+            </div>
+          )}
+
+          {totalsFailed && (
+            <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4 text-left">
+              <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-[11px] font-bold text-red-700 leading-snug">
+                No se pudo calcular el total. Revisa tu conexión: no se emite un comprobante
+                sin saber cuánto se cobra.
+              </p>
+            </div>
+          )}
+
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-[28px] text-white mb-6 shadow-lg shadow-blue-200/50">
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-blue-100 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
                   Total a Pagar
                 </p>
-                <p className="text-3xl font-black tracking-tight">S/ {total.toFixed(2)}</p>
+                <p className="text-3xl font-black tracking-tight">
+                  {hasTotals
+                    ? `S/ ${total.toFixed(2)}`
+                    : isCalculatingTotals
+                      ? 'Calculando…'
+                      : 'S/ —'}
+                </p>
               </div>
               <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
                 <div className="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
@@ -1788,11 +1888,29 @@ const Billing: React.FC<BillingProps> = ({
                 <span className="text-xs font-black text-slate-700">{items.length}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Subtotal</span>
-                <span className="text-xs font-black text-slate-700">
-                  S/ {(gravada + exonerada).toFixed(2)}
-                </span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Op. Gravadas</span>
+                <span className="text-xs font-black text-slate-700">S/ {gravada.toFixed(2)}</span>
               </div>
+              {exonerada > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">
+                    Op. Exoneradas
+                  </span>
+                  <span className="text-xs font-black text-slate-700">
+                    S/ {exonerada.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {inafecta > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">
+                    Op. Inafectas
+                  </span>
+                  <span className="text-xs font-black text-slate-700">
+                    S/ {inafecta.toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
                 <span className="text-xs font-black text-slate-700">S/ {igvTotal.toFixed(2)}</span>
@@ -1808,8 +1926,8 @@ const Billing: React.FC<BillingProps> = ({
                 <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-[11px] font-bold text-amber-700 leading-snug">
                   {exoneratedItems.length === 1
-                    ? '1 producto sin IGV (exonerado): '
-                    : `${exoneratedItems.length} productos sin IGV (exonerado): `}
+                    ? '1 producto sin IGV: '
+                    : `${exoneratedItems.length} productos sin IGV: `}
                   <span className="font-black">
                     {exoneratedItems.map((item) => item.description || 'Sin nombre').join(', ')}
                   </span>
@@ -1865,11 +1983,29 @@ const Billing: React.FC<BillingProps> = ({
                 <span className="text-xs font-black text-slate-700">{items.length}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Subtotal</span>
-                <span className="text-xs font-black text-slate-700">
-                  S/ {(gravada + exonerada).toFixed(2)}
-                </span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Op. Gravadas</span>
+                <span className="text-xs font-black text-slate-700">S/ {gravada.toFixed(2)}</span>
               </div>
+              {exonerada > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">
+                    Op. Exoneradas
+                  </span>
+                  <span className="text-xs font-black text-slate-700">
+                    S/ {exonerada.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {inafecta > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">
+                    Op. Inafectas
+                  </span>
+                  <span className="text-xs font-black text-slate-700">
+                    S/ {inafecta.toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
                 <span className="text-xs font-black text-slate-700">S/ {igvTotal.toFixed(2)}</span>

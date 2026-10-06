@@ -3,7 +3,6 @@
 import {
   AlertCircle,
   AlertTriangle,
-  CheckCircle2,
   Package,
   Pencil,
   Plus,
@@ -14,9 +13,12 @@ import {
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import ProductSearchSelector from '../components/ProductSearchSelector';
-import { SUNAT_UNITS } from '../config/sunatUnits';
+import { useUnits } from '../hooks/useUnits';
 import { productSchema } from '../schemas/business';
-import type { Product, UnitOfMeasure } from '../types';
+import { igvTypeLabel, unitLabel } from '../services/utils/invoiceMath';
+import type { IgvType, Product, UnitOfMeasure } from '../types';
+
+const IGV_TYPES: IgvType[] = ['GRAVADO', 'EXONERADO', 'INAFECTO'];
 
 interface ProductsProps {
   products: Product[];
@@ -27,10 +29,11 @@ interface ProductsProps {
 }
 
 const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelete, onRefresh }) => {
+  const { units } = useUnits();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState('');
-  const [hasIgv, setHasIgv] = useState(true);
+  const [igvType, setIgvType] = useState<IgvType>('GRAVADO');
   const [salePrice, setSalePrice] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -44,19 +47,16 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
 
   useEffect(() => {
     if (editingProduct) {
-      const base = Number(editingProduct.base_price);
-      const total = editingProduct.has_igv ? base * 1.18 : base;
-      setHasIgv(editingProduct.has_igv);
-      setSalePrice(total > 0 ? total.toFixed(2) : '');
+      const price = Number(editingProduct.sale_price);
+      setIgvType(editingProduct.igv_type);
+      setSalePrice(price > 0 ? price.toFixed(2) : '');
       return;
     }
-    setHasIgv(false);
+    setIgvType('GRAVADO');
     setSalePrice('');
   }, [editingProduct, isModalOpen]);
 
   const salePriceNumber = parseFloat(salePrice) || 0;
-  const basePrice = hasIgv ? Math.round((salePriceNumber / 1.18) * 100) / 100 : salePriceNumber;
-  const igvAmount = Math.max(0, salePriceNumber - basePrice);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -70,8 +70,8 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
     const result = productSchema.safeParse({
       description: (formData.get('description') as string).trim(),
       unit: formData.get('unit') as UnitOfMeasure,
-      base_price: basePrice,
-      has_igv: hasIgv,
+      sale_price: salePriceNumber,
+      igv_type: igvType,
     });
 
     if (!result.success) {
@@ -84,8 +84,8 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
       sender_id: senderId,
       description: result.data.description,
       unit: result.data.unit,
-      base_price: result.data.base_price,
-      has_igv: result.data.has_igv,
+      sale_price: result.data.sale_price,
+      igv_type: result.data.igv_type,
     };
 
     setIsSaving(true);
@@ -162,16 +162,16 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                     {product.unit}
                   </span>
                   <span className="text-xs font-black text-blue-600">
-                    S/ {Number(product.base_price).toFixed(2)}
+                    S/ {Number(product.sale_price).toFixed(2)}
                   </span>
                   <span
                     className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase border ${
-                      product.has_igv
+                      product.igv_type === 'GRAVADO'
                         ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
                         : 'text-slate-400 bg-slate-50 border-slate-100'
                     }`}
                   >
-                    {product.has_igv ? 'Afecto' : 'Exonerado'}
+                    {igvTypeLabel(product.igv_type)}
                   </span>
                 </div>
               </div>
@@ -281,9 +281,11 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                   defaultValue={editingProduct?.unit || 'UNIDAD'}
                   className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 appearance-none uppercase"
                 >
-                  {SUNAT_UNITS.map((unit) => (
+                  {/* La del producto que se edita va siempre, aunque la lista no haya
+                      llegado: asi el desplegable nunca se ve vacio. */}
+                  {(units.length ? units : [editingProduct?.unit ?? 'UNIDAD']).map((unit) => (
                     <option key={unit} value={unit}>
-                      {unit}
+                      {unitLabel(unit)}
                     </option>
                   ))}
                 </select>
@@ -308,73 +310,42 @@ const Products: React.FC<ProductsProps> = ({ products, senderId, onSave, onDelet
                 </p>
               </div>
 
-              <div
-                onClick={() => setHasIgv((prev) => !prev)}
-                className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                  hasIgv
-                    ? 'bg-emerald-50 border-emerald-500/20 text-emerald-900 shadow-sm'
-                    : 'bg-slate-50 border-slate-100 text-slate-400'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      hasIgv ? 'bg-emerald-500 text-white' : 'bg-slate-200'
-                    }`}
-                  >
-                    <CheckCircle2 size={20} />
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-black uppercase">Incluye IGV (18%)</p>
-                    <p className="text-[9px] font-bold uppercase opacity-60">
-                      {hasIgv ? 'Operación Gravada' : 'Operación Exonerada'}
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  className={`w-12 h-6 rounded-full relative ${hasIgv ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                >
-                  <div
-                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${
-                      hasIgv ? 'left-7' : 'left-1'
-                    }`}
-                  />
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                  Cómo se grava
+                </label>
+                <div className="flex gap-2">
+                  {IGV_TYPES.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setIgvType(option)}
+                      className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${
+                        igvType === option
+                          ? option === 'GRAVADO'
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : 'bg-amber-500 text-white shadow-sm'
+                          : 'bg-slate-50 text-slate-400'
+                      }`}
+                    >
+                      {igvTypeLabel(option)}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                  Desglose para SUNAT
-                </p>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                    Valor de venta
-                  </span>
-                  <span className="text-xs font-black text-slate-700">
-                    S/ {basePrice.toFixed(2)}
-                  </span>
+              <div className="bg-slate-50 rounded-2xl p-4 flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
+                    Lo que cobras
+                  </p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    El desglose del IGV lo calcula el comprobante
+                  </p>
                 </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                    {hasIgv ? 'IGV (18%)' : 'IGV (exonerado)'}
-                  </span>
-                  <span className="text-xs font-black text-slate-700">
-                    S/ {igvAmount.toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
-                    Total
-                  </span>
-                  <span className="text-sm font-black text-blue-600">
-                    S/ {salePriceNumber.toFixed(2)}
-                  </span>
-                </div>
+                <span className="text-sm font-black text-blue-600">
+                  S/ {salePriceNumber.toFixed(2)}
+                </span>
               </div>
 
               <div className="flex gap-3 pt-6">

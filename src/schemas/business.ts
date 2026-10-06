@@ -1,7 +1,7 @@
 // schemas/business.ts
 import { z } from 'zod';
-import { SUNAT_UNITS } from '../config/sunatUnits';
 import { CreditNoteReason, InvoiceType } from '../types';
+import type { IgvType } from '../types';
 
 // ==================== HELPERS ====================
 // null y undefined se normalizan a '': el "vacio" tiene una sola representacion en
@@ -12,7 +12,12 @@ const optionalText = z.preprocess(
   z.string({ error: 'Debe ser texto' }).trim(),
 );
 
-const unitEnum = z.enum(SUNAT_UNITS);
+// La lista de unidades la sirve el backend (GET /units), asi que aca no se puede enumerar.
+// El desplegable solo ofrece las que vinieron de ahi, y el backend rechaza cualquier otra:
+// esto solo ataja el campo vacio.
+const unitEnum = z.string().trim().min(1, 'Elige una unidad de medida');
+
+const igvTypeEnum = z.enum(['GRAVADO', 'EXONERADO', 'INAFECTO'] as [IgvType, ...IgvType[]]);
 
 const currency = (label: string) =>
   z
@@ -90,8 +95,8 @@ export const productSchema = z.object({
     .max(200, 'Máximo 200 caracteres')
     .transform((value) => value.toUpperCase()),
   unit: unitEnum,
-  base_price: z.number().min(0, 'Precio no puede ser negativo').max(999999.99, 'Precio muy alto'),
-  has_igv: z.boolean(),
+  sale_price: currency('El precio'),
+  igv_type: igvTypeEnum,
 });
 
 export type ProductInput = z.infer<typeof productSchema>;
@@ -109,8 +114,8 @@ export const invoiceItemSchema = z.object({
     .min(0.001, 'Cantidad debe ser mayor a 0')
     .max(999999, 'Cantidad muy alta'),
   unit: unitEnum,
-  unit_price: currency('El precio'),
-  has_igv: z.boolean(),
+  sale_price: currency('El precio'),
+  igv_type: igvTypeEnum,
 });
 
 export type InvoiceItemInput = z.infer<typeof invoiceItemSchema>;

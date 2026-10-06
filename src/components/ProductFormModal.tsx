@@ -3,9 +3,11 @@
 import { ShoppingCart, X } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import { SUNAT_UNITS } from '../config/sunatUnits';
-import { createEmptyItem, recalcItem, unitLabel } from '../services/utils/invoiceMath';
-import type { InvoiceItem, Product, UnitOfMeasure } from '../types';
+import { useUnits } from '../hooks/useUnits';
+import { createEmptyItem, igvTypeLabel, recalcItem, unitLabel } from '../services/utils/invoiceMath';
+import type { IgvType, InvoiceItem, Product, UnitOfMeasure } from '../types';
+
+const IGV_TYPES: IgvType[] = ['GRAVADO', 'EXONERADO', 'INAFECTO'];
 import ProductSearchSelector from './ProductSearchSelector';
 
 interface ProductFormModalProps {
@@ -23,6 +25,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
   onSubmit,
   onClose,
 }) => {
+  const { units, failed: unitsFailed } = useUnits();
   const isEditing = initialItem !== null;
   const [draft, setDraft] = useState<InvoiceItem>(initialItem ?? createEmptyItem());
   const [saveToCatalog, setSaveToCatalog] = useState(false);
@@ -31,9 +34,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const updateDraft = (updates: Partial<InvoiceItem>) =>
     setDraft((prev) => recalcItem(prev, updates));
 
-  const chooseIgv = (hasIgv: boolean) => {
+  const chooseIgvType = (igvType: IgvType) => {
     setIgvChosen(true);
-    setDraft((prev) => recalcItem(prev, { has_igv: hasIgv }));
+    setDraft((prev) => recalcItem(prev, { igv_type: igvType }));
   };
 
   const handleSelectProduct = (product: Product) => {
@@ -45,9 +48,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
           product_id: product.id,
           description: product.description,
           unit: product.unit,
-          has_igv: product.has_igv,
+          igv_type: product.igv_type,
         },
-        { unit_price: product.base_price },
+        { sale_price: product.sale_price },
       ),
     );
   };
@@ -119,7 +122,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 onChange={(event) => updateDraft({ unit: event.target.value as UnitOfMeasure })}
                 className="w-full bg-slate-50 rounded-xl px-2 py-3 text-[11px] font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
               >
-                {SUNAT_UNITS.map((unit) => (
+                {/* La que ya tiene el item va siempre: sin esto, mientras carga la lista
+                    el desplegable se veria vacio y al tocarlo cambiaria la unidad. */}
+                {(units.length ? units : [draft.unit]).map((unit) => (
                   <option key={unit} value={unit}>
                     {unitLabel(unit)}
                   </option>
@@ -129,16 +134,16 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
             <div>
               <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block px-1">
-                P.Unit
+                Precio
               </label>
               <input
                 type="number"
-                step="0.0001"
-                value={draft.unit_price || ''}
+                step="0.01"
+                value={draft.sale_price || ''}
                 onChange={(event) =>
-                  updateDraft({ unit_price: parseFloat(event.target.value) || 0 })
+                  updateDraft({ sale_price: parseFloat(event.target.value) || 0 })
                 }
-                placeholder="0.0000"
+                placeholder="0.00"
                 className="w-full bg-slate-50 rounded-xl px-2 py-3 text-sm font-black text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
@@ -149,10 +154,10 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
               </label>
               <input
                 type="number"
-                step="0.0001"
+                step="0.01"
                 value={draft.total || ''}
                 onChange={(event) => updateDraft({ total: parseFloat(event.target.value) || 0 })}
-                placeholder="0.0000"
+                placeholder="0.00"
                 className="w-full bg-blue-50 border-2 border-blue-200 rounded-xl px-2 py-2.5 text-sm font-black text-blue-600 text-center focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
@@ -160,30 +165,30 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
           <div>
             <div className="flex gap-2">
-              <button
-                onClick={() => chooseIgv(true)}
-                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
-                  igvChosen && draft.has_igv
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-400'
-                }`}
-              >
-                IGV 18%
-              </button>
-              <button
-                onClick={() => chooseIgv(false)}
-                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
-                  igvChosen && !draft.has_igv
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-slate-100 text-slate-400'
-                }`}
-              >
-                Exonerado
-              </button>
+              {IGV_TYPES.map((igvType) => (
+                <button
+                  key={igvType}
+                  onClick={() => chooseIgvType(igvType)}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
+                    igvChosen && draft.igv_type === igvType
+                      ? igvType === 'GRAVADO'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-amber-500 text-white'
+                      : 'bg-slate-100 text-slate-400'
+                  }`}
+                >
+                  {igvTypeLabel(igvType)}
+                </button>
+              ))}
             </div>
+            {unitsFailed && (
+              <p className="text-[10px] font-bold text-amber-500 mb-2 ml-1 uppercase tracking-wide">
+                No se pudo cargar la lista de unidades; queda {unitLabel(draft.unit)}
+              </p>
+            )}
             {!igvChosen && (
               <p className="text-[10px] font-bold text-amber-500 mt-2 ml-1 uppercase tracking-wide">
-                Elige IGV o Exonerado para continuar
+                Elige como se grava para continuar
               </p>
             )}
           </div>

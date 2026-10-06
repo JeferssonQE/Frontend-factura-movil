@@ -278,6 +278,29 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
     }
   };
 
+  const handleToggleEnvironment = async (userId: string, sender: Sender) => {
+    const goingLive = sender.billing_environment !== 'prod';
+    const question = goingLive
+      ? `¿Pasar a ${sender.name} a PRODUCCIÓN? Desde ese momento cada comprobante es real ante SUNAT y anularlo exige una nota de crédito.`
+      : `¿Devolver a ${sender.name} a PRUEBAS? Lo que ya emitió en producción no se deshace.`;
+    if (!window.confirm(question)) return;
+
+    setBusy(userId, true);
+    try {
+      const updated = await adminService.setBillingEnvironment(
+        sender.id,
+        goingLive ? 'prod' : 'dev',
+      );
+      setSenders((prev) => ({ ...prev, [userId]: updated }));
+    } catch (e: unknown) {
+      // El backend explica que falta (por ejemplo, que la autorizacion al PSE entre en
+      // vigencia). Se muestra tal cual: inventar un texto aca seria perder el motivo.
+      setError(e instanceof Error ? e.message : 'Error al cambiar el ambiente');
+    } finally {
+      setBusy(userId, false);
+    }
+  };
+
   const handleChangeRole = async (userId: string, role: string) => {
     setBusy(userId, true);
     try {
@@ -947,6 +970,17 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                             <span className="font-bold truncate">{sender.name}</span>
                             <span className="text-slate-300">·</span>
                             <span className="text-slate-400">{sender.ruc}</span>
+                            <span
+                              className={[
+                                'text-[8px] font-black uppercase tracking-widest px-2 py-0.5',
+                                'rounded-full shrink-0',
+                                sender.billing_environment === 'prod'
+                                  ? 'text-emerald-700 bg-emerald-50'
+                                  : 'text-amber-700 bg-amber-50',
+                              ].join(' ')}
+                            >
+                              {sender.billing_environment === 'prod' ? 'Producción' : 'Pruebas'}
+                            </span>
                           </p>
                         )}
                       </div>
@@ -1019,6 +1053,30 @@ const AdminUsers: React.FC<AdminUsersProps> = ({ currentUserId }) => {
                           className={`absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none ${roleMeta.text} ${isSelf ? 'opacity-30' : ''}`}
                         />
                       </div>
+
+                      {/* Ambiente de emision: solo para empresas con RUC registrado. */}
+                      {sender && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleEnvironment(user.id, sender)}
+                          disabled={isBusy}
+                          title={
+                            sender.billing_environment === 'prod'
+                              ? 'Devolver a pruebas'
+                              : 'Pasar a producción (emite ante SUNAT)'
+                          }
+                          className={[
+                            'text-[8px] font-black uppercase tracking-widest',
+                            'px-2.5 py-2 rounded-xl transition-colors',
+                            'disabled:opacity-30 disabled:cursor-not-allowed active:scale-95',
+                            sender.billing_environment === 'prod'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-amber-50 text-amber-700',
+                          ].join(' ')}
+                        >
+                          {sender.billing_environment === 'prod' ? 'A pruebas' : 'A producción'}
+                        </button>
+                      )}
 
                       <div className="flex-1" />
 

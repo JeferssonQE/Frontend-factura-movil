@@ -6,13 +6,14 @@
 // descartado se acumula en `ignored` para avisarlo en pantalla, porque degradar en
 // silencio es lo que hacia que el error apareciera recien al emitir.
 
-import { isSunatUnit } from '../../config/sunatUnits';
 import { isWithinEmissionWindow } from '../../schemas/business';
+import { lineAmount } from '../utils/invoiceMath';
 import {
   type BillingClientData,
   type ExtractedClient,
   type ExtractedProduct,
   type IAExtractionResult,
+  type IgvType,
   type InvoiceItem,
   InvoiceType,
   type Product,
@@ -21,7 +22,6 @@ import {
 
 const DNI_LENGTH = 8;
 const RUC_LENGTH = 11;
-const IGV_RATE = 0.18;
 
 export interface FormSnapshot {
   invoiceType: InvoiceType;
@@ -103,11 +103,14 @@ const resolveUnit = (
   extracted: ExtractedProduct,
   description: string,
   ignored: string[],
+  units: string[],
 ): UnitOfMeasure => {
   if (matched) return matched.unit;
 
+  // La lista valida llega del backend. Si todavia no llego, nada se acepta y queda UNIDAD:
+  // preferible a dejar pasar una unidad que la emision va a rechazar.
   const unit = extracted.unidad_medida.trim().toUpperCase();
-  if (isSunatUnit(unit)) return unit;
+  if (unit && units.includes(unit)) return unit;
 
   if (unit) ignored.push(`unidad de "${description}"`);
   return 'UNIDAD';
@@ -117,6 +120,7 @@ const toInvoiceItem = (
   extracted: ExtractedProduct,
   catalog: Product[],
   ignored: string[],
+  units: string[],
 ): InvoiceItem | null => {
   const matched = catalog.find((product) => String(product.id) === extracted.product_id);
   const description = (matched?.description ?? extracted.descripcion).trim();
@@ -128,19 +132,28 @@ const toInvoiceItem = (
   const quantity = extracted.cantidad > 0 ? extracted.cantidad : 1;
   if (extracted.cantidad <= 0) ignored.push(`cantidad de "${description}"`);
 
-  const hasIgv = matched ? matched.has_igv : extracted.has_igv;
-  const unitPrice =
-    extracted.precio_unitario > 0 ? extracted.precio_unitario : (matched?.base_price ?? 0);
-  if (unitPrice <= 0) ignored.push(`precio de "${description}"`);
+  // La IA sigue devolviendo un si/no de IGV; la afectacion de tres valores se decide aqui,
+  // en el borde. Si el producto esta en el catalogo manda el catalogo, que es dato del
+  // dueno y no una lectura de una foto.
+  const igvType: IgvType = matched
+    ? matched.igv_type
+    : extracted.has_igv
+      ? 'GRAVADO'
+      : 'EXONERADO';
+  const salePrice =
+    extracted.precio_unitario > 0 ? extracted.precio_unitario : (matched?.sale_price ?? 0);
+  if (salePrice <= 0) ignored.push(`precio de "${description}"`);
 
   return {
     product_id: matched?.id ?? null,
     description,
     quantity,
-    unit: resolveUnit(matched, extracted, description, ignored),
-    unit_price: unitPrice,
-    has_igv: hasIgv,
-    total: unitPrice * quantity * (hasIgv ? 1 + IGV_RATE : 1),
+    unit: resolveUnit(matched, extracted, description, ignored, units),
+    sale_price: salePrice,
+    igv_type: igvType,
+    unit_value: null,
+    igv: null,
+    total: lineAmount({ quantity, sale_price: salePrice }),
   };
 };
 
@@ -148,11 +161,12 @@ export const mergeExtraction = (
   extraction: IAExtractionResult,
   current: FormSnapshot,
   catalog: Product[],
+  units: string[],
 ): MergeResult => {
   const ignored: string[] = [];
   const clientData = mergeClient(extraction.cliente, current.clientData, ignored);
   const items = extraction.productos
-    .map((product) => toInvoiceItem(product, catalog, ignored))
+    .map((product) => toInvoiceItem(product, catalog, ignored, units))
     .filter((item): item is InvoiceItem => item !== null);
 
   return {

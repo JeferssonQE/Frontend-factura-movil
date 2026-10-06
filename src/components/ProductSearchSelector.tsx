@@ -3,6 +3,7 @@
 import { ChevronDown } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import { igvTypeLabel } from '../services/utils/invoiceMath';
 import type { Product } from '../types';
 
 interface ProductSearchSelectorProps {
@@ -101,19 +102,19 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-bold text-blue-600">
-                        S/ {Number(product.base_price).toFixed(2)}
+                        S/ {Number(product.sale_price).toFixed(2)}
                       </span>
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}
                       </span>
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                          product.has_igv
+                          product.igv_type === 'GRAVADO'
                             ? 'text-emerald-600 bg-emerald-50'
                             : 'text-slate-400 bg-slate-50'
                         }`}
                       >
-                        {product.has_igv ? 'Afecto' : 'Exonerado'}
+                        {igvTypeLabel(product.igv_type)}
                       </span>
                     </div>
                   </div>
@@ -144,19 +145,19 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
                     </p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs font-bold text-blue-600">
-                        S/ {Number(product.base_price).toFixed(2)}
+                        S/ {Number(product.sale_price).toFixed(2)}
                       </span>
                       <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
                         {product.unit}
                       </span>
                       <span
                         className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                          product.has_igv
+                          product.igv_type === 'GRAVADO'
                             ? 'text-emerald-600 bg-emerald-50'
                             : 'text-slate-400 bg-slate-50'
                         }`}
                       >
-                        {product.has_igv ? 'Afecto' : 'Exonerado'}
+                        {igvTypeLabel(product.igv_type)}
                       </span>
                     </div>
                   </div>

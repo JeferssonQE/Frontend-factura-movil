@@ -1,4 +1,5 @@
 // services/business/pdfCache.ts
+import { PDFService } from '../integrations/pdfService';
 import { invoiceService } from './invoiceService';
 
 const cache = new Map<number, string>();
@@ -20,13 +21,17 @@ export const pdfCache = {
     const pending = inFlight.get(invoiceId);
     if (pending) return pending;
 
+    // El PDF ya no viaja dentro de la factura: se baja del endpoint, que a su vez lo trae
+    // del link que guardo Factu API. Se convierte a base64 porque PDFService -compartir,
+    // descargar, ver- trabaja con base64.
     const request = invoiceService
-      .getInvoice(invoiceId, senderId)
-      .then((invoice) => {
-        const base64 = invoice.pdf_base64 ?? null;
+      .getInvoicePdf(invoiceId)
+      .then(async (blob) => {
+        const base64 = await PDFService.blobToBase64(blob);
         if (base64) cache.set(invoiceId, base64);
         return base64;
       })
+      .catch(() => null)
       .finally(() => inFlight.delete(invoiceId));
 
     inFlight.set(invoiceId, request);

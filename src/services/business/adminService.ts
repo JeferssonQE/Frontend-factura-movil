@@ -1,6 +1,12 @@
 // services/business/adminService.ts
 
-import type { AdminUserRow, Sender, UserPlan, UserRole } from '../../types';
+import type {
+  AdminUserRow,
+  BillingEnvironment,
+  Sender,
+  UserPlan,
+  UserRole,
+} from '../../types';
 import { apiClient } from '../core/apiClient';
 
 export type UpdateCompanyPayload = {
@@ -46,6 +52,20 @@ export const adminService = {
 
   async listSenders(): Promise<Sender[]> {
     return apiClient.get<Sender[]>('/admin/users/senders');
+  },
+
+  /**
+   * Cambia donde emite una empresa. El backend le pregunta al proveedor antes de dejar
+   * pasar a produccion, asi que un 409 aqui significa que el RUC todavia no esta
+   * habilitado: el mensaje dice que falta.
+   */
+  async setBillingEnvironment(
+    senderId: number,
+    billingEnvironment: BillingEnvironment,
+  ): Promise<Sender> {
+    return apiClient.put<Sender>(`/admin/users/senders/${senderId}/billing-environment`, {
+      billing_environment: billingEnvironment,
+    });
   },
 
   async updateCompany(userId: string, payload: UpdateCompanyPayload): Promise<UpdateCompanyResult> {

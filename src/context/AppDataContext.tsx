@@ -296,8 +296,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
             {
               description: product.description,
               unit: product.unit,
-              base_price: product.base_price,
-              has_igv: product.has_igv,
+              sale_price: product.sale_price,
+              igv_type: product.igv_type,
             },
             senderId,
           );
@@ -306,8 +306,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
             {
               description: product.description,
               unit: product.unit,
-              base_price: product.base_price,
-              has_igv: product.has_igv,
+              sale_price: product.sale_price,
+              igv_type: product.igv_type,
             },
             senderId,
           );
@@ -334,8 +334,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
             {
               description: product.description,
               unit: product.unit,
-              base_price: product.base_price,
-              has_igv: product.has_igv,
+              sale_price: product.sale_price,
+              igv_type: product.igv_type,
             },
             senderId,
           );
@@ -344,8 +344,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
             {
               description: product.description,
               unit: product.unit,
-              base_price: product.base_price,
-              has_igv: product.has_igv,
+              sale_price: product.sale_price,
+              igv_type: product.igv_type,
             },
             senderId,
           );
@@ -438,8 +438,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
               description: item.description,
               quantity: item.quantity,
               unit: item.unit,
-              unit_price: item.unit_price,
-              has_igv: item.has_igv,
+              sale_price: item.sale_price,
+              igv_type: item.igv_type,
             })),
           },
           senderId,
@@ -475,8 +475,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
               description: item.description,
               quantity: item.quantity,
               unit: item.unit,
-              unit_price: item.unit_price,
-              has_igv: item.has_igv,
+              sale_price: item.sale_price,
+              igv_type: item.igv_type,
             })),
           },
           senderId,

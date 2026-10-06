@@ -510,7 +510,7 @@ const History: React.FC<HistoryProps> = ({
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
                           Cant: {item.quantity} {item.unit} • S/{' '}
-                          {Number(item.unit_price).toFixed(2)} c/u
+                          {Number(item.sale_price).toFixed(2)} c/u
                         </span>
                       </div>
                       <div className="text-right shrink-0">
@@ -529,9 +529,23 @@ const History: React.FC<HistoryProps> = ({
                 </div>
 
                 <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
-                  <span>Valor Gravado</span>
-                  <span>S/ {Number(selectedInvoice.subtotal).toFixed(2)}</span>
+                  <span>Op. Gravadas</span>
+                  <span>S/ {Number(selectedInvoice.taxed_amount ?? 0).toFixed(2)}</span>
                 </div>
+
+                {Number(selectedInvoice.exempt_amount ?? 0) > 0 && (
+                  <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
+                    <span>Op. Exoneradas</span>
+                    <span>S/ {Number(selectedInvoice.exempt_amount).toFixed(2)}</span>
+                  </div>
+                )}
+
+                {Number(selectedInvoice.unaffected_amount ?? 0) > 0 && (
+                  <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
+                    <span>Op. Inafectas</span>
+                    <span>S/ {Number(selectedInvoice.unaffected_amount).toFixed(2)}</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
                   <span>IGV (18%)</span>

@@ -1,8 +1,18 @@
 // types.ts
-import type { UnitOfMeasure } from './config/sunatUnits';
 
-export { isSunatUnit, SUNAT_UNITS } from './config/sunatUnits';
-export type { UnitOfMeasure };
+/**
+ * La unidad de medida de un item (catalogo 03 de SUNAT).
+ *
+ * Es `string` y no una union de literales a proposito: la lista ya no vive aqui, la sirve
+ * el backend en GET /units. Se pierde el chequeo en tiempo de compilacion, y se gana que no
+ * haya una copia del catalogo que se separe de la de Factu API -que es justo lo que habia
+ * pasado-. La unidad se valida en el backend, que es quien emite.
+ */
+export type UnitOfMeasure = string;
+
+// La afectacion del IGV, con las mismas palabras que Factu API y SUNAT. Reemplaza al
+// has_igv (si/no), que no podia expresar INAFECTO.
+export type IgvType = 'GRAVADO' | 'EXONERADO' | 'INAFECTO';
 
 export enum InvoiceType {
   BOLETA = 'BOLETA',
@@ -68,11 +78,31 @@ export interface UserProfile {
  */
 export type SunatCredentialsStatus = 'PENDIENTE' | 'VALIDA' | 'INVALIDA';
 
+export type BillingEnvironment = 'dev' | 'prod';
+
+/**
+ * Cuanto lleva emitido la empresa este mes contra el limite de su plan.
+ *
+ * Lo cuenta el backend; el frontend lo pinta. `enforced` es false en dev, donde las pruebas
+ * no gastan el plan: ahi no hay nada que mostrar.
+ */
+export interface EmissionUsage {
+  period: string;
+  environment: BillingEnvironment;
+  limit: number;
+  used: number;
+  remaining: number;
+  enforced: boolean;
+}
+
 export interface Sender {
   id: number;
   user_id: string;
   name: string;
   ruc: string;
+  // De solo lectura: los cambia el administrador, no la empresa desde la app.
+  billing_environment?: BillingEnvironment;
+  monthly_emission_limit?: number;
   has_sunat_credentials: boolean;
   sunat_credentials_invalid?: boolean;
   sunat_credentials_status?: SunatCredentialsStatus;
@@ -100,8 +130,9 @@ export interface Product {
   sender_id: number;
   description: string;
   unit: UnitOfMeasure;
-  base_price: number;
-  has_igv: boolean;
+  // El precio del estante, con IGV si el producto lo lleva. Nadie lo divide entre 1.18.
+  sale_price: number;
+  igv_type: IgvType;
   created_at?: string;
   updated_at?: string;
 }
@@ -109,8 +140,8 @@ export interface Product {
 export interface ProductUpsertInput {
   description: string;
   unit: UnitOfMeasure;
-  base_price: number;
-  has_igv: boolean;
+  sale_price: number;
+  igv_type: IgvType;
 }
 
 export interface Client {
@@ -138,8 +169,12 @@ export interface InvoiceItem {
   description: string;
   quantity: number;
   unit: UnitOfMeasure;
-  unit_price: number;
-  has_igv: boolean;
+  // Lo que se vendio: lo decide el cajero.
+  sale_price: number;
+  igv_type: IgvType;
+  // Lo que calculo Factu API. Vacio mientras es borrador.
+  unit_value: number | null;
+  igv: number | null;
   total: number;
   created_at?: string;
 }
@@ -155,12 +190,18 @@ export interface Invoice {
   number: string;
   nro_comprobante_sunat: string | null;
   invoice_date: string;
-  subtotal: number;
+  // Los calcula Factu API, partidos por afectacion: son las lineas "Op. Gravadas" y
+  // "Op. Exoneradas" del comprobante. Vacios en los emitidos antes del cambio.
+  taxed_amount: number | null;
+  exempt_amount: number | null;
+  unaffected_amount: number | null;
   igv: number;
   total: number;
   status: InvoiceStatus;
   task_id: string | null;
-  pdf_base64: string | null;
+  // Los dos formatos, como link: el archivo ya no viaja dentro de la factura.
+  pdf_url: string | null;
+  pdf_a4_url: string | null;
   sunat_message: string | null;
   sunat_failed_step: string | null;
   sunat_current_step: string | null;
@@ -183,8 +224,8 @@ export interface CreateInvoiceInput {
     description: string;
     quantity: number;
     unit: UnitOfMeasure;
-    unit_price: number;
-    has_igv: boolean;
+    sale_price: number;
+    igv_type: IgvType;
   }>;
 }
 
