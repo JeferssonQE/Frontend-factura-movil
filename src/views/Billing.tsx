@@ -311,6 +311,7 @@ const Billing: React.FC<BillingProps> = ({
     lineOf,
     isCalculating: isCalculatingTotals,
     failed: totalsFailed,
+    errorMessage: totalsError,
   } = useInvoicePreview({
     senderId: sender?.id,
     invoiceType,
@@ -1757,9 +1758,10 @@ const Billing: React.FC<BillingProps> = ({
           {totalsFailed && (
             <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4 text-left">
               <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
+              {/* El motivo tal cual lo manda el backend: muchas veces es una regla que el
+                  cajero puede corregir, y un texto generico lo manda a buscar donde no esta. */}
               <p className="text-[11px] font-bold text-red-700 leading-snug">
-                No se pudo calcular el total. Revisa tu conexión: no se emite un comprobante sin
-                saber cuánto se cobra.
+                {totalsError ?? 'No se pudo calcular el total.'} Sin total no se puede emitir.
               </p>
             </div>
           )}

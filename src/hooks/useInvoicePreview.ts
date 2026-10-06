@@ -1,5 +1,6 @@
 // hooks/useInvoicePreview.ts
 import { useEffect, useRef, useState } from 'react';
+import { getUserMessage } from '../services/core/apiClient';
 import {
   type InvoiceItemPayload,
   type InvoicePreview,
@@ -27,6 +28,13 @@ export type InvoicePreviewState = {
   lineOf: (index: number) => InvoicePreviewLine | null;
   isCalculating: boolean;
   failed: boolean;
+  /**
+   * Por que fallo, en palabras para el usuario. Muchos fallos del calculo son reglas que
+   * el cajero puede corregir -una boleta de mas de S/ 700 sin DNI, por ejemplo-, y decirle
+   * "revisa tu conexion" lo manda a buscar el problema donde no esta. apiClient ya deja el
+   * `detail` de los 4xx en userMessage.
+   */
+  errorMessage: string | null;
 };
 
 /** Un item sirve para calcular cuando ya tiene las tres cosas que mueven el monto. */
@@ -65,6 +73,7 @@ export const useInvoicePreview = ({
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Las respuestas pueden volver desordenadas: solo la de la ultima peticion vale.
   const lastRequest = useRef(0);
   const client = useRef({ clientName, clientDocument });
@@ -87,12 +96,14 @@ export const useInvoicePreview = ({
       setPreview(null);
       setIsCalculating(false);
       setFailed(false);
+      setErrorMessage(null);
       return;
     }
 
     const request = ++lastRequest.current;
     setIsCalculating(true);
     setFailed(false);
+    setErrorMessage(null);
 
     const timer = setTimeout(async () => {
       const body = JSON.parse(signature) as {
@@ -115,10 +126,11 @@ export const useInvoicePreview = ({
         );
         if (request !== lastRequest.current) return;
         setPreview(result);
-      } catch {
+      } catch (error: unknown) {
         if (request !== lastRequest.current) return;
         setPreview(null);
         setFailed(true);
+        setErrorMessage(getUserMessage(error, 'No se pudo calcular el total.'));
       } finally {
         if (request === lastRequest.current) setIsCalculating(false);
       }
@@ -133,5 +145,5 @@ export const useInvoicePreview = ({
     return position === -1 ? null : (preview.items[position] ?? null);
   };
 
-  return { preview, lineOf, isCalculating, failed };
+  return { preview, lineOf, isCalculating, failed, errorMessage };
 };
