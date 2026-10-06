@@ -4,10 +4,16 @@ import { ShoppingCart, X } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { useUnits } from '../hooks/useUnits';
-import { createEmptyItem, igvTypeLabel, recalcItem, unitLabel } from '../services/utils/invoiceMath';
+import {
+  createEmptyItem,
+  igvTypeLabel,
+  recalcItem,
+  unitLabel,
+} from '../services/utils/invoiceMath';
 import type { IgvType, InvoiceItem, Product, UnitOfMeasure } from '../types';
 
 const IGV_TYPES: IgvType[] = ['GRAVADO', 'EXONERADO', 'INAFECTO'];
+
 import ProductSearchSelector from './ProductSearchSelector';
 
 interface ProductFormModalProps {

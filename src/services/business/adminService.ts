@@ -1,12 +1,6 @@
 // services/business/adminService.ts
 
-import type {
-  AdminUserRow,
-  BillingEnvironment,
-  Sender,
-  UserPlan,
-  UserRole,
-} from '../../types';
+import type { AdminUserRow, BillingEnvironment, Sender, UserPlan, UserRole } from '../../types';
 import { apiClient } from '../core/apiClient';
 
 export type UpdateCompanyPayload = {

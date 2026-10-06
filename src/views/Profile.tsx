@@ -191,7 +191,6 @@ const Profile: React.FC<ProfileProps> = ({
                 <p className="text-sm font-black text-slate-800">{sender.ruc}</p>
               </div>
 
-
               <button
                 type="button"
                 onClick={() => setShowEmpresaModal(true)}

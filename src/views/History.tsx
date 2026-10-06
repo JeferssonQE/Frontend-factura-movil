@@ -770,32 +770,32 @@ const History: React.FC<HistoryProps> = ({
                           </div>
                         )}
                       <button
-                          onClick={async () => {
-                            setIsEmittingDraft(true);
-                            await onEmitDraft(selectedInvoice.id);
-                            setIsEmittingDraft(false);
-                            setSelectedInvoice(null);
-                          }}
-                          disabled={isEmittingDraft}
-                          className={`w-full text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
-                            selectedInvoice.status === InvoiceStatus.FALLO
-                              ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-200/50'
-                              : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-200/50'
-                          }`}
-                        >
-                          {isEmittingDraft ? (
-                            <Loader2 size={18} className="animate-spin" />
-                          ) : selectedInvoice.status === InvoiceStatus.FALLO ? (
-                            <RefreshCw size={18} />
-                          ) : (
-                            <Zap size={18} />
-                          )}
-                          {isEmittingDraft
-                            ? 'Enviando a SUNAT...'
-                            : selectedInvoice.status === InvoiceStatus.FALLO
-                              ? 'Reintentar SUNAT'
-                              : 'Emitir a SUNAT'}
-                        </button>
+                        onClick={async () => {
+                          setIsEmittingDraft(true);
+                          await onEmitDraft(selectedInvoice.id);
+                          setIsEmittingDraft(false);
+                          setSelectedInvoice(null);
+                        }}
+                        disabled={isEmittingDraft}
+                        className={`w-full text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
+                          selectedInvoice.status === InvoiceStatus.FALLO
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-200/50'
+                            : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-200/50'
+                        }`}
+                      >
+                        {isEmittingDraft ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : selectedInvoice.status === InvoiceStatus.FALLO ? (
+                          <RefreshCw size={18} />
+                        ) : (
+                          <Zap size={18} />
+                        )}
+                        {isEmittingDraft
+                          ? 'Enviando a SUNAT...'
+                          : selectedInvoice.status === InvoiceStatus.FALLO
+                            ? 'Reintentar SUNAT'
+                            : 'Emitir a SUNAT'}
+                      </button>
                     </>
                   )}
 

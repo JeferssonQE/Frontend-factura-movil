@@ -1,7 +1,7 @@
 // schemas/business.ts
 import { z } from 'zod';
-import { CreditNoteReason, InvoiceType } from '../types';
 import type { IgvType } from '../types';
+import { CreditNoteReason, InvoiceType } from '../types';
 
 // ==================== HELPERS ====================
 // null y undefined se normalizan a '': el "vacio" tiene una sola representacion en

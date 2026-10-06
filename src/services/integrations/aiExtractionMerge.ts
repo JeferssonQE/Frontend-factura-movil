@@ -7,7 +7,6 @@
 // silencio es lo que hacia que el error apareciera recien al emitir.
 
 import { isWithinEmissionWindow } from '../../schemas/business';
-import { lineAmount } from '../utils/invoiceMath';
 import {
   type BillingClientData,
   type ExtractedClient,
@@ -19,6 +18,7 @@ import {
   type Product,
   type UnitOfMeasure,
 } from '../../types';
+import { lineAmount } from '../utils/invoiceMath';
 
 const DNI_LENGTH = 8;
 const RUC_LENGTH = 11;
@@ -135,11 +135,7 @@ const toInvoiceItem = (
   // La IA sigue devolviendo un si/no de IGV; la afectacion de tres valores se decide aqui,
   // en el borde. Si el producto esta en el catalogo manda el catalogo, que es dato del
   // dueno y no una lectura de una foto.
-  const igvType: IgvType = matched
-    ? matched.igv_type
-    : extracted.has_igv
-      ? 'GRAVADO'
-      : 'EXONERADO';
+  const igvType: IgvType = matched ? matched.igv_type : extracted.has_igv ? 'GRAVADO' : 'EXONERADO';
   const salePrice =
     extracted.precio_unitario > 0 ? extracted.precio_unitario : (matched?.sale_price ?? 0);
   if (salePrice <= 0) ignored.push(`precio de "${description}"`);

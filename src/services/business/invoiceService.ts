@@ -97,7 +97,10 @@ export const invoiceService = {
   },
 
   async previewInvoice(payload: CreateInvoicePayload, senderId?: number): Promise<InvoicePreview> {
-    return apiClient.post<InvoicePreview>(`/invoices/preview${qs({ sender_id: senderId })}`, payload);
+    return apiClient.post<InvoicePreview>(
+      `/invoices/preview${qs({ sender_id: senderId })}`,
+      payload,
+    );
   },
 
   async createInvoice(payload: CreateInvoicePayload, senderId?: number): Promise<Invoice> {

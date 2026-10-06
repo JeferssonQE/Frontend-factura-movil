@@ -31,19 +31,19 @@ import ProductFormModal from '../components/ProductFormModal';
 import { emissionProgress } from '../config/emissionProgress';
 import { getSunatError } from '../config/sunatErrors';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
+import { useEmissionUsage } from '../hooks/useEmissionUsage';
+import { useInvoicePreview } from '../hooks/useInvoicePreview';
+import { cachedUnits } from '../hooks/useUnits';
 import { invoiceEmissionSchema } from '../schemas/business';
 import { invoiceService } from '../services/business/invoiceService';
-import { pdfCache } from '../services/business/pdfCache';
 import { lookupService } from '../services/business/lookupService';
+import { pdfCache } from '../services/business/pdfCache';
 import { ApiError, getUserMessage } from '../services/core/apiClient';
 import { type FormSnapshot, mergeExtraction } from '../services/integrations/aiExtractionMerge';
 import { processInvoiceAudio, processInvoiceImage } from '../services/integrations/geminiService';
 import { PDFService } from '../services/integrations/pdfService';
 import { prepareImageForAI } from '../services/utils/imagePrep';
 import { igvTypeLabel, unitLabel } from '../services/utils/invoiceMath';
-import { useInvoicePreview } from '../hooks/useInvoicePreview';
-import { useEmissionUsage } from '../hooks/useEmissionUsage';
-import { cachedUnits } from '../hooks/useUnits';
 import {
   type BillingClientData,
   type Client,
@@ -981,11 +981,11 @@ const Billing: React.FC<BillingProps> = ({
 
             <div className="w-full space-y-3 max-w-xs">
               <button
-                  onClick={handleRetry}
-                  className="w-full bg-red-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
-                >
-                  <RefreshCw size={18} /> Reintentar
-                </button>
+                onClick={handleRetry}
+                className="w-full bg-red-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
+              >
+                <RefreshCw size={18} /> Reintentar
+              </button>
               <button
                 onClick={resetForm}
                 className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
@@ -1720,18 +1720,14 @@ const Billing: React.FC<BillingProps> = ({
             {exonerada > 0 && (
               <div className="flex justify-between items-center py-2 border-b border-slate-100">
                 <span className="text-sm font-bold text-slate-600">Op. Exoneradas</span>
-                <span className="text-sm font-black text-slate-800">
-                  S/ {exonerada.toFixed(2)}
-                </span>
+                <span className="text-sm font-black text-slate-800">S/ {exonerada.toFixed(2)}</span>
               </div>
             )}
 
             {inafecta > 0 && (
               <div className="flex justify-between items-center py-2 border-b border-slate-100">
                 <span className="text-sm font-bold text-slate-600">Op. Inafectas</span>
-                <span className="text-sm font-black text-slate-800">
-                  S/ {inafecta.toFixed(2)}
-                </span>
+                <span className="text-sm font-black text-slate-800">S/ {inafecta.toFixed(2)}</span>
               </div>
             )}
 
@@ -1762,8 +1758,8 @@ const Billing: React.FC<BillingProps> = ({
             <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4 text-left">
               <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
               <p className="text-[11px] font-bold text-red-700 leading-snug">
-                No se pudo calcular el total. Revisa tu conexión: no se emite un comprobante
-                sin saber cuánto se cobra.
+                No se pudo calcular el total. Revisa tu conexión: no se emite un comprobante sin
+                saber cuánto se cobra.
               </p>
             </div>
           )}
@@ -1805,11 +1801,11 @@ const Billing: React.FC<BillingProps> = ({
             </button>
 
             <button
-                onClick={handleOpenConfirm}
-                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
-              >
-                <CheckCircle2 size={22} /> Emitir Documento
-              </button>
+              onClick={handleOpenConfirm}
+              className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
+            >
+              <CheckCircle2 size={22} /> Emitir Documento
+            </button>
           </div>
         </div>
       </section>

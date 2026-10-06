@@ -6,8 +6,7 @@ import Profile from '../views/Profile';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeSender, saveSender, logout, isAdmin, isContador } =
-    useAppData();
+  const { user, activeSender, saveSender, logout, isAdmin, isContador } = useAppData();
 
   const canEditIdentity = isAdmin;
 

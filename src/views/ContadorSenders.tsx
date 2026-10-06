@@ -1,11 +1,4 @@
-import {
-  Building2,
-  CheckCircle2,
-  ChevronRight,
-  Play,
-  RefreshCw,
-  Save,
-} from 'lucide-react';
+import { Building2, CheckCircle2, ChevronRight, Play, RefreshCw, Save } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import type { SenderFormData } from '../services/business/contadorService';
