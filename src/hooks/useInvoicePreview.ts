@@ -1,12 +1,12 @@
 // hooks/useInvoicePreview.ts
 import { useEffect, useRef, useState } from 'react';
-import { getUserMessage } from '../services/core/apiClient';
 import {
   type InvoiceItemPayload,
   type InvoicePreview,
   type InvoicePreviewLine,
   invoiceService,
 } from '../services/business/invoiceService';
+import { getUserMessage } from '../services/core/apiClient';
 import type { InvoiceItem, InvoiceType } from '../types';
 
 /** Lo que se espera a que el cajero deje de escribir antes de preguntar el total. */
