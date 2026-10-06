@@ -1,13 +1,15 @@
 // components/EmpresaModal.tsx
+//
+// Antes pedia tambien el usuario y la clave SOL, y al guardar probaba el acceso contra el
+// portal. Eso se fue con el scraper: FactuMovil emite por Factu API y no custodia
+// credenciales de SUNAT. Queda la identidad de la empresa, que es lo unico suyo.
 
-import { AlertCircle, Building2, Eye, EyeOff, Loader2, Lock, Search, X } from 'lucide-react';
+import { AlertCircle, Building2, Loader2, Lock, Search, X } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
-import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
 import { lookupService } from '../services/business/lookupService';
 import type { Sender, SenderUpsertInput } from '../types';
-import SunatCredentialsVerdict from './SunatCredentialsVerdict';
 
 const RUC_LENGTH = 11;
 
@@ -15,36 +17,20 @@ interface EmpresaModalProps {
   sender: Sender | null;
   canEditIdentity: boolean;
   onSave: (payload: SenderUpsertInput) => Promise<void>;
-  onVerified?: () => void | Promise<void>;
   onClose: () => void;
-  /** Id de la empresa cuando quien verifica es un contador, no la propia empresa. */
-  empresaUserId?: string;
 }
 
 const EmpresaModal: React.FC<EmpresaModalProps> = ({
   sender,
   canEditIdentity,
   onSave,
-  onVerified,
   onClose,
-  empresaUserId,
 }) => {
   const [ruc, setRuc] = useState(sender?.ruc ?? '');
   const [razonSocial, setRazonSocial] = useState(sender?.name ?? '');
-  const [sunatUser, setSunatUser] = useState('');
-  const [sunatPass, setSunatPass] = useState('');
-  const [showPass, setShowPass] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-
-  const [verdictSeen, setVerdictSeen] = useState(false);
-  const { phase, status, message, check, reset } = useSunatCredentialsCheck(
-    () => setVerdictSeen(true),
-    empresaUserId,
-  );
-
-  const hasCredentials = sender?.has_sunat_credentials === true;
 
   useDebouncedLookup(canEditIdentity ? ruc : '', RUC_LENGTH, async (value) => {
     if (value === sender?.ruc) return;
@@ -69,76 +55,34 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
     event.preventDefault();
     setFormError(null);
 
-    const user = sunatUser.trim();
-    const pass = sunatPass.trim();
-
-    if (canEditIdentity) {
-      if (ruc.length !== RUC_LENGTH) {
-        setFormError('El RUC debe tener 11 dígitos.');
-        return;
-      }
-      if (!razonSocial) {
-        setFormError('Ingresa un RUC válido para traer la razón social.');
-        return;
-      }
-    }
-
-    if ((user && !pass) || (!user && pass)) {
-      setFormError('Ingresa el usuario y la clave SOL juntos.');
+    if (!canEditIdentity) {
+      setFormError('El RUC y la razón social los gestiona el administrador.');
       return;
     }
-
-    const identityChanged = canEditIdentity && ruc !== sender?.ruc;
-    if (!identityChanged && !user) {
+    if (ruc.length !== RUC_LENGTH) {
+      setFormError('El RUC debe tener 11 dígitos.');
+      return;
+    }
+    if (!razonSocial) {
+      setFormError('Ingresa un RUC válido para traer la razón social.');
+      return;
+    }
+    if (ruc === sender?.ruc) {
       setFormError('No hay cambios para guardar.');
       return;
     }
 
     try {
       setSubmitting(true);
-      await onSave({
-        name: razonSocial || sender?.name || '',
-        ruc: ruc || sender?.ruc || '',
-        sunat_user: user || undefined,
-        sunat_pass: pass || undefined,
-      });
+      await onSave({ name: razonSocial, ruc });
     } catch {
       setFormError('No se pudieron guardar los datos. Intenta de nuevo.');
       return;
     } finally {
       setSubmitting(false);
     }
-
-    // Credenciales nuevas: se prueban antes de cerrar. Si solo cambio la identidad de la
-    // empresa no hay nada que verificar en SUNAT.
-    if (!user) {
-      onClose();
-      return;
-    }
-    await check();
-  };
-
-  /** Cualquier salida refresca los datos si SUNAT alcanzó a dar un veredicto. */
-  const handleClose = async () => {
-    if (verdictSeen) await onVerified?.();
     onClose();
   };
-
-  if (phase !== 'idle') {
-    return (
-      <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
-        <div className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
-          <SunatCredentialsVerdict
-            phase={phase}
-            status={status}
-            errorMessage={message}
-            onRetry={reset}
-            onAccept={handleClose}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
@@ -153,7 +97,7 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
                 Datos de la empresa
               </h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">
-                Identidad y credenciales SOL
+                RUC y razón social
               </p>
             </div>
           </div>
@@ -212,48 +156,6 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
                 />
               )}
             </div>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 mt-3 ml-1">
-              Credenciales SUNAT (SOL)
-            </p>
-
-            <div className="space-y-4">
-              <input
-                name="sunat_user"
-                value={sunatUser}
-                onChange={(e) => setSunatUser(e.target.value.toUpperCase())}
-                autoComplete="off"
-                placeholder="Usuario SOL"
-                className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-
-              <div className="relative">
-                <input
-                  name="sunat_pass"
-                  type={showPass ? 'text' : 'password'}
-                  value={sunatPass}
-                  onChange={(e) => setSunatPass(e.target.value)}
-                  autoComplete="new-password"
-                  placeholder="Clave SOL"
-                  className="w-full bg-slate-50 border-none rounded-2xl p-4 pr-12 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                >
-                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-slate-400 font-semibold ml-1 mt-3">
-              {hasCredentials
-                ? 'Déjalas en blanco para conservar las credenciales actuales.'
-                : 'Se cifran antes de guardarse y se usan solo para emitir en SUNAT.'}
-            </p>
           </div>
 
           <div className="flex gap-3 pt-4">

@@ -10,7 +10,6 @@ import {
   Download,
   FlaskConical,
   Images,
-  KeyRound,
   Layers,
   Loader2,
   MessageCircle,
@@ -29,8 +28,6 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useRef, useState } from 'react';
 import ProductFormModal from '../components/ProductFormModal';
-import SunatCredentialsGate from '../components/SunatCredentialsGate';
-import SunatCredentialsModal from '../components/SunatCredentialsModal';
 import { emissionProgress } from '../config/emissionProgress';
 import { getSunatError } from '../config/sunatErrors';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
@@ -151,9 +148,6 @@ interface BillingProps {
     sale_price: number;
     igv_type: IgvType;
   }) => Promise<void>;
-  onSaveCredentials?: (sunatUser: string, sunatPass: string) => Promise<void>;
-  /** Id de la empresa cuando quien opera es un contador, no la propia empresa. */
-  empresaUserId?: string;
 }
 
 const Billing: React.FC<BillingProps> = ({
@@ -168,8 +162,6 @@ const Billing: React.FC<BillingProps> = ({
   onSaveProduct,
   onKeepEmitting,
   onRefresh,
-  onSaveCredentials,
-  empresaUserId,
 }) => {
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(InvoiceType.BOLETA);
   const [clientData, setClientData] = useState<BillingClientData>({
@@ -189,8 +181,6 @@ const Billing: React.FC<BillingProps> = ({
     open: false,
     index: null,
   });
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [skippedCredentialsCheck, setSkippedCredentialsCheck] = useState(false);
   const [errors, setErrors] = useState<FormError[]>([]);
   const [iaWarning, setIaWarning] = useState<string | null>(null);
   const [iaSuccess, setIaSuccess] = useState<string | null>(null);
@@ -204,14 +194,6 @@ const Billing: React.FC<BillingProps> = ({
   const [emissionFailedStep, setEmissionFailedStep] = useState<string | null>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
-
-  const credentialsRejected = sender?.sunat_credentials_status === 'INVALIDA';
-  // PENDIENTE = guardadas pero nunca verificadas (SUNAT estaba caido al configurarlas):
-  // se comprueba el acceso antes de dejar llenar el comprobante, no despues.
-  const mustVerifyCredentials =
-    !!sender?.has_sunat_credentials &&
-    sender?.sunat_credentials_status === 'PENDIENTE' &&
-    !skippedCredentialsCheck;
 
   const draftRestoredRef = useRef(false);
   const skipNextDraftPersistRef = useRef(false);
@@ -998,21 +980,12 @@ const Billing: React.FC<BillingProps> = ({
             </p>
 
             <div className="w-full space-y-3 max-w-xs">
-              {credentialsRejected ? (
-                <button
-                  onClick={onSelectSender}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
-                >
-                  <KeyRound size={18} /> Actualizar usuario SUNAT
-                </button>
-              ) : (
-                <button
+              <button
                   onClick={handleRetry}
                   className="w-full bg-red-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
                 >
                   <RefreshCw size={18} /> Reintentar
                 </button>
-              )}
               <button
                 onClick={resetForm}
                 className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
@@ -1831,29 +1804,12 @@ const Billing: React.FC<BillingProps> = ({
               Guardar como Borrador
             </button>
 
-            {credentialsRejected ? (
-              <>
-                <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-                  <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] font-bold text-red-600 leading-snug">
-                    Tus credenciales SUNAT son incorrectas. Actualízalas para poder emitir.
-                  </p>
-                </div>
-                <button
-                  onClick={onSelectSender}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white h-16 rounded-[24px] shadow-xl shadow-red-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
-                >
-                  <KeyRound size={22} /> Corregir credenciales
-                </button>
-              </>
-            ) : (
-              <button
+            <button
                 onClick={handleOpenConfirm}
                 className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
               >
                 <CheckCircle2 size={22} /> Emitir Documento
               </button>
-            )}
           </div>
         </div>
       </section>
@@ -2034,58 +1990,6 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {mustVerifyCredentials && sender && !isEmitting && !emissionSuccess && (
-        <SunatCredentialsGate
-          empresaName={sender.name}
-          empresaUserId={empresaUserId}
-          onVerified={async () => {
-            setSkippedCredentialsCheck(true);
-            await onRefresh?.();
-          }}
-          onFixCredentials={async () => {
-            setSkippedCredentialsCheck(true);
-            await onRefresh?.();
-            if (onSaveCredentials) {
-              setShowCredentialsModal(true);
-              return;
-            }
-            onSelectSender();
-          }}
-          onSkip={() => setSkippedCredentialsCheck(true)}
-        />
-      )}
-
-      {credentialsRejected && (
-        <div className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center">
-          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[32px] flex items-center justify-center mb-6">
-            <KeyRound size={40} />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-3">
-            Credenciales SUNAT incorrectas
-          </h2>
-          <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-xs">
-            Debes corregir tu usuario y clave SOL antes de poder emitir.
-          </p>
-          <button
-            onClick={() => (onSaveCredentials ? setShowCredentialsModal(true) : onSelectSender())}
-            className="w-full max-w-xs bg-gradient-to-r from-orange-500 to-red-500 text-white h-16 rounded-[24px] shadow-xl shadow-red-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
-          >
-            <KeyRound size={22} /> Corregir credenciales
-          </button>
-        </div>
-      )}
-
-      {showCredentialsModal && sender && onSaveCredentials && (
-        <SunatCredentialsModal
-          hasCredentials={sender.has_sunat_credentials}
-          empresaName={sender.name}
-          onSaveCredentials={onSaveCredentials}
-          onVerified={onRefresh}
-          empresaUserId={empresaUserId}
-          onClose={() => setShowCredentialsModal(false)}
-        />
       )}
 
       {productModal.open && (

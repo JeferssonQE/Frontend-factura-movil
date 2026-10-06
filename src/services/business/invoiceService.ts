@@ -116,8 +116,8 @@ export const invoiceService = {
     );
   },
 
-  async getInvoicePdf(invoiceId: number): Promise<Blob> {
-    return apiClient.get<Blob>(`/invoices/${invoiceId}/pdf`);
+  async getInvoicePdf(invoiceId: number, senderId?: number): Promise<Blob> {
+    return apiClient.get<Blob>(`/invoices/${invoiceId}/pdf${qs({ sender_id: senderId })}`);
   },
 
   async getNumeroComprobante(invoiceId: number): Promise<InvoiceNumeroComprobanteResponse> {

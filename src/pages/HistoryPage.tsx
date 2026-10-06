@@ -1,7 +1,6 @@
 // src/pages/HistoryPage.tsx
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { invoiceService } from '../services/business/invoiceService';
 import { pdfCache } from '../services/business/pdfCache';
@@ -17,7 +16,6 @@ const PREFETCH_PDF_COUNT = 5;
 const MAX_POLL_ATTEMPTS = 75;
 
 const HistoryPage: React.FC = () => {
-  const navigate = useNavigate();
   const {
     invoices,
     emitCreditNote,
@@ -26,7 +24,6 @@ const HistoryPage: React.FC = () => {
     refreshAllData,
     patchInvoice,
     activeSenderId,
-    activeSender,
   } = useAppData();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -94,11 +91,9 @@ const HistoryPage: React.FC = () => {
     <History
       invoices={invoices}
       activeSenderId={activeSenderId}
-      credentialsInvalid={activeSender?.sunat_credentials_invalid}
       onEmitCreditNote={emitCreditNote}
       onEmitDraft={emitDraft}
       onDeleteInvoice={deleteInvoice}
-      onFixCredentials={() => navigate('/profile')}
       onRefresh={refreshAllData}
     />
   );

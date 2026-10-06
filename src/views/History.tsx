@@ -52,11 +52,9 @@ const buildSoporteWhatsappUrl = (invoice: Invoice): string => {
 interface HistoryProps {
   invoices: Invoice[];
   activeSenderId?: number | null;
-  credentialsInvalid?: boolean;
   onEmitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => void;
   onEmitDraft: (invoiceId: number) => Promise<void>;
   onDeleteInvoice: (invoiceId: number) => Promise<void>;
-  onFixCredentials: () => void;
   onRefresh: () => void;
 }
 
@@ -208,11 +206,9 @@ const ProcessingRing: React.FC<{ percent: number }> = ({ percent }) => {
 const History: React.FC<HistoryProps> = ({
   invoices,
   activeSenderId,
-  credentialsInvalid,
   onEmitCreditNote,
   onEmitDraft,
   onDeleteInvoice,
-  onFixCredentials,
   onRefresh,
 }) => {
   const [search, setSearch] = useState('');
@@ -773,15 +769,7 @@ const History: React.FC<HistoryProps> = ({
                             </p>
                           </div>
                         )}
-                      {selectedInvoice.status === InvoiceStatus.FALLO && credentialsInvalid ? (
-                        <button
-                          onClick={onFixCredentials}
-                          className="w-full text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-200/50"
-                        >
-                          <KeyRound size={18} /> Corregir credenciales
-                        </button>
-                      ) : (
-                        <button
+                      <button
                           onClick={async () => {
                             setIsEmittingDraft(true);
                             await onEmitDraft(selectedInvoice.id);
@@ -808,7 +796,6 @@ const History: React.FC<HistoryProps> = ({
                               ? 'Reintentar SUNAT'
                               : 'Emitir a SUNAT'}
                         </button>
-                      )}
                     </>
                   )}
 

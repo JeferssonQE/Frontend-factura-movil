@@ -71,13 +71,6 @@ export interface UserProfile {
   updated_at?: string;
 }
 
-/**
- * PENDIENTE: guardadas pero sin verificar (no bloquea emitir).
- * VALIDA: login confirmado contra el portal SUNAT.
- * INVALIDA: SUNAT rechazo usuario o clave (bloquea emitir).
- */
-export type SunatCredentialsStatus = 'PENDIENTE' | 'VALIDA' | 'INVALIDA';
-
 export type BillingEnvironment = 'dev' | 'prod';
 
 /**
@@ -103,26 +96,13 @@ export interface Sender {
   // De solo lectura: los cambia el administrador, no la empresa desde la app.
   billing_environment?: BillingEnvironment;
   monthly_emission_limit?: number;
-  has_sunat_credentials: boolean;
-  sunat_credentials_invalid?: boolean;
-  sunat_credentials_status?: SunatCredentialsStatus;
-  sunat_credentials_checked_at?: string;
   created_at?: string;
   updated_at?: string;
-}
-
-export interface SunatCredentialsValidation {
-  task_id: string;
-  finished: boolean;
-  credentials_status: SunatCredentialsStatus;
-  message: string;
 }
 
 export interface SenderUpsertInput {
   name: string;
   ruc: string;
-  sunat_user?: string;
-  sunat_pass?: string;
 }
 
 export interface Product {

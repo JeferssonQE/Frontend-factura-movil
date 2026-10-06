@@ -7,7 +7,7 @@ import Onboarding from '../views/Onboarding';
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeSender, refreshUser, saveSender } = useAppData();
+  const { user, activeSender, refreshUser } = useAppData();
 
   if (!user?.must_change_password) {
     return <Navigate to="/dashboard" replace />;
@@ -15,16 +15,6 @@ const OnboardingPage: React.FC = () => {
 
   const handleChangePassword = async (newPassword: string) => {
     await authService.updatePassword(newPassword);
-  };
-
-  const handleSaveSunat = async (sunatUser: string, sunatPass: string) => {
-    if (!activeSender) return;
-    await saveSender({
-      name: activeSender.name,
-      ruc: activeSender.ruc,
-      sunat_user: sunatUser,
-      sunat_pass: sunatPass,
-    });
   };
 
   const handleFinish = async () => {
@@ -36,7 +26,6 @@ const OnboardingPage: React.FC = () => {
     <Onboarding
       sender={activeSender}
       onChangePassword={handleChangePassword}
-      onSaveSunat={handleSaveSunat}
       onFinish={handleFinish}
     />
   );

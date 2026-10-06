@@ -41,7 +41,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 // La Clave SOL y las contrasenas viajan en el body de /auth/* y /sender. Aunque este log
 // solo corre en desarrollo, son credenciales de clientes reales: no van a la consola.
-const REDACTED_FIELDS = ['password', 'sunat_pass', 'sunat_user', 'data'];
+const REDACTED_FIELDS = ['password', 'data'];
 
 const redactBody = (body: unknown): unknown => {
   if (!isPlainObject(body)) return body;

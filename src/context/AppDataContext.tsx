@@ -245,8 +245,6 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const updated = await contadorService.updateEmpresaSender(activeSender.user_id, {
           name: input.name,
           ruc: input.ruc,
-          sunat_user: input.sunat_user,
-          sunat_pass: input.sunat_pass,
         });
         setSenders((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
         const snapshotRaw = localStorage.getItem('fm_contador_active_sender');

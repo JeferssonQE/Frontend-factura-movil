@@ -52,8 +52,6 @@ export const senderSchema = z.object({
     .trim()
     .length(11, 'RUC debe tener exactamente 11 dígitos')
     .regex(/^\d+$/, 'RUC solo debe contener números'),
-  sunat_user: optionalText,
-  sunat_pass: optionalText,
 });
 
 export type SenderInput = z.infer<typeof senderSchema>;

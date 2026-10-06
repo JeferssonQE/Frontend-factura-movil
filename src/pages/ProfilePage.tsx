@@ -6,7 +6,7 @@ import Profile from '../views/Profile';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, activeSender, saveSender, logout, isAdmin, isContador, refreshAllData } =
+  const { user, activeSender, saveSender, logout, isAdmin, isContador } =
     useAppData();
 
   const canEditIdentity = isAdmin;
@@ -24,7 +24,6 @@ const ProfilePage: React.FC = () => {
       isContador={isContador}
       canEditIdentity={canEditIdentity}
       onSaveSender={saveSender}
-      onRefresh={refreshAllData}
       onGoToAdmin={() => navigate('/admin/users')}
       onChangeSender={() => navigate('/contador/senders')}
       onLogout={handleLogout}

@@ -1,4 +1,4 @@
-import type { AdminUserRow, Sender, SunatCredentialsValidation } from '../../types';
+import type { AdminUserRow, Sender } from '../../types';
 import { apiClient } from '../core/apiClient';
 
 export type ContadorAssignment = {
@@ -11,8 +11,6 @@ export type ContadorAssignment = {
 export type SenderFormData = {
   name: string;
   ruc: string;
-  sunat_user: string;
-  sunat_pass: string;
 };
 
 export const contadorService = {
@@ -30,22 +28,6 @@ export const contadorService = {
 
   async updateSender(empresaUserId: string, data: Partial<SenderFormData>): Promise<Sender> {
     return apiClient.post<Sender>(`/contadores/me/empresas/${empresaUserId}/sender`, data);
-  },
-
-  async startSunatCredentialsValidation(empresaUserId: string): Promise<{ task_id: string }> {
-    return apiClient.post<{ task_id: string }>(
-      `/contadores/me/empresas/${empresaUserId}/sunat-credentials/validate`,
-      {},
-    );
-  },
-
-  async getSunatCredentialsValidation(
-    empresaUserId: string,
-    taskId: string,
-  ): Promise<SunatCredentialsValidation> {
-    return apiClient.get<SunatCredentialsValidation>(
-      `/contadores/me/empresas/${empresaUserId}/sunat-credentials/validation/${taskId}`,
-    );
   },
 
   async getContadores(): Promise<AdminUserRow[]> {

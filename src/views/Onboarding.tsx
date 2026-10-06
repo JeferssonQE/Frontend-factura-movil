@@ -1,43 +1,21 @@
 // views/Onboarding.tsx
+//
+// Era un asistente de dos pasos: contraseña y Clave SOL. El segundo se fue con el scraper
+// -FactuMovil emite por Factu API y ya no custodia credenciales de SUNAT-, y sin el no
+// queda asistente que guiar: una sola pantalla.
 
-import {
-  AlertTriangle,
-  ArrowRight,
-  Building,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  ShieldCheck,
-} from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, ShieldCheck } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import { CHECKING_CREDENTIALS_MESSAGE, CREDENTIALS_VERDICT } from '../config/sunatCredentials';
-import { useSunatCredentialsCheck } from '../hooks/useSunatCredentialsCheck';
-import type { Sender, SunatCredentialsStatus } from '../types';
+import type { Sender } from '../types';
 
 interface OnboardingProps {
   sender: Sender | null;
   onChangePassword: (newPassword: string) => Promise<void>;
-  onSaveSunat: (sunatUser: string, sunatPass: string) => Promise<void>;
   onFinish: () => void;
 }
 
 const MIN_PASSWORD_LENGTH = 8;
-
-type Step = 1 | 2;
-
-const StepDots: React.FC<{ step: Step }> = ({ step }) => (
-  <div className="flex items-center justify-center gap-2 mb-6">
-    <span
-      className={`h-2 rounded-full transition-all ${step === 1 ? 'w-8 bg-slate-900' : 'w-2 bg-emerald-500'}`}
-    />
-    <span
-      className={`h-2 rounded-full transition-all ${step === 2 ? 'w-8 bg-slate-900' : 'w-2 bg-slate-200'}`}
-    />
-  </div>
-);
 
 const ReadOnlyField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
@@ -50,87 +28,16 @@ const ReadOnlyField: React.FC<{ label: string; value: string }> = ({ label, valu
   </div>
 );
 
-const VERDICT_TONES: Record<SunatCredentialsStatus, string> = {
-  VALIDA: 'bg-emerald-50 text-emerald-600',
-  INVALIDA: 'bg-red-50 text-red-500',
-  PENDIENTE: 'bg-amber-50 text-amber-600',
-};
-
-const VerdictBlock: React.FC<{
-  status: SunatCredentialsStatus;
-  title: string;
-  message: string;
-  onRetry: () => void;
-  onContinue: () => void;
-}> = ({ status, title, message, onRetry, onContinue }) => (
-  <div className="py-4 text-center">
-    <div
-      className={`w-16 h-16 mx-auto mb-5 rounded-[26px] flex items-center justify-center ${VERDICT_TONES[status]}`}
-    >
-      {status === 'VALIDA' ? <CheckCircle2 size={28} /> : <AlertTriangle size={28} />}
-    </div>
-    <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest mb-2">
-      {title}
-    </h2>
-    <p className="text-[10px] text-slate-400 font-semibold leading-relaxed mb-6">{message}</p>
-
-    {status === 'INVALIDA' ? (
-      <button
-        type="button"
-        onClick={onRetry}
-        className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-[0.98] transition-all"
-      >
-        Corregir credenciales
-      </button>
-    ) : (
-      <button
-        type="button"
-        onClick={onContinue}
-        className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
-      >
-        Entrar a FactuMovil <ArrowRight size={16} />
-      </button>
-    )}
-  </div>
-);
-
-const Onboarding: React.FC<OnboardingProps> = ({
-  sender,
-  onChangePassword,
-  onSaveSunat,
-  onFinish,
-}) => {
-  const [step, setStep] = useState<Step>(1);
-
+const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onFinish }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  const [sunatUser, setSunatUser] = useState('');
-  const [sunatPass, setSunatPass] = useState('');
-  const [showSunatPass, setShowSunatPass] = useState(false);
-  const [showCaptureForm, setShowCaptureForm] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const { phase, status, message, check, reset } = useSunatCredentialsCheck();
 
   const passwordTooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
   const passwordValid = password.length >= MIN_PASSWORD_LENGTH && password === confirmPassword;
-  const sunatValid = sunatUser.trim().length > 0 && sunatPass.trim().length > 0;
-
-  // Sin veredicto de SUNAT (error de red) el estado real es "sin verificar".
-  const verdictStatus: SunatCredentialsStatus = status ?? 'PENDIENTE';
-  const verdictCopy = CREDENTIALS_VERDICT[verdictStatus];
-
-  // El contador pudo haber conectado SUNAT antes de este primer ingreso: no pedirle
-  // de nuevo la Clave SOL, solo mostrar el estado que ya existe para esa empresa.
-  const alreadyConnected = Boolean(sender?.has_sunat_credentials) && !showCaptureForm;
-  const preConnectedStatus: SunatCredentialsStatus =
-    sender?.sunat_credentials_status ?? 'PENDIENTE';
-  const preConnectedCopy = CREDENTIALS_VERDICT[preConnectedStatus];
 
   const handleSubmitPassword = async () => {
     if (!passwordValid) return;
@@ -138,29 +45,12 @@ const Onboarding: React.FC<OnboardingProps> = ({
     setError('');
     try {
       await onChangePassword(password);
-      setStep(2);
+      onFinish();
     } catch {
       setError('No se pudo cambiar la contraseña. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
-  };
-
-  /** Guarda y comprueba el acceso: con credenciales rechazadas no se sale de este paso. */
-  const handleConnectSunat = async () => {
-    if (!sunatValid) return;
-    setLoading(true);
-    setError('');
-    try {
-      await onSaveSunat(sunatUser.trim(), sunatPass.trim());
-    } catch {
-      setError('No se pudieron guardar las credenciales. Intenta de nuevo.');
-      return;
-    } finally {
-      setLoading(false);
-    }
-
-    await check();
   };
 
   return (
@@ -174,252 +64,121 @@ const Onboarding: React.FC<OnboardingProps> = ({
         <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
           FactuMovil AI
         </h1>
-        <p className="text-[10px] text-slate-400 mt-1">
-          {step === 1 ? 'Paso 1 de 2 · Protege tu cuenta' : 'Paso 2 de 2 · Conecta tu SUNAT'}
-        </p>
+        <p className="text-[10px] text-slate-400 mt-1">Protege tu cuenta</p>
       </div>
 
       <div className="w-full max-w-sm bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-        <StepDots step={step} />
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <ShieldCheck className="text-blue-600" size={16} />
+          <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
+            Nueva Contraseña
+          </h2>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
+          <p className="text-[9px] text-blue-700 text-center leading-relaxed">
+            Estás usando una contraseña temporal.
+            <br />
+            Crea una nueva para continuar (mínimo {MIN_PASSWORD_LENGTH} caracteres).
+          </p>
+        </div>
 
-        {step === 1 && (
-          <>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <ShieldCheck className="text-blue-600" size={16} />
-              <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
-                Nueva Contraseña
-              </h2>
+        <div className="space-y-4">
+          {/* Los datos de la empresa, para que confirme que entro donde debia. */}
+          {sender && (
+            <>
+              <ReadOnlyField label="Razón Social" value={sender.name} />
+              <ReadOnlyField label="RUC" value={sender.ruc} />
+            </>
+          )}
+
+          <div>
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Nueva Contraseña
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+                  passwordTooShort
+                    ? 'border-red-300 focus:ring-red-500'
+                    : 'border-slate-200 focus:ring-blue-500'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((p) => !p)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
-              <p className="text-[9px] text-blue-700 text-center leading-relaxed">
-                Estás usando una contraseña temporal.
-                <br />
-                Crea una nueva para continuar (mínimo {MIN_PASSWORD_LENGTH} caracteres).
+            {passwordTooShort && (
+              <p className="text-[8px] text-red-600 mt-1">
+                Mínimo {MIN_PASSWORD_LENGTH} caracteres
               </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-                  Nueva Contraseña
-                </label>
-                <div className="relative">
-                  <Lock
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                      passwordTooShort
-                        ? 'border-red-300 focus:ring-red-500'
-                        : 'border-slate-200 focus:ring-blue-500'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((p) => !p)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                {passwordTooShort && (
-                  <p className="text-[8px] text-red-600 mt-1">
-                    Mínimo {MIN_PASSWORD_LENGTH} caracteres
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-                  Confirmar Contraseña
-                </label>
-                <div className="relative">
-                  <Lock
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                      passwordsMismatch
-                        ? 'border-red-300 focus:ring-red-500'
-                        : 'border-slate-200 focus:ring-blue-500'
-                    }`}
-                  />
-                </div>
-                {passwordsMismatch && (
-                  <p className="text-[8px] text-red-600 mt-1">Las contraseñas no coinciden</p>
-                )}
-              </div>
-
-              {error && (
-                <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl text-center border border-red-200">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleSubmitPassword}
-                disabled={loading || !passwordValid}
-                className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  <>
-                    <span>Guardar y continuar</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                disabled={loading}
-                className="w-full text-slate-400 py-2 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors disabled:opacity-50"
-              >
-                Más tarde
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === 2 && phase === 'checking' && (
-          <div className="py-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-5 rounded-[26px] bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Loader2 size={28} className="animate-spin" />
-            </div>
-            <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest mb-2">
-              Probando tu acceso
-            </h2>
-            <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">
-              {CHECKING_CREDENTIALS_MESSAGE}
-            </p>
+            )}
           </div>
-        )}
 
-        {step === 2 && (phase === 'done' || phase === 'error') && (
-          <VerdictBlock
-            status={verdictStatus}
-            title={verdictCopy.title}
-            message={phase === 'error' ? message : verdictCopy.message}
-            onRetry={reset}
-            onContinue={onFinish}
-          />
-        )}
-
-        {step === 2 && phase === 'idle' && alreadyConnected && (
-          <VerdictBlock
-            status={preConnectedStatus}
-            title={preConnectedCopy.title}
-            message={preConnectedCopy.message}
-            onRetry={() => setShowCaptureForm(true)}
-            onContinue={onFinish}
-          />
-        )}
-
-        {step === 2 && phase === 'idle' && !alreadyConnected && (
-          <>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Building className="text-blue-600" size={16} />
-              <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
-                Conecta tu SUNAT
-              </h2>
+          <div>
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Confirmar Contraseña
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+                  passwordsMismatch
+                    ? 'border-red-300 focus:ring-red-500'
+                    : 'border-slate-200 focus:ring-blue-500'
+                }`}
+              />
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
-              <p className="text-[9px] text-blue-700 text-center leading-relaxed">
-                Necesitas tu Clave SOL para emitir comprobantes.
-                <br />
-                Puedes hacerlo ahora o más tarde desde tu perfil.
-              </p>
+            {passwordsMismatch && (
+              <p className="text-[8px] text-red-600 mt-1">Las contraseñas no coinciden</p>
+            )}
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl text-center border border-red-200">
+              {error}
             </div>
+          )}
 
-            <div className="space-y-4">
-              {sender && (
-                <>
-                  <ReadOnlyField label="Razón Social" value={sender.name} />
-                  <ReadOnlyField label="RUC" value={sender.ruc} />
-                </>
-              )}
+          <button
+            type="button"
+            onClick={handleSubmitPassword}
+            disabled={loading || !passwordValid}
+            className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <>
+                <span>Guardar y entrar</span>
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
 
-              <div className="pt-2 border-t border-slate-100">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                  Credenciales SUNAT (SOL)
-                </p>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={sunatUser}
-                    onChange={(e) => setSunatUser(e.target.value.toUpperCase())}
-                    placeholder="Usuario SOL"
-                    autoComplete="off"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="relative">
-                    <input
-                      type={showSunatPass ? 'text' : 'password'}
-                      value={sunatPass}
-                      onChange={(e) => setSunatPass(e.target.value)}
-                      placeholder="Clave SOL"
-                      autoComplete="new-password"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSunatPass((p) => !p)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showSunatPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl text-center border border-red-200">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleConnectSunat}
-                disabled={loading || !sunatValid}
-                className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  <>
-                    <CheckCircle2 size={18} />
-                    <span>Conectar</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={onFinish}
-                disabled={loading}
-                className="w-full text-slate-400 py-2 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors disabled:opacity-50"
-              >
-                Más tarde
-              </button>
-            </div>
-          </>
-        )}
+          <button
+            type="button"
+            onClick={onFinish}
+            disabled={loading}
+            className="w-full text-slate-400 py-2 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors disabled:opacity-50"
+          >
+            Más tarde
+          </button>
+        </div>
       </div>
 
       <p className="text-[9px] text-slate-300 mt-8 uppercase tracking-widest text-center">

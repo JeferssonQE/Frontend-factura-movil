@@ -8,7 +8,6 @@ const BillingPage: React.FC = () => {
   const navigate = useNavigate();
   const {
     activeSender,
-    isContador,
     products,
     clients,
     invoices,
@@ -18,13 +17,11 @@ const BillingPage: React.FC = () => {
     saveProductSilent,
     showToast,
     refreshAllData,
-    saveSender,
   } = useAppData();
 
   return (
     <Billing
       sender={activeSender}
-      empresaUserId={isContador ? activeSender?.user_id : undefined}
       products={products}
       clients={clients}
       invoices={invoices}
@@ -49,15 +46,6 @@ const BillingPage: React.FC = () => {
           unit: data.unit,
           sale_price: data.sale_price,
           igv_type: data.igv_type,
-        });
-      }}
-      onSaveCredentials={async (sunatUser, sunatPass) => {
-        if (!activeSender) return;
-        await saveSender({
-          name: activeSender.name,
-          ruc: activeSender.ruc,
-          sunat_user: sunatUser,
-          sunat_pass: sunatPass,
         });
       }}
     />

@@ -25,7 +25,7 @@ export const pdfCache = {
     // del link que guardo Factu API. Se convierte a base64 porque PDFService -compartir,
     // descargar, ver- trabaja con base64.
     const request = invoiceService
-      .getInvoicePdf(invoiceId)
+      .getInvoicePdf(invoiceId, senderId)
       .then(async (blob) => {
         const base64 = await PDFService.blobToBase64(blob);
         if (base64) cache.set(invoiceId, base64);
