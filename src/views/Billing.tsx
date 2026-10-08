@@ -28,6 +28,14 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useRef, useState } from 'react';
 import ProductFormModal from '../components/ProductFormModal';
+import SaleSummary from '../components/SaleSummary';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Modal from '../components/ui/Modal';
+import Notice from '../components/ui/Notice';
+import SectionTitle from '../components/ui/SectionTitle';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import { useEmissionUsage } from '../hooks/useEmissionUsage';
 import { useInvoicePreview } from '../hooks/useInvoicePreview';
@@ -56,6 +64,11 @@ import {
   type UnitOfMeasure,
 } from '../types';
 
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: InvoiceType.BOLETA, label: 'Boleta' },
+  { value: InvoiceType.FACTURA, label: 'Factura' },
+];
+
 const DNI_LENGTH = 8;
 const RUC_LENGTH = 11;
 const onlyDigits = (value: string): string => value.replace(/\D/g, '');
@@ -82,6 +95,13 @@ const NEUTRAL_OUTCOMES = {
 // borrador", que si persiste en la BD. Scoped por sender para que el de una empresa no
 // se filtre a otra.
 const billingDraftKey = (senderId: number): string => `fm_billing_draft_${senderId}`;
+
+const AmountLine: React.FC<{ label: string; amount: number }> = ({ label, amount }) => (
+  <div className="flex items-center justify-between border-b border-slate-100 py-2">
+    <span className="text-sm text-slate-600">{label}</span>
+    <span className="text-sm font-semibold text-slate-900">S/ {amount.toFixed(2)}</span>
+  </div>
+);
 
 interface BillingDraftCache {
   invoiceType: InvoiceType;
@@ -319,7 +339,7 @@ const Billing: React.FC<BillingProps> = ({
 
   // El cupo del mes. Solo informa: el bloqueo lo decide el backend al emitir, con la misma
   // cuenta. Aca no se resta nada.
-  const { usage, refresh: refreshUsage } = useEmissionUsage();
+  const { usage, refresh: refreshUsage } = useEmissionUsage(sender?.id);
   const showUsage = usage?.enforced === true;
   const lowOnQuota = showUsage && usage.remaining <= 10;
 
@@ -846,18 +866,16 @@ const Billing: React.FC<BillingProps> = ({
 
   if (emissionState !== null) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center animate-in fade-in duration-500">
+      <div className="flex min-h-[75vh] flex-col items-center justify-center px-6 text-center">
         {/* ── PROCESANDO ── */}
         {emissionState === 'processing' && (
           <>
-            <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-8">
-              <Loader2 size={48} className="text-blue-500 animate-spin" />
+            <div className="mb-8 flex size-24 items-center justify-center rounded-full bg-accent/10">
+              <Loader2 size={48} className="animate-spin text-accent" />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">
-              Validando en SUNAT
-            </h2>
+            <h2 className="mb-2 text-2xl font-bold text-slate-900">Validando en SUNAT</h2>
             {emissionSuccess && (
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6">
+              <p className="mb-6 text-sm font-medium text-slate-500">
                 {emissionSuccess.series}-{emissionSuccess.number}
               </p>
             )}
@@ -865,113 +883,81 @@ const Billing: React.FC<BillingProps> = ({
             {/* Aqui habia una barra de porcentaje. El numero venia del paso que reportaba
                 el scraper mientras navegaba el portal; Factu API responde de una vez y no
                 hay avance que medir. Una barra que avanza sola es una promesa inventada. */}
-            <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-10">
-              Procesando en SUNAT
-            </p>
+            <p className="mb-10 text-sm font-semibold text-slate-600">Procesando en SUNAT</p>
 
             <div className="w-full max-w-xs">
-              <button
-                onClick={handleKeepEmitting}
-                className="w-full bg-blue-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-100 active:scale-95 transition-all"
-              >
+              <Button size="lg" fullWidth onClick={handleKeepEmitting}>
                 Seguir emitiendo <ArrowRight size={18} />
-              </button>
-              <p className="text-[10px] font-bold text-slate-400 mt-3 leading-snug">
+              </Button>
+              <p className="mt-3 text-xs leading-snug text-slate-500">
                 Se procesa solo en segundo plano. Mira el resultado en Historial.
               </p>
             </div>
 
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-10">
-              FactuMovil AI • Validado SUNAT
-            </p>
+            <p className="mt-10 text-xs text-slate-400">FactuMovil AI • Validado SUNAT</p>
           </>
         )}
 
         {/* ── EMITIDO ── */}
         {emissionState === 'emitido' && (
           <>
-            <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-8 shadow-xl shadow-emerald-50">
+            <div className="mb-8 flex size-24 items-center justify-center rounded-full bg-success/10 text-success">
               <CheckCircle2 size={56} strokeWidth={2.5} />
             </div>
-            <h2 className="text-3xl font-black uppercase tracking-tight mb-2 text-emerald-600">
-              ¡Emitido!
-            </h2>
+            <h2 className="mb-2 text-3xl font-bold text-success">¡Emitido!</h2>
             {emissionSuccess && (
-              <p className="text-slate-500 font-medium text-sm mb-1">
-                <span className="font-black text-slate-900">
-                  {emissionSuccess.series}-{emissionSuccess.number}
-                </span>
+              <p className="mb-1 text-base font-bold text-slate-900">
+                {emissionSuccess.series}-{emissionSuccess.number}
               </p>
             )}
             {numeroComprobante && (
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10">
-                Nº SUNAT: {numeroComprobante}
-              </p>
+              <p className="mb-10 text-sm text-slate-500">Nº SUNAT: {numeroComprobante}</p>
             )}
             {!numeroComprobante && <div className="mb-10" />}
 
-            <div className="w-full space-y-3 max-w-xs">
-              <button
-                onClick={handleWhatsAppShare}
-                className="w-full bg-emerald-500 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-emerald-100 active:scale-95 transition-all"
-              >
+            <div className="w-full max-w-xs space-y-3">
+              <Button variant="success" size="lg" fullWidth onClick={handleWhatsAppShare}>
                 <MessageCircle size={20} />
                 {pdfBase64 ? 'Compartir PDF' : 'Compartir WhatsApp'}
-              </button>
+              </Button>
 
               {pdfBase64 && (
-                <button
-                  onClick={handleDownloadPdf}
-                  className="w-full bg-blue-50 text-blue-600 border border-blue-100 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all"
-                >
+                <Button variant="outline" size="lg" fullWidth onClick={handleDownloadPdf}>
                   <Download size={18} /> Descargar PDF
-                </button>
+                </Button>
               )}
 
-              <button
-                onClick={resetForm}
-                className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
-              >
-                <RotateCcw size={18} /> Nueva Venta
-              </button>
+              <Button variant="outline" size="lg" fullWidth onClick={resetForm}>
+                <RotateCcw size={18} /> Nueva venta
+              </Button>
             </div>
 
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-8">
-              FactuMovil AI • Validado SUNAT
-            </p>
+            <p className="mt-8 text-xs text-slate-400">FactuMovil AI • Validado SUNAT</p>
           </>
         )}
 
         {/* ── FALLO ── */}
         {emissionState === 'fallo' && (
           <>
-            <div className="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-8">
+            <div className="mb-8 flex size-24 items-center justify-center rounded-full bg-danger/10 text-danger">
               <XCircle size={56} strokeWidth={2} />
             </div>
-            <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-red-600">
-              No se pudo emitir
-            </h2>
+            <h2 className="mb-3 text-2xl font-bold text-danger">No se pudo emitir</h2>
             {/* El motivo lo redacta el backend para que el usuario lo lea. Antes esto salia
                 de un mapa por paso del scraper y, sin paso que buscar, siempre caia en
                 "intenta de nuevo en unos segundos": el motivo de verdad llegaba, se
                 guardaba en sunatMessage y no se pintaba en ninguna parte. */}
-            <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
+            <p className="mb-10 max-w-xs text-sm leading-relaxed text-slate-500">
               {sunatMessage || 'Intenta de nuevo en unos segundos.'}
             </p>
 
-            <div className="w-full space-y-3 max-w-xs">
-              <button
-                onClick={handleRetry}
-                className="w-full bg-red-600 text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-red-100 active:scale-95 transition-all"
-              >
+            <div className="w-full max-w-xs space-y-3">
+              <Button size="lg" fullWidth onClick={handleRetry}>
                 <RefreshCw size={18} /> Reintentar
-              </button>
-              <button
-                onClick={resetForm}
-                className="w-full bg-slate-100 text-slate-500 py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:bg-slate-200 transition-all"
-              >
-                <RotateCcw size={18} /> Nueva Venta
-              </button>
+              </Button>
+              <Button variant="outline" size="lg" fullWidth onClick={resetForm}>
+                <RotateCcw size={18} /> Nueva venta
+              </Button>
             </div>
           </>
         )}
@@ -979,27 +965,24 @@ const Billing: React.FC<BillingProps> = ({
         {/* ── SIN EMITIR: prueba o espera sin confirmar ── */}
         {(emissionState === 'prueba' || emissionState === 'sin_confirmar') && (
           <>
-            <div className="w-24 h-24 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mb-8">
+            <div className="mb-8 flex size-24 items-center justify-center rounded-full bg-slate-100 text-slate-500">
               {emissionState === 'prueba' ? (
                 <FlaskConical size={52} strokeWidth={2} />
               ) : (
                 <Clock size={52} strokeWidth={2} />
               )}
             </div>
-            <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-slate-800">
+            <h2 className="mb-3 text-2xl font-bold text-slate-900">
               {NEUTRAL_OUTCOMES[emissionState].title}
             </h2>
-            <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
+            <p className="mb-10 max-w-xs text-sm leading-relaxed text-slate-500">
               {NEUTRAL_OUTCOMES[emissionState].message}
             </p>
 
             <div className="w-full max-w-xs">
-              <button
-                onClick={resetForm}
-                className="w-full bg-[#112657] text-white py-5 rounded-[28px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all"
-              >
-                <RotateCcw size={18} /> Nueva Venta
-              </button>
+              <Button variant="secondary" size="lg" fullWidth onClick={resetForm}>
+                <RotateCcw size={18} /> Nueva venta
+              </Button>
             </div>
           </>
         )}
@@ -1010,11 +993,9 @@ const Billing: React.FC<BillingProps> = ({
   return (
     <div className="space-y-6 pb-24 animate-in fade-in duration-500 max-w-md mx-auto relative px-2">
       {isEmitting && (
-        <div className="fixed inset-0 z-[250] bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center">
-          <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-8" />
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-8 uppercase tracking-tighter">
-            Preparando Documento
-          </h3>
+        <div className="fixed inset-0 z-[250] flex flex-col items-center justify-center bg-white/95 p-8 text-center backdrop-blur-xl">
+          <div className="mb-8 size-16 animate-spin rounded-full border-4 border-accent/20 border-t-accent" />
+          <h3 className="mb-8 text-2xl font-bold text-slate-900">Preparando documento</h3>
 
           <div className="w-full max-w-xs space-y-6">
             {['Validando datos', 'Creando comprobante', 'Encolando emisión'].map((label, index) => {
@@ -1029,11 +1010,11 @@ const Billing: React.FC<BillingProps> = ({
                   }`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    className={`flex size-10 items-center justify-center rounded-control ${
                       isDone
-                        ? 'bg-emerald-500 text-white'
+                        ? 'bg-success text-white'
                         : isActive
-                          ? 'bg-blue-600 text-white animate-pulse'
+                          ? 'animate-pulse bg-accent text-white'
                           : 'bg-slate-100 text-slate-400'
                     }`}
                   >
@@ -1045,8 +1026,8 @@ const Billing: React.FC<BillingProps> = ({
                   </div>
 
                   <span
-                    className={`text-[10px] font-black uppercase tracking-widest ${
-                      isActive ? 'text-blue-600' : isDone ? 'text-emerald-600' : 'text-slate-400'
+                    className={`text-sm font-semibold ${
+                      isActive ? 'text-slate-900' : isDone ? 'text-success' : 'text-slate-500'
                     }`}
                   >
                     {label}
@@ -1059,27 +1040,34 @@ const Billing: React.FC<BillingProps> = ({
       )}
 
       {errors.length > 0 && (
-        <div className="fixed inset-0 z-[200] flex items-end justify-center p-4 pointer-events-none">
-          <div className="bg-red-600 text-white p-5 rounded-[28px] shadow-2xl animate-in slide-in-from-bottom duration-300 pointer-events-auto max-w-sm w-full">
-            <div className="flex items-center justify-between mb-3">
+        <div className="pointer-events-none fixed inset-0 z-[200] flex items-end justify-center p-4">
+          <div
+            role="alert"
+            className="pointer-events-auto w-full max-w-sm rounded-card bg-danger p-5 text-white shadow-xl"
+          >
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={20} />
-                <h4 className="text-[11px] font-black uppercase tracking-widest">
-                  Completa estos campos
-                </h4>
+                <h4 className="text-base font-semibold">Completa estos campos</h4>
               </div>
-              <button onClick={() => setErrors([])} className="p-1 hover:bg-white/20 rounded-full">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setErrors([])}
+                aria-label="Cerrar"
+                className="text-white hover:bg-white/20 hover:text-white"
+              >
                 <X size={18} />
-              </button>
+              </Button>
             </div>
 
             <ul className="space-y-1">
               {errors.map((error, index) => (
                 <li
                   key={`${index}-${error.message}`}
-                  className="text-[11px] font-bold flex items-start gap-2"
+                  className="flex items-start gap-2 text-sm font-medium"
                 >
-                  <span className="text-red-200">•</span> {error.message}
+                  <span className="text-white/60">•</span> {error.message}
                 </li>
               ))}
             </ul>
@@ -1088,52 +1076,19 @@ const Billing: React.FC<BillingProps> = ({
       )}
 
       {iaWarning && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
-          <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={16} />
-          <div className="flex-1">
-            <p className="text-amber-800 text-[11px] font-black uppercase tracking-wide leading-relaxed">
-              {iaWarning}
-            </p>
-          </div>
-          <button
-            onClick={() => setIaWarning(null)}
-            className="text-amber-400 hover:text-amber-600"
-          >
-            <X size={14} />
-          </button>
-        </div>
+        <Notice tone="warning" onDismiss={() => setIaWarning(null)}>
+          {iaWarning}
+        </Notice>
       )}
 
       {iaSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
-          <CheckCircle2
-            className="text-emerald-500 shrink-0 mt-0.5"
-            size={16}
-            style={{ animation: 'iaCheckPop 0.45s ease-out' }}
-          />
-          <div className="flex-1">
-            <p className="text-emerald-800 text-[11px] font-black uppercase tracking-wide leading-relaxed">
-              {iaSuccess}
-            </p>
-          </div>
-          <button
-            onClick={() => setIaSuccess(null)}
-            className="text-emerald-400 hover:text-emerald-600"
-          >
-            <X size={14} />
-          </button>
-          <style>{`
-            @keyframes iaCheckPop {
-              0%   { transform: scale(0);    opacity: 0; }
-              60%  { transform: scale(1.25); opacity: 1; }
-              100% { transform: scale(1);    opacity: 1; }
-            }
-          `}</style>
-        </div>
+        <Notice tone="success" onDismiss={() => setIaSuccess(null)}>
+          {iaSuccess}
+        </Notice>
       )}
 
-      <section className="bg-white p-5 rounded-[40px] shadow-sm border border-slate-100 relative overflow-hidden">
-        <div className="w-full h-44 bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative overflow-hidden mb-4">
+      <Card className="relative overflow-hidden p-5">
+        <div className="relative mb-4 flex h-44 w-full flex-col items-center justify-center overflow-hidden rounded-card border-2 border-dashed border-slate-200 bg-slate-50">
           {previewImage ? (
             <div className="relative w-full h-full">
               <img
@@ -1147,7 +1102,9 @@ const Billing: React.FC<BillingProps> = ({
                     event.stopPropagation();
                     setPreviewImage(null);
                   }}
-                  className="absolute top-4 right-4 w-10 h-10 bg-black/50 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-red-500 transition-colors z-20"
+                  type="button"
+                  aria-label="Quitar imagen"
+                  className="absolute right-4 top-4 z-20 flex size-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-danger"
                 >
                   <X size={20} />
                 </button>
@@ -1155,12 +1112,10 @@ const Billing: React.FC<BillingProps> = ({
             </div>
           ) : isRecording ? (
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-white animate-pulse mb-3 shadow-lg shadow-red-200">
+              <div className="mb-3 flex size-16 animate-pulse items-center justify-center rounded-full bg-danger text-white shadow-lg">
                 <Mic size={32} />
               </div>
-              <p className="text-red-500 font-black text-[10px] uppercase tracking-[0.2em]">
-                Escuchando...
-              </p>
+              <p className="text-sm font-semibold text-danger">Escuchando...</p>
             </div>
           ) : (
             <>
@@ -1301,10 +1256,8 @@ const Billing: React.FC<BillingProps> = ({
                 ))}
               </div>
 
-              <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] z-10">
-                Asistente IA
-              </p>
-              <p className="text-slate-400 text-[9px] font-semibold text-center leading-relaxed z-10 mt-1 px-4">
+              <p className="z-10 text-sm font-semibold text-slate-600">Asistente IA</p>
+              <p className="z-10 mt-1 px-4 text-center text-xs leading-relaxed text-slate-500">
                 Toma foto o grábate y emite una factura en segundos
               </p>
 
@@ -1327,50 +1280,41 @@ const Billing: React.FC<BillingProps> = ({
           )}
 
           {isProcessing && (
-            <div className="absolute inset-0 bg-blue-600/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-30 px-8 text-center text-white transition-all">
-              <div className="w-10 h-10 border-[4px] border-white/20 border-t-white rounded-full animate-spin mb-4" />
-              <h4 className="font-black text-[11px] uppercase tracking-widest mb-1">
-                {processingType === 'audio' ? 'Procesando Voz' : 'Procesando Imagen'}
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-accent/70 px-8 text-center text-white backdrop-blur-[2px] transition-all">
+              <div className="mb-4 size-10 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+              <h4 className="mb-1 text-base font-semibold">
+                {processingType === 'audio' ? 'Procesando voz' : 'Procesando imagen'}
               </h4>
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-80">
-                Extrayendo datos con IA...
-              </p>
+              <p className="text-sm opacity-90">Extrayendo datos con IA...</p>
             </div>
           )}
         </div>
 
-        <div className="flex gap-2 w-full">
+        <div className="flex w-full gap-2">
           {isRecording ? (
-            <button
-              onClick={stopRecording}
-              className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all"
-            >
+            <Button variant="danger" size="lg" className="flex-1" onClick={stopRecording}>
               <Square size={18} fill="white" /> Parar
-            </button>
+            </Button>
           ) : (
             <>
-              <button
+              <Button
+                variant="secondary"
+                size="lg"
+                className="flex-1"
                 onClick={() => setPhotoMenuOpen(true)}
-                className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all"
               >
                 <Camera size={18} /> Foto
-              </button>
+              </Button>
 
-              <button
-                onClick={startRecording}
-                className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all"
-              >
+              <Button size="lg" className="flex-1" onClick={startRecording}>
                 <Mic size={18} /> Voz
-              </button>
+              </Button>
             </>
           )}
 
-          <button
-            onClick={clearAll}
-            className="w-14 bg-slate-50 text-slate-400 py-4 rounded-2xl flex items-center justify-center active:scale-95 transition-all border border-slate-100"
-          >
+          <Button variant="outline" size="icon-lg" onClick={clearAll} aria-label="Limpiar todo">
             <RotateCcw size={18} />
-          </button>
+          </Button>
         </div>
 
         <input
@@ -1395,151 +1339,118 @@ const Billing: React.FC<BillingProps> = ({
             onClick={() => setPhotoMenuOpen(false)}
           >
             <div
-              className="w-full max-w-md bg-white rounded-t-[36px] p-4 pb-8 shadow-2xl animate-[fm-sheet-in_0.2s_ease-out]"
+              className="w-full max-w-md rounded-t-card bg-white p-4 pb-8 shadow-2xl animate-[fm-sheet-in_0.2s_ease-out]"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
+              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
 
               <button
+                type="button"
                 onClick={openCamera}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-slate-50 active:scale-[0.98] transition-all"
+                className="flex w-full items-center gap-3 rounded-control px-3 py-3 transition hover:bg-slate-50 active:scale-[0.98]"
               >
-                <span className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-secondary text-white">
                   <Camera size={20} />
                 </span>
-                <span className="font-bold text-sm text-slate-800">Tomar foto</span>
+                <span className="text-sm font-semibold text-slate-900">Tomar foto</span>
               </button>
 
               <button
+                type="button"
                 onClick={openGallery}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-slate-50 active:scale-[0.98] transition-all"
+                className="flex w-full items-center gap-3 rounded-control px-3 py-3 transition hover:bg-slate-50 active:scale-[0.98]"
               >
-                <span className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-accent text-white">
                   <Images size={20} />
                 </span>
-                <span className="font-bold text-sm text-slate-800">Subir de galería</span>
+                <span className="text-sm font-semibold text-slate-900">Subir de galería</span>
               </button>
 
-              <button
+              <Button
+                variant="ghost"
+                fullWidth
+                className="mt-2"
                 onClick={() => setPhotoMenuOpen(false)}
-                className="w-full mt-2 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest text-slate-400 active:scale-95 transition-all"
               >
                 Cancelar
-              </button>
+              </Button>
             </div>
           </div>
         )}
-      </section>
+      </Card>
 
-      <section className="bg-white p-6 rounded-[36px] shadow-sm border border-slate-100">
-        <div className="flex items-center gap-2 mb-4">
-          <Layers size={18} className="text-blue-600" />
-          <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Documento</h3>
-        </div>
+      <Card className="p-5">
+        <SectionTitle icon={Layers}>Documento</SectionTitle>
 
         <div className="space-y-4">
-          <div className="flex p-1.5 bg-slate-100 rounded-2xl">
-            <button
-              onClick={() => setInvoiceType(InvoiceType.BOLETA)}
-              className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all ${
-                invoiceType === InvoiceType.BOLETA
-                  ? 'bg-white shadow-md text-blue-600'
-                  : 'text-slate-500'
-              }`}
-            >
-              BOLETA
-            </button>
-            <button
-              onClick={() => setInvoiceType(InvoiceType.FACTURA)}
-              className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all ${
-                invoiceType === InvoiceType.FACTURA
-                  ? 'bg-white shadow-md text-blue-600'
-                  : 'text-slate-500'
-              }`}
-            >
-              FACTURA
-            </button>
-          </div>
+          <SegmentedControl
+            options={DOCUMENT_TYPE_OPTIONS}
+            value={invoiceType}
+            onChange={setInvoiceType}
+            aria-label="Tipo de comprobante"
+          />
 
           {sender ? (
-            <div className="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
-                Emisor
-              </p>
-              <p className="text-sm font-black text-slate-800 truncate">{sender.name}</p>
-            </div>
+            <Card tone="muted" className="p-4">
+              <p className="mb-0.5 text-xs text-slate-500">Emisor</p>
+              <p className="truncate text-sm font-semibold text-slate-900">{sender.name}</p>
+            </Card>
           ) : (
             <button
+              type="button"
               onClick={onSelectSender}
-              className="w-full bg-amber-50 p-4 rounded-2xl text-left flex justify-between items-center border border-amber-200"
+              className="flex w-full items-center justify-between rounded-card border border-warning/30 bg-warning/10 p-4 text-left"
             >
               <div className="min-w-0">
-                <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-0.5">
-                  ⚠️ Sin Empresa
-                </p>
-                <p className="text-sm font-bold text-amber-700">Configura tu empresa en Perfil</p>
+                <p className="mb-0.5 text-xs font-semibold text-warning">Sin empresa</p>
+                <p className="text-sm font-medium text-warning">Configura tu empresa en Perfil</p>
               </div>
-              <ChevronDown size={20} className="text-amber-400 shrink-0" />
+              <ChevronDown size={20} className="shrink-0 text-warning" />
             </button>
           )}
         </div>
-      </section>
+      </Card>
 
-      <section className="bg-white p-6 rounded-[36px] shadow-sm border border-slate-100">
-        <div className="flex items-center gap-2 mb-4">
-          <User size={18} className="text-blue-600" />
-          <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Cliente</h3>
-        </div>
+      <Card className="p-5">
+        <SectionTitle icon={User}>Cliente</SectionTitle>
 
         <div className="space-y-4">
           <div>
-            <div className="relative">
-              <Search
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
-              />
-              <input
-                value={clientData.document}
-                onChange={(event) => {
-                  const digits = onlyDigits(event.target.value);
-                  setClientData((prev) => ({ ...prev, document: digits }));
-                  // RUC (11 digitos) solo puede ir en factura; cualquier otro caso (DNI,
-                  // documento incompleto o solo nombre) es boleta.
-                  setInvoiceType(
-                    digits.length === RUC_LENGTH ? InvoiceType.FACTURA : InvoiceType.BOLETA,
-                  );
-                  if (digits.length !== DNI_LENGTH && digits.length !== RUC_LENGTH) {
-                    setDocumentLookup('idle');
-                  }
-                }}
-                inputMode="numeric"
-                maxLength={RUC_LENGTH}
-                className="w-full bg-slate-50 border-none rounded-2xl p-4 pl-11 pr-10 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 placeholder:text-slate-300"
-                placeholder="DNI o RUC"
-              />
-              {documentLookup === 'searching' && (
-                <Loader2
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin"
-                />
-              )}
-              {documentLookup === 'found' && (
-                <CheckCircle2
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500"
-                />
-              )}
-            </div>
+            <Input
+              value={clientData.document}
+              onChange={(event) => {
+                const digits = onlyDigits(event.target.value);
+                setClientData((prev) => ({ ...prev, document: digits }));
+                // RUC (11 digitos) solo puede ir en factura; cualquier otro caso (DNI,
+                // documento incompleto o solo nombre) es boleta.
+                setInvoiceType(
+                  digits.length === RUC_LENGTH ? InvoiceType.FACTURA : InvoiceType.BOLETA,
+                );
+                if (digits.length !== DNI_LENGTH && digits.length !== RUC_LENGTH) {
+                  setDocumentLookup('idle');
+                }
+              }}
+              inputMode="numeric"
+              maxLength={RUC_LENGTH}
+              placeholder="DNI o RUC"
+              aria-label="DNI o RUC del cliente"
+              icon={<Search size={18} />}
+              trailing={
+                documentLookup === 'searching' ? (
+                  <Loader2 size={16} className="animate-spin text-accent" />
+                ) : documentLookup === 'found' ? (
+                  <CheckCircle2 size={16} className="text-success" />
+                ) : null
+              }
+            />
 
             <p
-              className={`text-[11px] font-bold mt-2 ml-1 ${
+              className={`ml-1 mt-2 text-sm ${
                 documentLookup === 'notfound'
-                  ? 'text-amber-500'
+                  ? 'text-warning'
                   : documentLookup === 'found'
-                    ? 'text-emerald-500'
-                    : documentLookup === 'searching'
-                      ? 'text-blue-500'
-                      : 'text-slate-400'
+                    ? 'text-success'
+                    : 'text-slate-500'
               }`}
             >
               {documentLookup === 'searching' && 'Buscando datos…'}
@@ -1549,69 +1460,59 @@ const Billing: React.FC<BillingProps> = ({
             </p>
           </div>
 
-          <input
+          <Input
             value={clientData.name}
             onChange={(event) => setClientData((prev) => ({ ...prev, name: event.target.value }))}
-            className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 uppercase placeholder:text-slate-300"
+            className="uppercase"
             placeholder="Nombre / Razón Social"
+            aria-label="Nombre o razón social del cliente"
           />
 
-          <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-              Fecha de emisión
-            </label>
-            <input
-              type="date"
-              value={clientData.invoice_date}
-              min={minInvoiceDate}
-              max={maxInvoiceDate}
-              onChange={(event) =>
-                setClientData((prev) => ({ ...prev, invoice_date: event.target.value }))
-              }
-              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <Input
+            label="Fecha de emisión"
+            type="date"
+            value={clientData.invoice_date}
+            min={minInvoiceDate}
+            max={maxInvoiceDate}
+            onChange={(event) =>
+              setClientData((prev) => ({ ...prev, invoice_date: event.target.value }))
+            }
+          />
 
-          <input
+          <Input
             value={clientData.phone}
             onChange={(event) => setClientData((prev) => ({ ...prev, phone: event.target.value }))}
             inputMode="tel"
-            className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 focus:ring-2 focus:ring-blue-500 placeholder:text-slate-300"
             placeholder="Celular para envío WhatsApp"
+            aria-label="Celular del cliente para enviar por WhatsApp"
           />
         </div>
-      </section>
+      </Card>
 
-      <section ref={productsSectionRef} className="space-y-4 scroll-mt-4">
-        <div className="flex justify-between items-center px-4">
-          <div className="flex items-center gap-2">
-            <ShoppingCart size={18} className="text-blue-600" />
-            <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Detalle</h3>
-          </div>
-
-          <button
-            onClick={openNewProduct}
-            className="bg-blue-600 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1 active:scale-95 transition-all"
-          >
-            <Plus size={14} /> Producto
-          </button>
-        </div>
+      <section ref={productsSectionRef} className="scroll-mt-4">
+        <SectionTitle
+          icon={ShoppingCart}
+          action={
+            <Button onClick={openNewProduct}>
+              <Plus size={16} /> Producto
+            </Button>
+          }
+        >
+          Detalle
+        </SectionTitle>
 
         {items.length === 0 ? (
           <button
+            type="button"
             onClick={openNewProduct}
-            className="w-full bg-white rounded-[28px] border-2 border-dashed border-slate-200 p-8 flex flex-col items-center gap-3 text-center active:scale-[0.99] transition-all"
+            className="flex w-full flex-col items-center gap-3 rounded-card border border-dashed border-slate-300 bg-white p-8 text-center transition active:scale-[0.99]"
           >
-            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-slate-50">
               <ShoppingCart size={28} className="text-slate-300" />
             </div>
             <div>
-              <p className="text-sm font-black text-slate-500 uppercase tracking-wide">
-                Aún no agregaste productos
-              </p>
-              <p className="text-xs font-bold text-slate-400 mt-1">
-                Toca aquí para agregar el primero
-              </p>
+              <p className="text-sm font-semibold text-slate-700">Aún no agregaste productos</p>
+              <p className="mt-1 text-sm text-slate-500">Toca aquí para agregar el primero</p>
             </div>
           </button>
         ) : (
@@ -1619,354 +1520,195 @@ const Billing: React.FC<BillingProps> = ({
             {items.map((item, index) => {
               const hasError = invalidItemIndexes.has(index);
               return (
-                <div
+                <Card
                   key={`item-${index}-${item.product_id ?? 'new'}`}
                   ref={(el) => {
                     itemRefs.current[index] = el;
                   }}
-                  className={`bg-white rounded-[28px] shadow-sm border p-4 flex items-center gap-3 animate-in slide-in-from-left duration-300 transition-colors ${
-                    hasError ? 'border-red-400 ring-2 ring-red-100' : 'border-slate-100'
-                  }`}
+                  tone={hasError ? 'danger' : 'default'}
+                  className="flex items-center gap-3 p-4"
                 >
-                  <div className="shrink-0 w-14 text-center">
-                    <p className="text-lg font-black text-slate-800 leading-none">
-                      {item.quantity}
-                    </p>
-                    <p className="text-[9px] font-black text-slate-400 uppercase mt-1">
-                      {unitLabel(item.unit)}
-                    </p>
+                  <div className="w-16 shrink-0 text-center">
+                    <p className="text-lg font-bold leading-none text-slate-900">{item.quantity}</p>
+                    <p className="mt-1 truncate text-xs text-slate-500">{unitLabel(item.unit)}</p>
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-slate-800 text-sm uppercase truncate">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">
                       {item.description || 'Sin nombre'}
                     </p>
-                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                    <p className="mt-0.5 text-xs text-slate-500">
                       S/ {Number(item.sale_price).toFixed(2)} c/u · {igvTypeLabel(item.igv_type)}
                     </p>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <p className="text-sm font-black text-blue-600">
+                    <p className="text-sm font-bold text-slate-900">
                       S/ {Number(lineOf(index)?.total ?? item.total).toFixed(2)}
                     </p>
-                    <div className="flex items-center gap-1 mt-1 justify-end">
-                      <button
+                    <div className="mt-1 flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => openEditProduct(index)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        aria-label={`Editar ${item.description || 'producto'}`}
                       >
-                        <Pencil size={15} />
-                      </button>
-                      <button
+                        <Pencil size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => removeItem(index)}
-                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        aria-label={`Quitar ${item.description || 'producto'}`}
                       >
-                        <Trash2 size={15} />
-                      </button>
+                        <Trash2 size={16} />
+                      </Button>
                     </div>
                   </div>
-                </div>
+                </Card>
               );
             })}
 
-            <button
-              onClick={openNewProduct}
-              className="w-full border-2 border-dashed border-blue-200 text-blue-600 rounded-[24px] py-4 flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest active:scale-[0.99] transition-all"
-            >
+            <Button variant="outline" fullWidth onClick={openNewProduct}>
               <Plus size={16} /> Agregar otro producto
-            </button>
+            </Button>
           </div>
         )}
       </section>
 
-      <section className="bg-gradient-to-br from-slate-50 to-white p-6 rounded-[40px] shadow-xl shadow-slate-200/30 border border-slate-100 mx-1 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -translate-y-16 translate-x-16 opacity-50" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-50 rounded-full translate-y-12 -translate-x-12 opacity-30" />
+      <Card className="p-5">
+        <h3 className="mb-4 text-base font-semibold text-slate-900">Resumen de venta</h3>
 
-        <div className="relative z-10">
-          <div className="text-center mb-6">
-            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">
-              Resumen de Venta
-            </h3>
-            <div className="w-16 h-0.5 bg-gradient-to-r from-blue-500 to-emerald-500 mx-auto rounded-full" />
-          </div>
-
-          <div className="space-y-4 mb-6">
-            <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm font-bold text-slate-600">Op. Gravadas</span>
-              <span className="text-sm font-black text-slate-800">S/ {gravada.toFixed(2)}</span>
-            </div>
-
-            {exonerada > 0 && (
-              <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                <span className="text-sm font-bold text-slate-600">Op. Exoneradas</span>
-                <span className="text-sm font-black text-slate-800">S/ {exonerada.toFixed(2)}</span>
-              </div>
-            )}
-
-            {inafecta > 0 && (
-              <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                <span className="text-sm font-bold text-slate-600">Op. Inafectas</span>
-                <span className="text-sm font-black text-slate-800">S/ {inafecta.toFixed(2)}</span>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm font-bold text-slate-600">IGV (18%)</span>
-              <span className="text-sm font-black text-blue-600">S/ {igvTotal.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {showUsage && (
-            <div
-              className={`flex items-center justify-between rounded-2xl px-4 py-3 mb-4 border ${
-                lowOnQuota
-                  ? 'bg-amber-50 border-amber-100 text-amber-700'
-                  : 'bg-slate-50 border-slate-100 text-slate-500'
-              }`}
-            >
-              <span className="text-[11px] font-black uppercase tracking-wide">
-                Comprobantes de este mes
-              </span>
-              <span className="text-[11px] font-black">
-                Te quedan {usage.remaining} de {usage.limit}
-              </span>
-            </div>
-          )}
-
-          {totalsFailed && (
-            <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4 text-left">
-              <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
-              {/* El motivo tal cual lo manda el backend: muchas veces es una regla que el
-                  cajero puede corregir, y un texto generico lo manda a buscar donde no esta. */}
-              <p className="text-[11px] font-bold text-red-700 leading-snug">
-                {totalsError ?? 'No se pudo calcular el total.'} Sin total no se puede emitir.
-              </p>
-            </div>
-          )}
-
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-[28px] text-white mb-6 shadow-lg shadow-blue-200/50">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-blue-100 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
-                  Total a Pagar
-                </p>
-                <p className="text-3xl font-black tracking-tight">
-                  {hasTotals
-                    ? `S/ ${total.toFixed(2)}`
-                    : isCalculatingTotals
-                      ? 'Calculando…'
-                      : 'S/ —'}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={handleOpenDraftConfirm}
-              disabled={isSavingDraft || isEmitting || items.length === 0}
-              className="w-full bg-slate-200 text-slate-600 h-12 rounded-[20px] font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isSavingDraft ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <Layers size={18} />
-              )}
-              Guardar como Borrador
-            </button>
-
-            <button
-              onClick={handleOpenConfirm}
-              className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white h-16 rounded-[24px] shadow-xl shadow-emerald-200/50 font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-emerald-700"
-            >
-              <CheckCircle2 size={22} /> Emitir Documento
-            </button>
-          </div>
+        <div className="mb-4">
+          <AmountLine label="Op. Gravadas" amount={gravada} />
+          {exonerada > 0 && <AmountLine label="Op. Exoneradas" amount={exonerada} />}
+          {inafecta > 0 && <AmountLine label="Op. Inafectas" amount={inafecta} />}
+          <AmountLine label="IGV (18%)" amount={igvTotal} />
         </div>
-      </section>
+
+        {showUsage && (
+          <div
+            className={`mb-4 flex items-center justify-between gap-3 rounded-card border px-4 py-3 text-sm ${
+              lowOnQuota
+                ? 'border-warning/30 bg-warning/10 text-warning'
+                : 'border-slate-200 bg-slate-50 text-slate-600'
+            }`}
+          >
+            <span>Comprobantes de este mes</span>
+            <span className="font-semibold">
+              Te quedan {usage.remaining} de {usage.limit}
+            </span>
+          </div>
+        )}
+
+        {totalsFailed && (
+          <div className="mb-4">
+            {/* El motivo tal cual lo manda el backend: muchas veces es una regla que el
+                cajero puede corregir, y un texto generico lo manda a buscar donde no esta. */}
+            <Notice tone="danger">
+              {totalsError ?? 'No se pudo calcular el total.'} Sin total no se puede emitir.
+            </Notice>
+          </div>
+        )}
+
+        <div className="mb-6 rounded-card bg-primary p-5 text-white">
+          <p className="mb-1 text-sm text-white/70">Total a pagar</p>
+          <p className="text-3xl font-bold tracking-tight">
+            {hasTotals ? `S/ ${total.toFixed(2)}` : isCalculatingTotals ? 'Calculando…' : 'S/ —'}
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <Button
+            variant="outline"
+            fullWidth
+            onClick={handleOpenDraftConfirm}
+            loading={isSavingDraft}
+            disabled={isEmitting || items.length === 0}
+          >
+            {!isSavingDraft && <Layers size={18} />} Guardar como borrador
+          </Button>
+
+          <Button variant="success" size="lg" fullWidth onClick={handleOpenConfirm}>
+            <CheckCircle2 size={22} /> Emitir documento
+          </Button>
+        </div>
+      </Card>
 
       {showConfirmModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40">
-          <div className="bg-white w-full max-w-sm rounded-[44px] shadow-2xl p-8 text-center animate-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[32px] flex items-center justify-center mx-auto mb-6">
-              <AlertTriangle size={40} />
-            </div>
+        <Modal
+          title="¿Confirmar venta?"
+          icon={<AlertTriangle size={28} />}
+          iconTone="accent"
+          description={
+            <>
+              Está por emitir una{' '}
+              <span className="font-semibold text-slate-900">{invoiceType}</span> oficial ante
+              SUNAT. Revisa los datos antes de confirmar.
+            </>
+          }
+          onClose={() => setShowConfirmModal(false)}
+        >
+          <SaleSummary
+            clientName={clientData.name}
+            itemCount={items.length}
+            gravada={gravada}
+            exonerada={exonerada}
+            inafecta={inafecta}
+            igv={igvTotal}
+            total={total}
+          />
 
-            <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2 uppercase tracking-tighter">
-              ¿Confirmar Venta?
-            </h3>
-
-            <p className="text-slate-500 text-xs font-medium mb-6 leading-relaxed">
-              Está por emitir una <span className="text-blue-600 font-black">{invoiceType}</span>{' '}
-              oficial ante SUNAT. Revisa los datos antes de confirmar.
-            </p>
-
-            <div className="bg-slate-50 rounded-[24px] p-5 mb-8 space-y-2 text-left">
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">
-                  Cliente
+          {exoneratedItems.length > 0 && (
+            <div className="mb-6 text-left">
+              <Notice tone="warning">
+                {exoneratedItems.length === 1
+                  ? '1 producto sin IGV: '
+                  : `${exoneratedItems.length} productos sin IGV: `}
+                <span className="font-semibold">
+                  {exoneratedItems.map((item) => item.description || 'Sin nombre').join(', ')}
                 </span>
-                <span className="text-xs font-black text-slate-700 truncate">
-                  {clientData.name || '—'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Productos</span>
-                <span className="text-xs font-black text-slate-700">{items.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Op. Gravadas</span>
-                <span className="text-xs font-black text-slate-700">S/ {gravada.toFixed(2)}</span>
-              </div>
-              {exonerada > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">
-                    Op. Exoneradas
-                  </span>
-                  <span className="text-xs font-black text-slate-700">
-                    S/ {exonerada.toFixed(2)}
-                  </span>
-                </div>
-              )}
-              {inafecta > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">
-                    Op. Inafectas
-                  </span>
-                  <span className="text-xs font-black text-slate-700">
-                    S/ {inafecta.toFixed(2)}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
-                <span className="text-xs font-black text-slate-700">S/ {igvTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Total</span>
-                <span className="text-sm font-black text-blue-600">S/ {total.toFixed(2)}</span>
-              </div>
+              </Notice>
             </div>
+          )}
 
-            {exoneratedItems.length > 0 && (
-              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-6 text-left">
-                <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] font-bold text-amber-700 leading-snug">
-                  {exoneratedItems.length === 1
-                    ? '1 producto sin IGV: '
-                    : `${exoneratedItems.length} productos sin IGV: `}
-                  <span className="font-black">
-                    {exoneratedItems.map((item) => item.description || 'Sin nombre').join(', ')}
-                  </span>
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleFinalEmit}
-                className="w-full bg-slate-900 text-white py-5 rounded-[22px] font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 active:scale-95 transition-all"
-              >
-                Confirmar Emisión
-              </button>
-
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="w-full bg-white border border-slate-100 text-slate-400 py-5 rounded-[22px] font-black text-xs uppercase tracking-widest active:bg-slate-50 transition-all"
-              >
-                Revisar Datos
-              </button>
-            </div>
+          <div className="flex flex-col gap-2">
+            <Button variant="secondary" fullWidth onClick={handleFinalEmit}>
+              Confirmar emisión
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => setShowConfirmModal(false)}>
+              Revisar datos
+            </Button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {showDraftConfirmModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40">
-          <div className="bg-white w-full max-w-sm rounded-[44px] shadow-2xl p-8 text-center animate-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-slate-100 text-slate-600 rounded-[32px] flex items-center justify-center mx-auto mb-6">
-              <Layers size={40} />
-            </div>
+        <Modal
+          title="¿Guardar como borrador?"
+          icon={<Layers size={28} />}
+          description="Se guardará sin emitir a SUNAT. Podrás editarlo y emitirlo después."
+          onClose={() => setShowDraftConfirmModal(false)}
+        >
+          <SaleSummary
+            clientName={clientData.name}
+            itemCount={items.length}
+            gravada={gravada}
+            exonerada={exonerada}
+            inafecta={inafecta}
+            igv={igvTotal}
+            total={total}
+          />
 
-            <h3 className="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tighter">
-              ¿Guardar como borrador?
-            </h3>
-
-            <p className="text-slate-500 text-xs font-medium mb-6 leading-relaxed">
-              Se guardará sin emitir a SUNAT. Podrás editarlo y emitirlo después.
-            </p>
-
-            <div className="bg-slate-50 rounded-[24px] p-5 mb-8 space-y-2 text-left">
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">
-                  Cliente
-                </span>
-                <span className="text-xs font-black text-slate-700 truncate">
-                  {clientData.name || '—'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Productos</span>
-                <span className="text-xs font-black text-slate-700">{items.length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Op. Gravadas</span>
-                <span className="text-xs font-black text-slate-700">S/ {gravada.toFixed(2)}</span>
-              </div>
-              {exonerada > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">
-                    Op. Exoneradas
-                  </span>
-                  <span className="text-xs font-black text-slate-700">
-                    S/ {exonerada.toFixed(2)}
-                  </span>
-                </div>
-              )}
-              {inafecta > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">
-                    Op. Inafectas
-                  </span>
-                  <span className="text-xs font-black text-slate-700">
-                    S/ {inafecta.toFixed(2)}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">IGV (18%)</span>
-                <span className="text-xs font-black text-slate-700">S/ {igvTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Total</span>
-                <span className="text-sm font-black text-blue-600">S/ {total.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={handleSaveDraft}
-                disabled={isSavingDraft}
-                className="w-full bg-slate-900 text-white py-5 rounded-[22px] font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 active:scale-95 transition-all disabled:opacity-40"
-              >
-                Guardar borrador
-              </button>
-
-              <button
-                onClick={() => setShowDraftConfirmModal(false)}
-                className="w-full bg-white border border-slate-100 text-slate-400 py-5 rounded-[22px] font-black text-xs uppercase tracking-widest active:bg-slate-50 transition-all"
-              >
-                Revisar datos
-              </button>
-            </div>
+          <div className="flex flex-col gap-2">
+            <Button variant="secondary" fullWidth onClick={handleSaveDraft} loading={isSavingDraft}>
+              Guardar borrador
+            </Button>
+            <Button variant="outline" fullWidth onClick={() => setShowDraftConfirmModal(false)}>
+              Revisar datos
+            </Button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {productModal.open && (

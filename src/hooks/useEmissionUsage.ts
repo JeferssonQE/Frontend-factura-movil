@@ -12,7 +12,9 @@ import type { EmissionUsage } from '../types';
  *
  * Se vuelve a pedir despues de emitir, que es lo unico que lo mueve.
  */
-export const useEmissionUsage = (): {
+export const useEmissionUsage = (
+  senderId?: number,
+): {
   usage: EmissionUsage | null;
   refresh: () => Promise<void>;
 } => {
@@ -20,13 +22,13 @@ export const useEmissionUsage = (): {
 
   const refresh = useCallback(async () => {
     try {
-      setUsage(await senderService.getEmissionUsage());
+      setUsage(await senderService.getEmissionUsage(senderId));
     } catch {
       // Es informativo: si no se puede leer, no se muestra. Lo que no se puede fallar es el
       // bloqueo, y ese lo decide el backend al emitir.
       setUsage(null);
     }
-  }, []);
+  }, [senderId]);
 
   useEffect(() => {
     void refresh();
