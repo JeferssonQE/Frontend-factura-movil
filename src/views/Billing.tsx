@@ -28,8 +28,6 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useRef, useState } from 'react';
 import ProductFormModal from '../components/ProductFormModal';
-import { emissionProgress } from '../config/emissionProgress';
-import { getSunatError } from '../config/sunatErrors';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import { useEmissionUsage } from '../hooks/useEmissionUsage';
 import { useInvoicePreview } from '../hooks/useInvoicePreview';
@@ -190,8 +188,6 @@ const Billing: React.FC<BillingProps> = ({
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [emissionState, setEmissionState] = useState<EmissionState>(null);
-  const [emissionCurrentStep, setEmissionCurrentStep] = useState<string | null>(null);
-  const [emissionFailedStep, setEmissionFailedStep] = useState<string | null>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
 
@@ -559,7 +555,6 @@ const Billing: React.FC<BillingProps> = ({
         } else if (statusData.status === InvoiceStatus.FALLO) {
           stopPolling();
           setSunatMessage(statusData.sunat_message);
-          setEmissionFailedStep(statusData.sunat_failed_step);
           if (onRefresh) await onRefresh();
           setEmissionState('fallo');
         } else if (statusData.status === InvoiceStatus.BORRADOR) {
@@ -567,8 +562,6 @@ const Billing: React.FC<BillingProps> = ({
           setSunatMessage(statusData.sunat_message);
           if (onRefresh) await onRefresh();
           setEmissionState('prueba');
-        } else {
-          setEmissionCurrentStep(statusData.current_step);
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
@@ -589,8 +582,6 @@ const Billing: React.FC<BillingProps> = ({
   const handleRetry = async () => {
     if (!emissionSuccess?.id) return;
     setEmissionState('processing');
-    setEmissionCurrentStep(null);
-    setEmissionFailedStep(null);
     setSunatMessage(null);
     setNumeroComprobante(null);
     try {
@@ -618,8 +609,6 @@ const Billing: React.FC<BillingProps> = ({
     setErrors([]);
     setEmissionStep(0);
     setEmissionState(null);
-    setEmissionCurrentStep(null);
-    setEmissionFailedStep(null);
     setSunatMessage(null);
     setNumeroComprobante(null);
     setIaWarning(null);
@@ -746,11 +735,9 @@ const Billing: React.FC<BillingProps> = ({
         total,
         status: InvoiceStatus.BORRADOR,
         task_id: null,
-        pdf_url: null,
+        pdf_ticket_url: null,
         pdf_a4_url: null,
         sunat_message: null,
-        sunat_failed_step: null,
-        sunat_current_step: null,
         referenced_invoice_id: null,
         credit_note_reason: null,
         credit_note_sustento: null,
@@ -802,11 +789,9 @@ const Billing: React.FC<BillingProps> = ({
         total,
         status: InvoiceStatus.BORRADOR,
         task_id: null,
-        pdf_url: null,
+        pdf_ticket_url: null,
         pdf_a4_url: null,
         sunat_message: null,
-        sunat_failed_step: null,
-        sunat_current_step: null,
         referenced_invoice_id: null,
         credit_note_reason: null,
         credit_note_sustento: null,
@@ -860,8 +845,6 @@ const Billing: React.FC<BillingProps> = ({
   };
 
   if (emissionState !== null) {
-    const progress = emissionProgress(emissionCurrentStep);
-    const failInfo = getSunatError(emissionFailedStep);
     return (
       <div className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center animate-in fade-in duration-500">
         {/* ── PROCESANDO ── */}
@@ -879,20 +862,12 @@ const Billing: React.FC<BillingProps> = ({
               </p>
             )}
 
-            <div className="w-full max-w-xs mb-10">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">
-                  {progress.label}
-                </span>
-                <span className="text-[11px] font-black text-slate-400">{progress.percent}%</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${progress.percent}%` }}
-                />
-              </div>
-            </div>
+            {/* Aqui habia una barra de porcentaje. El numero venia del paso que reportaba
+                el scraper mientras navegaba el portal; Factu API responde de una vez y no
+                hay avance que medir. Una barra que avanza sola es una promesa inventada. */}
+            <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-10">
+              Procesando en SUNAT
+            </p>
 
             <div className="w-full max-w-xs">
               <button
@@ -974,10 +949,14 @@ const Billing: React.FC<BillingProps> = ({
               <XCircle size={56} strokeWidth={2} />
             </div>
             <h2 className="text-2xl font-black uppercase tracking-tight mb-3 text-red-600">
-              {failInfo.title}
+              No se pudo emitir
             </h2>
+            {/* El motivo lo redacta el backend para que el usuario lo lea. Antes esto salia
+                de un mapa por paso del scraper y, sin paso que buscar, siempre caia en
+                "intenta de nuevo en unos segundos": el motivo de verdad llegaba, se
+                guardaba en sunatMessage y no se pintaba en ninguna parte. */}
             <p className="text-slate-500 text-sm leading-relaxed mb-10 max-w-xs">
-              {failInfo.message}
+              {sunatMessage || 'Intenta de nuevo en unos segundos.'}
             </p>
 
             <div className="w-full space-y-3 max-w-xs">

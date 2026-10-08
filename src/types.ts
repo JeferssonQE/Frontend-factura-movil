@@ -180,11 +180,9 @@ export interface Invoice {
   status: InvoiceStatus;
   task_id: string | null;
   // Los dos formatos, como link: el archivo ya no viaja dentro de la factura.
-  pdf_url: string | null;
+  pdf_ticket_url: string | null;
   pdf_a4_url: string | null;
   sunat_message: string | null;
-  sunat_failed_step: string | null;
-  sunat_current_step: string | null;
   referenced_invoice_id: number | null;
   credit_note_reason: CreditNoteReason | null;
   credit_note_sustento: string | null;

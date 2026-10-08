@@ -59,9 +59,9 @@ const HistoryPage: React.FC = () => {
         procesandoIds.map(async (id) => {
           try {
             const s = await invoiceService.getInvoiceStatus(id, activeSenderId ?? undefined);
-            if (s.status === InvoiceStatus.PROCESANDO) {
-              patchInvoice(id, { sunat_current_step: s.current_step });
-            } else {
+            // Mientras siga PROCESANDO no hay nada que anotar: el proveedor no reporta
+            // avance, solo el veredicto. Se sigue sondeando hasta que cambie de estado.
+            if (s.status !== InvoiceStatus.PROCESANDO) {
               statusChanged = true;
             }
           } catch {

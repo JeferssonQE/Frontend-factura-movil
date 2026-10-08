@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { emissionProgress } from '../config/emissionProgress';
 import { pdfCache } from '../services/business/pdfCache';
 import { PDFService } from '../services/integrations/pdfService';
 import { CreditNoteReason, type Invoice, InvoiceStatus, InvoiceType } from '../types';
@@ -58,99 +57,15 @@ interface HistoryProps {
   onRefresh: () => void;
 }
 
-interface FailedStepConfig {
-  label: string;
-  hint: string;
-  isWarning: boolean;
-  icon: React.ReactNode;
-}
-
-const FAILED_STEP_CONFIG: Record<string, FailedStepConfig> = {
-  login: {
-    label: 'Credenciales SUNAT incorrectas',
-    hint: 'Verifique su usuario y clave SUNAT en el perfil.',
-    isWarning: false,
-    icon: <KeyRound size={14} />,
-  },
-  buscar_emision: {
-    label: 'No se pudo abrir el formulario SUNAT',
-    hint: 'El portal SUNAT no respondió al iniciar la emisión. Reintente en unos segundos.',
-    isWarning: false,
-    icon: <Search size={14} />,
-  },
-  abrir_busqueda: {
-    label: 'No se pudo abrir el formulario SUNAT',
-    hint: 'El portal SUNAT no respondió al iniciar la emisión. Reintente en unos segundos.',
-    isWarning: false,
-    icon: <Search size={14} />,
-  },
-  cliente: {
-    label: 'No se pudo cargar el cliente',
-    hint: 'Verifique el documento (DNI/RUC) del cliente y reintente.',
-    isWarning: false,
-    icon: <UserX size={14} />,
-  },
-  fecha: {
-    label: 'Error con la fecha de emisión',
-    hint: 'SUNAT no aceptó la fecha del comprobante. Reintente.',
-    isWarning: false,
-    icon: <CalendarX size={14} />,
-  },
-  agregar_producto: {
-    label: 'Error al cargar los productos',
-    hint: 'Uno o más productos no pudieron cargarse en el portal SUNAT.',
-    isWarning: false,
-    icon: <PackageX size={14} />,
-  },
-  productos: {
-    label: 'Error al cargar los productos',
-    hint: 'Uno o más productos no pudieron cargarse en el portal SUNAT.',
-    isWarning: false,
-    icon: <PackageX size={14} />,
-  },
-  validar_total: {
-    label: 'El total no coincide con SUNAT',
-    hint: 'El monto calculado no coincide con el del portal. Revise los importes y reintente.',
-    isWarning: false,
-    icon: <Calculator size={14} />,
-  },
-  obtener_numero: {
-    label: 'Emitido — número no recibido',
-    hint: 'El comprobante pudo haberse emitido en SUNAT. Verifique en el portal antes de reintentar.',
-    isWarning: true,
-    icon: <AlertTriangle size={14} />,
-  },
-  completar_emision: {
-    label: 'Error al confirmar en SUNAT',
-    hint: 'El portal SUNAT no respondió al confirmar la emisión. Reintente.',
-    isWarning: false,
-    icon: <FileX size={14} />,
-  },
-  descargar_pdf: {
-    label: 'Emitido — PDF no disponible',
-    hint: 'El comprobante pudo haberse emitido en SUNAT. Verifique manualmente en el portal antes de reintentar.',
-    isWarning: true,
-    icon: <AlertTriangle size={14} />,
-  },
-  tarea_perdida: {
-    label: 'Emisión sin confirmar',
-    hint: 'Se perdió el rastro de esta emisión. Búsquela en el portal de SUNAT antes de volver a emitirla.',
-    isWarning: true,
-    icon: <AlertTriangle size={14} />,
-  },
-  desconocido: {
-    label: 'Error inesperado',
-    hint: 'Ocurrió un error no esperado. Si el problema persiste, contacte soporte.',
-    isWarning: false,
-    icon: <HelpCircle size={14} />,
-  },
-};
-
-const normalizeFailedStep = (step: string | null | undefined): string =>
-  (step ?? '').replace(/^(boleta|factura)_/, '');
-
-const getFailedStepConfig = (step: string | null | undefined): FailedStepConfig =>
-  FAILED_STEP_CONFIG[normalizeFailedStep(step)] ?? FAILED_STEP_CONFIG.desconocido;
+// Un FALLO solo puede significar una cosa: el comprobante no llego a SUNAT. El porque lo
+// dice `sunat_message`, que el backend redacta para que el usuario lo lea.
+//
+// Aqui vivia un mapa con un caso por cada paso del scraper -login, cargar cliente, validar
+// total, descargar PDF-. Con el scraper retirado el proveedor dejo de reportar pasos, el
+// mapa caia siempre en "Error inesperado", y el mensaje de verdad quedaba escondido abajo
+// como "detalle tecnico".
+const FALLO_TITULO = 'No se emitió';
+const FALLO_AYUDA = 'El comprobante no llegó a SUNAT. Puedes volver a intentarlo.';
 
 export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
   const styles: Record<InvoiceStatus, string> = {
@@ -173,15 +88,19 @@ export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => 
   );
 };
 
-const ProcessingRing: React.FC<{ percent: number }> = ({ percent }) => {
+/** Gira mientras el proveedor responde.
+ *
+ * Antes marcaba un porcentaje, que salia del paso que reportaba el scraper mientras
+ * navegaba el portal. Factu API responde de una vez: no hay avance que medir, y un
+ * porcentaje inventado dice algo que nadie sabe.
+ */
+const ProcessingRing: React.FC = () => {
   const radius = 18;
   const circumference = 2 * Math.PI * radius;
-  const clamped = Math.min(Math.max(percent, 0), 100);
-  const offset = circumference * (1 - clamped / 100);
 
   return (
     <div className="relative w-12 h-12 shrink-0">
-      <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+      <svg className="w-12 h-12 animate-spin" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="4" />
         <circle
           cx="24"
@@ -191,14 +110,9 @@ const ProcessingRing: React.FC<{ percent: number }> = ({ percent }) => {
           stroke="#2B7FFF"
           strokeWidth="4"
           strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-700 ease-out"
+          strokeDasharray={`${circumference * 0.3} ${circumference}`}
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-blue-600">
-        {clamped}%
-      </span>
     </div>
   );
 };
@@ -337,7 +251,7 @@ const History: React.FC<HistoryProps> = ({
             >
               <div className="flex items-center gap-4 min-w-0">
                 {invoice.status === InvoiceStatus.PROCESANDO ? (
-                  <ProcessingRing percent={emissionProgress(invoice.sunat_current_step).percent} />
+                  <ProcessingRing />
                 ) : (
                   <div
                     className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
@@ -368,26 +282,15 @@ const History: React.FC<HistoryProps> = ({
                   </div>
                   {invoice.status === InvoiceStatus.PROCESANDO && (
                     <p className="text-[9px] font-black text-blue-600 uppercase tracking-tight mt-1">
-                      {emissionProgress(invoice.sunat_current_step).label}
+                      Procesando en SUNAT
                     </p>
                   )}
                   {invoice.status === InvoiceStatus.FALLO && (
                     <div className="flex items-center gap-1 mt-1">
-                      {(() => {
-                        const cfg = getFailedStepConfig(invoice.sunat_failed_step);
-                        return (
-                          <span
-                            className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full border ${
-                              cfg.isWarning
-                                ? 'text-amber-700 bg-amber-50 border-amber-200'
-                                : 'text-red-600 bg-red-50 border-red-100'
-                            }`}
-                          >
-                            {cfg.icon}
-                            {cfg.label}
-                          </span>
-                        );
-                      })()}
+                      <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full border text-red-600 bg-red-50 border-red-100">
+                        <FileX size={14} />
+                        {FALLO_TITULO}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -568,58 +471,26 @@ const History: React.FC<HistoryProps> = ({
                 </div>
               </div>
 
-              {selectedInvoice.status === InvoiceStatus.FALLO &&
-                (() => {
-                  const cfg = getFailedStepConfig(selectedInvoice.sunat_failed_step);
-                  return (
-                    <div
-                      className={`rounded-[24px] overflow-hidden border ${
-                        cfg.isWarning ? 'border-amber-200' : 'border-red-100'
-                      }`}
-                    >
-                      <div
-                        className={`flex items-center gap-2.5 px-5 py-3.5 ${
-                          cfg.isWarning ? 'bg-amber-50' : 'bg-red-50'
-                        }`}
-                      >
-                        <span
-                          className={`shrink-0 ${cfg.isWarning ? 'text-amber-600' : 'text-red-500'}`}
-                        >
-                          {cfg.icon}
-                        </span>
-                        <div className="flex-1">
-                          <p
-                            className={`text-[11px] font-black uppercase tracking-tight leading-none ${
-                              cfg.isWarning ? 'text-amber-700' : 'text-red-700'
-                            }`}
-                          >
-                            {cfg.label}
-                          </p>
-                          <p
-                            className={`text-[10px] font-bold mt-0.5 leading-snug ${
-                              cfg.isWarning ? 'text-amber-600' : 'text-red-500'
-                            }`}
-                          >
-                            {cfg.hint}
-                          </p>
-                        </div>
-                        <span className="text-[9px] font-mono text-slate-400 select-all shrink-0">
-                          #{selectedInvoice.id}
-                        </span>
-                      </div>
-                      {selectedInvoice.sunat_message && (
-                        <div className="bg-white px-5 py-3 border-t border-dashed border-slate-100">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                            Detalle técnico
-                          </p>
-                          <p className="text-[10px] font-mono text-slate-500 leading-relaxed break-words">
-                            {selectedInvoice.sunat_message}
-                          </p>
-                        </div>
-                      )}
+              {selectedInvoice.status === InvoiceStatus.FALLO && (
+                <div className="rounded-[24px] overflow-hidden border border-red-100">
+                  <div className="flex items-center gap-2.5 px-5 py-3.5 bg-red-50">
+                    <span className="shrink-0 text-red-500">
+                      <FileX size={14} />
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-black uppercase tracking-tight leading-none text-red-700">
+                        {FALLO_TITULO}
+                      </p>
+                      <p className="text-[10px] font-bold mt-0.5 leading-snug text-red-500">
+                        {selectedInvoice.sunat_message || FALLO_AYUDA}
+                      </p>
                     </div>
-                  );
-                })()}
+                    <span className="text-[9px] font-mono text-slate-400 select-all shrink-0">
+                      #{selectedInvoice.id}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {showReasonSelect ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 px-2 print:hidden">
@@ -758,45 +629,33 @@ const History: React.FC<HistoryProps> = ({
 
                   {(selectedInvoice.status === InvoiceStatus.BORRADOR ||
                     selectedInvoice.status === InvoiceStatus.FALLO) && (
-                    <>
-                      {selectedInvoice.status === InvoiceStatus.FALLO &&
-                        selectedInvoice.sunat_failed_step === 'descargar_pdf' && (
-                          <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-                            <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-                            <p className="text-[10px] font-bold text-amber-700 leading-snug">
-                              Este comprobante puede ya estar emitido en SUNAT. Verifique en el
-                              portal antes de reintentar.
-                            </p>
-                          </div>
-                        )}
-                      <button
-                        onClick={async () => {
-                          setIsEmittingDraft(true);
-                          await onEmitDraft(selectedInvoice.id);
-                          setIsEmittingDraft(false);
-                          setSelectedInvoice(null);
-                        }}
-                        disabled={isEmittingDraft}
-                        className={`w-full text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
-                          selectedInvoice.status === InvoiceStatus.FALLO
-                            ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-200/50'
-                            : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-200/50'
-                        }`}
-                      >
-                        {isEmittingDraft ? (
-                          <Loader2 size={18} className="animate-spin" />
-                        ) : selectedInvoice.status === InvoiceStatus.FALLO ? (
-                          <RefreshCw size={18} />
-                        ) : (
-                          <Zap size={18} />
-                        )}
-                        {isEmittingDraft
-                          ? 'Enviando a SUNAT...'
-                          : selectedInvoice.status === InvoiceStatus.FALLO
-                            ? 'Reintentar SUNAT'
-                            : 'Emitir a SUNAT'}
-                      </button>
-                    </>
+                    <button
+                      onClick={async () => {
+                        setIsEmittingDraft(true);
+                        await onEmitDraft(selectedInvoice.id);
+                        setIsEmittingDraft(false);
+                        setSelectedInvoice(null);
+                      }}
+                      disabled={isEmittingDraft}
+                      className={`w-full text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
+                        selectedInvoice.status === InvoiceStatus.FALLO
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-200/50'
+                          : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-200/50'
+                      }`}
+                    >
+                      {isEmittingDraft ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : selectedInvoice.status === InvoiceStatus.FALLO ? (
+                        <RefreshCw size={18} />
+                      ) : (
+                        <Zap size={18} />
+                      )}
+                      {isEmittingDraft
+                        ? 'Enviando a SUNAT...'
+                        : selectedInvoice.status === InvoiceStatus.FALLO
+                          ? 'Reintentar SUNAT'
+                          : 'Emitir a SUNAT'}
+                    </button>
                   )}
 
                   {(selectedInvoice.status === InvoiceStatus.BORRADOR ||
