@@ -47,7 +47,7 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
 
       <div className="mt-7 h-5 flex items-center justify-center overflow-hidden">
         <span
-          className="text-[10px] font-medium tracking-[4px] uppercase text-blue-600"
+          className="text-sm font-medium tracking-wide text-slate-600"
           style={{
             animation:
               animClass === 'in'
@@ -63,7 +63,7 @@ export default function LoadingScreen({ message }: LoadingScreenProps) {
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="block w-1 h-1 rounded-full bg-blue-500"
+            className="block size-1 rounded-full bg-accent"
             style={{ animation: `fm-dot 3s ease-in-out ${i * 0.55}s infinite` }}
           />
         ))}

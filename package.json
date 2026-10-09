@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "biome check src vite.config.ts",
+    "lint": "biome check src vite.config.ts && npm run lint:text-sizes",
+    "lint:text-sizes": "node scripts/check-text-sizes.mjs",
     "lint:fix": "biome check --write src vite.config.ts",
     "format": "biome format --write src vite.config.ts",
     "typecheck": "tsc --noEmit"

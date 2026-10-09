@@ -30,10 +30,7 @@ const OfflineOverlay = () => {
         </div>
       </div>
 
-      <h2
-        className="relative mt-9 text-2xl font-extrabold tracking-tight text-white"
-        style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}
-      >
+      <h2 className="relative mt-9 text-2xl font-extrabold tracking-tight text-white">
         Sin conexión
       </h2>
 
@@ -42,8 +39,8 @@ const OfflineOverlay = () => {
         sesión.
       </p>
 
-      <div className="relative mt-9 flex items-center gap-2.5 text-white/45">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.15em]">Reconectando</span>
+      <div className="relative mt-9 flex items-center gap-2.5 text-white/60">
+        <span className="text-sm font-medium">Reconectando</span>
         <span className="flex gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.3s]" />
           <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.15s]" />

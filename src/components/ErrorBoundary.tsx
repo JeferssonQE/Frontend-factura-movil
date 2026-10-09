@@ -1,31 +1,27 @@
 import * as Sentry from '@sentry/react';
 import { RefreshCw } from 'lucide-react';
 import type React from 'react';
+import Button from './ui/Button';
 
 const ErrorFallback: React.FC = () => (
-  <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-8 text-center gap-6">
+  <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-50 px-8 text-center">
     <img
       src="/logo-icon.png"
       alt=""
-      className="w-16 h-16 opacity-90"
+      className="size-16 opacity-90"
       style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}
     />
     <div className="space-y-2">
-      <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight">
-        Algo salió mal
-      </p>
-      <p className="text-[11px] text-slate-400 font-medium leading-relaxed max-w-xs">
+      <p className="text-lg font-bold text-slate-900">Algo salió mal</p>
+      <p className="max-w-xs text-sm leading-relaxed text-slate-500">
         Tuvimos un problema inesperado. Nuestro equipo ya fue notificado. Intenta recargar la
         aplicación.
       </p>
     </div>
-    <button
-      onClick={() => window.location.reload()}
-      className="bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-transform"
-    >
-      <RefreshCw size={13} strokeWidth={3} />
+    <Button variant="secondary" onClick={() => window.location.reload()}>
+      <RefreshCw size={16} />
       Recargar
-    </button>
+    </Button>
   </div>
 );
 

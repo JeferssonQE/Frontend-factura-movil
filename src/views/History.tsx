@@ -1,34 +1,31 @@
 // views/History.tsx
 
 import {
-  AlertTriangle,
   ArrowDownLeft,
   ArrowLeftRight,
-  Calculator,
-  CalendarX,
-  CheckCircle2,
   CornerUpLeft,
   Download,
-  FileCheck,
   FileText,
   FileX,
-  HelpCircle,
-  KeyRound,
   Loader2,
+  type LucideIcon,
   MessageCircle,
-  PackageX,
   Printer,
   RefreshCw,
   Search,
   Share2,
-  ShieldCheck,
   Trash2,
-  UserX,
   X,
   Zap,
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import StatusBadge from '../components/StatusBadge';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Notice from '../components/ui/Notice';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { pdfCache } from '../services/business/pdfCache';
 import { PDFService } from '../services/integrations/pdfService';
 import { CreditNoteReason, type Invoice, InvoiceStatus, InvoiceType } from '../types';
@@ -67,25 +64,32 @@ interface HistoryProps {
 const FALLO_TITULO = 'No se emitió';
 const FALLO_AYUDA = 'El comprobante no llegó a SUNAT. Puedes volver a intentarlo.';
 
-export const StatusBadge: React.FC<{ status: InvoiceStatus }> = ({ status }) => {
-  const styles: Record<InvoiceStatus, string> = {
-    [InvoiceStatus.EMITIDO]: 'text-emerald-700 bg-emerald-100/60 border-emerald-200',
-    [InvoiceStatus.ANULADO]: 'text-slate-500 bg-slate-100 border-slate-200',
-    [InvoiceStatus.FALLO]: 'text-red-700 bg-red-100/60 border-red-200',
-    [InvoiceStatus.PROCESANDO]: 'text-amber-700 bg-amber-100/60 border-amber-200',
-    [InvoiceStatus.BORRADOR]: 'text-slate-400 bg-slate-50 border-slate-100',
-    [InvoiceStatus.ELIMINADO]: 'text-rose-400 bg-rose-50 border-rose-100 line-through',
-  };
+type TypeFilter = 'ALL' | InvoiceType;
 
-  return (
-    <div
-      className={`flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-tighter ${styles[status]}`}
-    >
-      {status === InvoiceStatus.EMITIDO && <CheckCircle2 size={10} />}
-      {status === InvoiceStatus.PROCESANDO && <Loader2 size={10} className="animate-spin" />}
-      {status}
-    </div>
-  );
+const INVOICE_TYPE_LABEL: Record<InvoiceType, string> = {
+  [InvoiceType.BOLETA]: 'Boleta',
+  [InvoiceType.FACTURA]: 'Factura',
+  [InvoiceType.NOTA_CREDITO]: 'Nota de crédito',
+};
+
+const FILTER_OPTIONS: { value: TypeFilter; label: string }[] = [
+  { value: 'ALL', label: 'Todos' },
+  { value: InvoiceType.BOLETA, label: 'Boletas' },
+  { value: InvoiceType.FACTURA, label: 'Facturas' },
+  ...(NOTA_CREDITO_ENABLED ? [{ value: InvoiceType.NOTA_CREDITO, label: 'Notas de crédito' }] : []),
+];
+
+const CREDIT_NOTE_REASONS = [
+  { id: CreditNoteReason.ANULACION_OPERACION, label: 'Anulación de operación' },
+  { id: CreditNoteReason.ANULACION_ERROR_RUC, label: 'Error en el RUC' },
+  { id: CreditNoteReason.CORRECCION_ERROR_DESCRIPCION, label: 'Error en descripción' },
+  { id: CreditNoteReason.DEVOLUCION_TOTAL, label: 'Devolución total' },
+];
+
+const TYPE_ICON_CLASSES: Record<InvoiceType, string> = {
+  [InvoiceType.BOLETA]: 'bg-accent/10 text-accent',
+  [InvoiceType.FACTURA]: 'bg-primary/10 text-primary',
+  [InvoiceType.NOTA_CREDITO]: 'bg-warning/10 text-warning',
 };
 
 /** Gira mientras el proveedor responde.
@@ -99,15 +103,22 @@ const ProcessingRing: React.FC = () => {
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="relative w-12 h-12 shrink-0">
-      <svg className="w-12 h-12 animate-spin" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+    <div className="relative size-12 shrink-0">
+      <svg className="size-12 animate-spin" viewBox="0 0 48 48" aria-hidden="true">
         <circle
           cx="24"
           cy="24"
           r={radius}
           fill="none"
-          stroke="#2B7FFF"
+          className="stroke-slate-200"
+          strokeWidth="4"
+        />
+        <circle
+          cx="24"
+          cy="24"
+          r={radius}
+          fill="none"
+          className="stroke-accent"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={`${circumference * 0.3} ${circumference}`}
@@ -116,6 +127,51 @@ const ProcessingRing: React.FC = () => {
     </div>
   );
 };
+
+type TileTone = 'primary' | 'neutral' | 'success';
+
+const TILE_TONE_CLASSES: Record<TileTone, string> = {
+  primary: 'bg-accent text-white',
+  neutral: 'bg-slate-100 text-slate-700',
+  success: 'bg-success/10 text-success',
+};
+
+interface ActionTileProps {
+  icon: LucideIcon;
+  label: string;
+  tone: TileTone;
+  loading: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}
+
+const ActionTile: React.FC<ActionTileProps> = ({
+  icon: Icon,
+  label,
+  tone,
+  loading,
+  disabled,
+  onClick,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`flex h-20 flex-1 flex-col items-center justify-center gap-1.5 rounded-control text-xs font-semibold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${TILE_TONE_CLASSES[tone]} ${
+      loading ? 'cursor-wait' : ''
+    }`}
+  >
+    {loading ? <Loader2 size={20} className="animate-spin" /> : <Icon size={20} />}
+    {label}
+  </button>
+);
+
+const AmountRow: React.FC<{ label: string; amount: number }> = ({ label, amount }) => (
+  <div className="flex justify-between text-sm text-white/70">
+    <span>{label}</span>
+    <span>S/ {amount.toFixed(2)}</span>
+  </div>
+);
 
 const History: React.FC<HistoryProps> = ({
   invoices,
@@ -126,7 +182,7 @@ const History: React.FC<HistoryProps> = ({
   onRefresh,
 }) => {
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<'ALL' | InvoiceType>('ALL');
+  const [filterType, setFilterType] = useState<TypeFilter>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedInvoicePdf, setSelectedInvoicePdf] = useState<string | null>(null);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
@@ -164,6 +220,17 @@ const History: React.FC<HistoryProps> = ({
     };
   }, [selectedInvoice?.id, activeSenderId]);
 
+  useEffect(() => {
+    if (!selectedInvoice) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setSelectedInvoice(null);
+      setShowReasonSelect(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [selectedInvoice]);
+
   const filtered = invoices.filter((invoice) => {
     const matchesSearch =
       invoice.client_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -181,86 +248,67 @@ const History: React.FC<HistoryProps> = ({
     setSelectedInvoice(null);
   };
 
+  const closeDetail = () => {
+    setSelectedInvoice(null);
+    setShowReasonSelect(false);
+  };
+
+  const canRetryOrEmit =
+    selectedInvoice?.status === InvoiceStatus.BORRADOR ||
+    selectedInvoice?.status === InvoiceStatus.FALLO;
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex gap-2">
-          <div className="relative group flex-1">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"
-              size={18}
-            />
-            <input
+          <div className="flex-1">
+            <Input
               type="text"
-              placeholder="Buscar por cliente o número..."
+              placeholder="Buscar por cliente o número"
+              aria-label="Buscar comprobante por cliente o número"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full bg-white border border-slate-100 rounded-[22px] py-4 pl-12 pr-4 shadow-sm text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500/10 transition-all outline-none"
+              icon={<Search size={18} />}
             />
           </div>
-          <button
+          <Button
+            variant="outline"
+            size="icon-lg"
             onClick={onRefresh}
-            className="bg-white border border-slate-100 text-slate-400 px-4 rounded-[22px] shadow-sm active:scale-95 transition-all hover:text-slate-600 shrink-0"
             aria-label="Actualizar historial"
           >
             <RefreshCw size={17} />
-          </button>
+          </Button>
         </div>
 
-        <div className="overflow-x-auto hide-scrollbar -mx-2 px-2">
-          <div className="flex gap-2 p-1.5 bg-slate-100/50 rounded-[24px] min-w-max">
-            {['ALL', 'BOLETA', 'FACTURA', ...(NOTA_CREDITO_ENABLED ? ['NOTA_CREDITO'] : [])].map(
-              (type) => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type as 'ALL' | InvoiceType)}
-                  className={`py-2.5 px-6 rounded-[18px] text-[10px] font-black uppercase tracking-tighter transition-all whitespace-nowrap ${
-                    filterType === type
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {type === 'ALL' ? 'Todos' : type.replace('_', ' ')}
-                </button>
-              ),
-            )}
-          </div>
-        </div>
+        <SegmentedControl
+          options={FILTER_OPTIONS}
+          value={filterType}
+          onChange={setFilterType}
+          aria-label="Filtrar por tipo de comprobante"
+        />
       </div>
 
       <div className="space-y-3 pb-24">
         {filtered.length === 0 ? (
-          <div className="py-20 text-center">
-            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-dashed border-slate-200">
-              <Search size={24} className="text-slate-200" />
-            </div>
-            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-              Sin registros encontrados
-            </p>
-          </div>
+          <Card dashed className="py-16 text-center">
+            <Search size={32} className="mx-auto mb-3 text-slate-300" />
+            <p className="text-sm text-slate-500">No se encontraron comprobantes.</p>
+          </Card>
         ) : (
           filtered.map((invoice) => (
-            <div
+            <button
+              type="button"
               key={invoice.id}
               onClick={() => setSelectedInvoice(invoice)}
-              className={`bg-white p-5 rounded-[32px] border shadow-sm flex items-center justify-between hover:border-blue-100 active:scale-[0.98] transition-all cursor-pointer ${
-                invoice.invoice_type === InvoiceType.NOTA_CREDITO
-                  ? 'border-amber-100 bg-amber-50/20'
-                  : 'border-slate-100'
-              }`}
+              className="flex w-full items-center justify-between gap-3 rounded-card border border-slate-200 bg-white p-4 text-left transition active:scale-[0.99]"
             >
-              <div className="flex items-center gap-4 min-w-0">
+              <div className="flex min-w-0 items-center gap-4">
                 {invoice.status === InvoiceStatus.PROCESANDO ? (
                   <ProcessingRing />
                 ) : (
                   <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                      invoice.invoice_type === InvoiceType.BOLETA
-                        ? 'bg-blue-50 text-blue-600'
-                        : invoice.invoice_type === InvoiceType.FACTURA
-                          ? 'bg-indigo-50 text-indigo-600'
-                          : 'bg-amber-100 text-amber-600'
-                    }`}
+                    className={`flex size-12 shrink-0 items-center justify-center rounded-control ${TYPE_ICON_CLASSES[invoice.invoice_type]}`}
                   >
                     {invoice.invoice_type === InvoiceType.NOTA_CREDITO ? (
                       <ArrowDownLeft size={20} />
@@ -271,429 +319,299 @@ const History: React.FC<HistoryProps> = ({
                 )}
 
                 <div className="min-w-0">
-                  <h4 className="text-[13px] font-black text-slate-800 uppercase truncate pr-2 tracking-tight">
+                  <h4 className="truncate pr-2 text-sm font-semibold text-slate-900">
                     {invoice.client_name}
                   </h4>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
                     <StatusBadge status={invoice.status} />
-                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                      {invoice.invoice_date}
-                    </span>
+                    <span className="text-xs text-slate-500">{invoice.invoice_date}</span>
                   </div>
-                  {invoice.status === InvoiceStatus.PROCESANDO && (
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-tight mt-1">
-                      Procesando en SUNAT
-                    </p>
-                  )}
                   {invoice.status === InvoiceStatus.FALLO && (
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full border text-red-600 bg-red-50 border-red-100">
-                        <FileX size={14} />
-                        {FALLO_TITULO}
-                      </span>
-                    </div>
+                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-danger">
+                      <FileX size={14} />
+                      {FALLO_TITULO}
+                    </p>
                   )}
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
-                <p
-                  className={`text-sm font-black tracking-tight ${
-                    invoice.invoice_type === InvoiceType.NOTA_CREDITO
-                      ? 'text-amber-600'
-                      : 'text-slate-900'
-                  }`}
-                >
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-bold text-slate-900">
                   S/ {Number(invoice.total).toFixed(2)}
                 </p>
-                <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">
+                <p className="text-xs text-slate-500">
                   {invoice.series}-{invoice.number}
                 </p>
                 {invoice.status === InvoiceStatus.EMITIDO && invoice.nro_comprobante_sunat && (
-                  <p className="text-[8px] text-blue-600 font-black uppercase tracking-widest">
+                  <p className="text-xs text-slate-500">
                     Nº SUNAT: {invoice.nro_comprobante_sunat}
                   </p>
                 )}
-                <p className="text-[7px] text-slate-300 font-mono tracking-wide">
-                  ID: {invoice.id}
-                </p>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>
 
       {selectedInvoice && (
-        <div className="fixed inset-0 bg-slate-900/40 z-[200] backdrop-blur-sm flex items-end animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[200] flex items-end bg-slate-900/40 backdrop-blur-sm">
           <div
             id="ticket-print"
-            className="bg-white w-full max-w-md mx-auto rounded-t-[48px] p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto max-h-[90vh]"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${INVOICE_TYPE_LABEL[selectedInvoice.invoice_type]} ${selectedInvoice.series}-${selectedInvoice.number}`}
+            className="mx-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-card bg-white p-6 pb-10 shadow-2xl"
           >
-            <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-6 print:hidden" />
+            <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-slate-200 print:hidden" />
 
-            <div className="flex justify-between items-center mb-6 px-2">
+            <div className="mb-6 flex items-start justify-between">
               <div>
-                <h3 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">
-                  {selectedInvoice.invoice_type.replace('_', ' ')}
+                <h3 className="text-2xl font-bold text-slate-900">
+                  {INVOICE_TYPE_LABEL[selectedInvoice.invoice_type]}
                 </h3>
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">
+                <p className="mt-0.5 text-sm font-medium text-slate-500">
                   {selectedInvoice.series}-{selectedInvoice.number}
                 </p>
-                <p className="text-[10px] font-mono text-slate-300 mt-0.5 select-all">
-                  ID: {selectedInvoice.id}
-                </p>
+                <p className="mt-0.5 select-all text-xs text-slate-500">ID: {selectedInvoice.id}</p>
               </div>
 
-              <button
-                onClick={() => {
-                  setSelectedInvoice(null);
-                  setShowReasonSelect(false);
-                }}
-                className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors print:hidden"
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={closeDetail}
+                aria-label="Cerrar"
+                className="print:hidden"
               >
                 <X size={20} />
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-6">
-              <div className="bg-slate-50 p-6 rounded-[36px] border border-slate-100 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-[0.03]">
-                  <ShieldCheck size={96} />
-                </div>
-
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                  Cliente Receptor
-                </p>
-                <p className="text-base font-black text-slate-800 uppercase tracking-tight">
+              <Card tone="muted" className="p-5">
+                <p className="mb-1 text-xs text-slate-500">Cliente</p>
+                <p className="text-base font-semibold text-slate-900">
                   {selectedInvoice.client_name}
                 </p>
-                <p className="text-[12px] font-bold text-slate-500 mt-1 uppercase">
-                  DOC: {selectedInvoice.client_document || 'SIN DOCUMENTO'}
+                <p className="mt-1 text-sm text-slate-500">
+                  Documento: {selectedInvoice.client_document || 'sin documento'}
                 </p>
 
-                <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-center">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                    Fecha de Venta
-                  </span>
-                  <span className="text-[11px] font-black text-slate-700">
+                <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
+                  <span className="text-sm text-slate-500">Fecha de venta</span>
+                  <span className="text-sm font-semibold text-slate-700">
                     {selectedInvoice.invoice_date}
                   </span>
                 </div>
                 {selectedInvoice.status === InvoiceStatus.EMITIDO &&
                   selectedInvoice.nro_comprobante_sunat && (
-                    <div className="mt-3 pt-3 border-t border-slate-200 flex justify-between items-center">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                        Nº SUNAT
-                      </span>
-                      <span className="text-[11px] font-black text-blue-600 select-all">
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                      <span className="text-sm text-slate-500">Nº SUNAT</span>
+                      <span className="select-all text-sm font-semibold text-slate-700">
                         {selectedInvoice.nro_comprobante_sunat}
                       </span>
                     </div>
                   )}
-              </div>
+              </Card>
 
-              <div className="px-2">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-dashed border-slate-200 pb-2">
-                  Resumen del Pedido
+              <div>
+                <p className="mb-4 border-b border-dashed border-slate-200 pb-2 text-sm font-semibold text-slate-700">
+                  Resumen del pedido
                 </p>
 
-                <div className="space-y-5 pr-2 custom-scrollbar">
+                <div className="space-y-5">
                   {selectedInvoice.items.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-start gap-4 text-xs group"
-                    >
+                    <div key={index} className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
-                        <span className="text-slate-800 font-black uppercase block truncate text-sm">
+                        <span className="block truncate text-sm font-semibold text-slate-900">
                           {item.description}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                        <span className="text-xs text-slate-500">
                           Cant: {item.quantity} {item.unit} • S/{' '}
                           {Number(item.sale_price).toFixed(2)} c/u
                         </span>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="font-black text-slate-900 text-sm">
-                          S/ {Number(item.total).toFixed(2)}
-                        </span>
-                      </div>
+                      <span className="shrink-0 text-sm font-bold text-slate-900">
+                        S/ {Number(item.total).toFixed(2)}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-slate-900 rounded-[36px] p-8 text-white space-y-3 relative overflow-hidden shadow-xl shadow-slate-200">
-                <div className="absolute top-0 right-0 p-6 opacity-10">
-                  <FileCheck size={80} />
-                </div>
-
-                <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
-                  <span>Op. Gravadas</span>
-                  <span>S/ {Number(selectedInvoice.taxed_amount ?? 0).toFixed(2)}</span>
-                </div>
-
+              <div className="space-y-3 rounded-card bg-primary p-6 text-white">
+                <AmountRow
+                  label="Op. Gravadas"
+                  amount={Number(selectedInvoice.taxed_amount ?? 0)}
+                />
                 {Number(selectedInvoice.exempt_amount ?? 0) > 0 && (
-                  <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
-                    <span>Op. Exoneradas</span>
-                    <span>S/ {Number(selectedInvoice.exempt_amount).toFixed(2)}</span>
-                  </div>
+                  <AmountRow
+                    label="Op. Exoneradas"
+                    amount={Number(selectedInvoice.exempt_amount)}
+                  />
                 )}
-
                 {Number(selectedInvoice.unaffected_amount ?? 0) > 0 && (
-                  <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
-                    <span>Op. Inafectas</span>
-                    <span>S/ {Number(selectedInvoice.unaffected_amount).toFixed(2)}</span>
-                  </div>
+                  <AmountRow
+                    label="Op. Inafectas"
+                    amount={Number(selectedInvoice.unaffected_amount)}
+                  />
                 )}
+                <AmountRow label="IGV (18%)" amount={Number(selectedInvoice.igv)} />
 
-                <div className="flex justify-between text-[10px] font-black text-white/40 uppercase tracking-widest">
-                  <span>IGV (18%)</span>
-                  <span className="text-blue-400">S/ {Number(selectedInvoice.igv).toFixed(2)}</span>
-                </div>
-
-                <div className="h-px bg-white/10 my-2 border-t border-dashed" />
-
-                <div className="flex justify-between items-end pt-2">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.4em] mb-1">
-                      TOTAL DOCUMENTO
-                    </span>
-                    <span
-                      className={`text-5xl font-black tracking-tighter ${
-                        selectedInvoice.invoice_type === InvoiceType.NOTA_CREDITO
-                          ? 'text-amber-400'
-                          : 'text-white'
-                      }`}
-                    >
-                      S/ {Number(selectedInvoice.total).toFixed(2)}
-                    </span>
-                  </div>
+                <div className="border-t border-dashed border-white/20 pt-4">
+                  <p className="mb-1 text-sm text-white/70">Total del documento</p>
+                  <p className="text-4xl font-bold tracking-tight">
+                    S/ {Number(selectedInvoice.total).toFixed(2)}
+                  </p>
                 </div>
               </div>
 
               {selectedInvoice.status === InvoiceStatus.FALLO && (
-                <div className="rounded-[24px] overflow-hidden border border-red-100">
-                  <div className="flex items-center gap-2.5 px-5 py-3.5 bg-red-50">
-                    <span className="shrink-0 text-red-500">
-                      <FileX size={14} />
-                    </span>
-                    <div className="flex-1">
-                      <p className="text-[11px] font-black uppercase tracking-tight leading-none text-red-700">
-                        {FALLO_TITULO}
-                      </p>
-                      <p className="text-[10px] font-bold mt-0.5 leading-snug text-red-500">
-                        {selectedInvoice.sunat_message || FALLO_AYUDA}
-                      </p>
-                    </div>
-                    <span className="text-[9px] font-mono text-slate-400 select-all shrink-0">
-                      #{selectedInvoice.id}
-                    </span>
-                  </div>
-                </div>
+                <Notice tone="danger">
+                  <p className="font-semibold">{FALLO_TITULO}</p>
+                  <p className="mt-0.5 font-normal">
+                    {selectedInvoice.sunat_message || FALLO_AYUDA}
+                  </p>
+                  <p className="mt-1 select-all text-xs font-normal opacity-70">
+                    #{selectedInvoice.id}
+                  </p>
+                </Notice>
               )}
 
               {showReasonSelect ? (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 px-2 print:hidden">
-                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest text-center">
-                    Motivo de Nota de Crédito
+                <div className="space-y-3 print:hidden">
+                  <p className="text-center text-sm font-semibold text-slate-700">
+                    Motivo de la nota de crédito
                   </p>
 
                   <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { id: CreditNoteReason.ANULACION_OPERACION, label: 'Anulación de Operación' },
-                      { id: CreditNoteReason.ANULACION_ERROR_RUC, label: 'Error en el RUC' },
-                      {
-                        id: CreditNoteReason.CORRECCION_ERROR_DESCRIPCION,
-                        label: 'Error en Descripción',
-                      },
-                      { id: CreditNoteReason.DEVOLUCION_TOTAL, label: 'Devolución Total' },
-                    ].map((reason) => (
-                      <button
+                    {CREDIT_NOTE_REASONS.map((reason) => (
+                      <Button
                         key={reason.id}
+                        variant="outline"
+                        fullWidth
+                        className="justify-between"
                         onClick={() => handleCreateCreditNote(reason.id)}
-                        className="w-full py-5 px-6 bg-amber-50 border border-amber-100 rounded-2xl text-[11px] font-black uppercase text-amber-700 hover:bg-amber-100 transition-all text-left flex items-center justify-between group shadow-sm active:scale-95"
                       >
                         {reason.label}
-                        <ArrowLeftRight
-                          size={16}
-                          className="opacity-30 group-hover:opacity-100 transition-opacity"
-                        />
-                      </button>
+                        <ArrowLeftRight size={16} className="text-slate-400" />
+                      </Button>
                     ))}
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 pt-2 px-2 print:hidden">
-                  <div className="flex gap-2 justify-between">
-                    <button
-                      onClick={() => {
-                        if (selectedInvoicePdf) PDFService.viewPDF(selectedInvoicePdf!);
-                      }}
+                <div className="flex flex-col gap-3 pt-2 print:hidden">
+                  <div className="flex justify-between gap-2">
+                    <ActionTile
+                      icon={FileText}
+                      label={isPdfLoading ? 'Cargando' : 'Ver PDF'}
+                      tone="primary"
+                      loading={isPdfLoading}
                       disabled={isPdfLoading || !selectedInvoicePdf}
-                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        isPdfLoading
-                          ? 'bg-blue-600/60 text-white border-transparent cursor-wait'
-                          : selectedInvoicePdf
-                            ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-200'
-                            : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
-                      }`}
-                    >
-                      {isPdfLoading ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <FileText size={20} />
-                      )}
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
-                        {isPdfLoading ? 'Cargando' : 'Ver PDF'}
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => window.print()}
+                      onClick={() => {
+                        if (selectedInvoicePdf) PDFService.viewPDF(selectedInvoicePdf);
+                      }}
+                    />
+                    <ActionTile
+                      icon={Printer}
+                      label="Imprimir"
+                      tone="neutral"
+                      loading={isPdfLoading}
                       disabled={isPdfLoading}
-                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border border-transparent ${
-                        isPdfLoading
-                          ? 'bg-slate-50 text-slate-300 cursor-wait'
-                          : 'bg-slate-100 text-slate-700 active:bg-slate-200'
-                      }`}
-                    >
-                      {isPdfLoading ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <Printer size={20} />
-                      )}
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
-                        Imprimir
-                      </span>
-                    </button>
-
-                    <button
+                      onClick={() => window.print()}
+                    />
+                    <ActionTile
+                      icon={Download}
+                      label="Descargar"
+                      tone="neutral"
+                      loading={isPdfLoading}
+                      disabled={isPdfLoading || !selectedInvoicePdf}
                       onClick={() => {
                         if (selectedInvoicePdf) {
                           PDFService.downloadPDF(
-                            selectedInvoicePdf!,
+                            selectedInvoicePdf,
                             `${selectedInvoice.series}-${selectedInvoice.number}.pdf`,
                           );
                         }
                       }}
+                    />
+                    <ActionTile
+                      icon={Share2}
+                      label="Compartir"
+                      tone="success"
+                      loading={isPdfLoading}
                       disabled={isPdfLoading || !selectedInvoicePdf}
-                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        isPdfLoading
-                          ? 'bg-slate-50 text-slate-300 border-transparent cursor-wait'
-                          : selectedInvoicePdf
-                            ? 'bg-slate-100 text-slate-700 border-transparent active:bg-slate-200'
-                            : 'bg-slate-50 text-slate-300 border-transparent cursor-not-allowed'
-                      }`}
-                    >
-                      {isPdfLoading ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <Download size={20} />
-                      )}
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
-                        Descargar
-                      </span>
-                    </button>
-
-                    <button
                       onClick={async () => {
                         if (!selectedInvoicePdf) return;
                         const filename = `${selectedInvoice.series}-${selectedInvoice.number}.pdf`;
                         const shared = await PDFService.shareNative(
-                          selectedInvoicePdf!,
+                          selectedInvoicePdf,
                           filename,
                           `Comprobante ${filename}`,
                         );
                         if (shared) return;
-                        PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoicePdf!);
+                        PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoicePdf);
                       }}
-                      disabled={isPdfLoading || !selectedInvoicePdf}
-                      className={`flex-1 h-20 rounded-[22px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all border ${
-                        isPdfLoading
-                          ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-wait'
-                          : selectedInvoicePdf
-                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100 active:bg-emerald-100'
-                            : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
-                      }`}
-                    >
-                      {isPdfLoading ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <Share2 size={20} />
-                      )}
-                      <span className="font-bold text-[9px] uppercase tracking-widest leading-none">
-                        Compartir
-                      </span>
-                    </button>
+                    />
                   </div>
 
-                  {(selectedInvoice.status === InvoiceStatus.BORRADOR ||
-                    selectedInvoice.status === InvoiceStatus.FALLO) && (
-                    <button
+                  {canRetryOrEmit && (
+                    <Button
+                      variant={
+                        selectedInvoice.status === InvoiceStatus.FALLO ? 'primary' : 'success'
+                      }
+                      size="lg"
+                      fullWidth
+                      loading={isEmittingDraft}
                       onClick={async () => {
                         setIsEmittingDraft(true);
                         await onEmitDraft(selectedInvoice.id);
                         setIsEmittingDraft(false);
                         setSelectedInvoice(null);
                       }}
-                      disabled={isEmittingDraft}
-                      className={`w-full text-white h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
-                        selectedInvoice.status === InvoiceStatus.FALLO
-                          ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-200/50'
-                          : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-200/50'
-                      }`}
                     >
-                      {isEmittingDraft ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : selectedInvoice.status === InvoiceStatus.FALLO ? (
-                        <RefreshCw size={18} />
-                      ) : (
-                        <Zap size={18} />
-                      )}
+                      {!isEmittingDraft &&
+                        (selectedInvoice.status === InvoiceStatus.FALLO ? (
+                          <RefreshCw size={18} />
+                        ) : (
+                          <Zap size={18} />
+                        ))}
                       {isEmittingDraft
-                        ? 'Enviando a SUNAT...'
+                        ? 'Enviando a SUNAT…'
                         : selectedInvoice.status === InvoiceStatus.FALLO
-                          ? 'Reintentar SUNAT'
+                          ? 'Reintentar en SUNAT'
                           : 'Emitir a SUNAT'}
-                    </button>
+                    </Button>
                   )}
 
-                  {(selectedInvoice.status === InvoiceStatus.BORRADOR ||
-                    selectedInvoice.status === InvoiceStatus.FALLO) && (
-                    <button
+                  {canRetryOrEmit && (
+                    <Button
+                      variant="danger-soft"
+                      fullWidth
+                      loading={isDeletingInvoice}
                       onClick={async () => {
                         setIsDeletingInvoice(true);
                         await onDeleteInvoice(selectedInvoice.id);
                         setIsDeletingInvoice(false);
                         setSelectedInvoice(null);
                       }}
-                      disabled={isDeletingInvoice}
-                      className="w-full bg-rose-50 text-rose-600 border border-rose-100 h-14 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-rose-100 active:scale-95 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {isDeletingInvoice ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={16} />
-                      )}
-                      {isDeletingInvoice ? 'Eliminando...' : 'Eliminar documento'}
-                    </button>
+                      {!isDeletingInvoice && <Trash2 size={16} />}
+                      {isDeletingInvoice ? 'Eliminando…' : 'Eliminar documento'}
+                    </Button>
                   )}
 
                   {selectedInvoice.invoice_type !== InvoiceType.NOTA_CREDITO &&
                     selectedInvoice.status === InvoiceStatus.EMITIDO &&
                     (NOTA_CREDITO_ENABLED ? (
-                      <button
-                        onClick={() => setShowReasonSelect(true)}
-                        className="w-full bg-amber-50 text-amber-700 border border-amber-100 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-amber-100 active:scale-95 transition-all shadow-sm"
-                      >
-                        <CornerUpLeft size={18} /> Emitir Nota de Crédito
-                      </button>
+                      <Button variant="outline" fullWidth onClick={() => setShowReasonSelect(true)}>
+                        <CornerUpLeft size={18} /> Emitir nota de crédito
+                      </Button>
                     ) : (
                       <a
                         href={buildSoporteWhatsappUrl(selectedInvoice)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full bg-emerald-50 text-emerald-700 border border-emerald-100 h-16 rounded-[22px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:bg-emerald-100 active:scale-95 transition-all shadow-sm"
+                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-control bg-success/10 px-5 text-sm font-semibold text-success transition hover:bg-success/20 active:scale-[0.98]"
                       >
                         <MessageCircle size={18} /> Solicitar anulación
                       </a>

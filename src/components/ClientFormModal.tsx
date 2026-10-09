@@ -1,12 +1,16 @@
 // components/ClientFormModal.tsx
 
-import { AlertCircle, Loader2, UserPlus, X } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import { clientSchema } from '../schemas/business';
 import { lookupService } from '../services/business/lookupService';
 import type { Client } from '../types';
+import Button from './ui/Button';
+import Input from './ui/Input';
+import Modal from './ui/Modal';
+import Notice from './ui/Notice';
 
 interface ClientFormModalProps {
   editingClient: Client | null;
@@ -84,117 +88,71 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-              <UserPlus size={24} />
-            </div>
-            <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">
-              {editingClient ? 'Editar' : 'Nuevo'} Cliente
-            </h3>
-          </div>
+  const spinner = <Loader2 size={16} className="animate-spin text-accent" />;
 
-          <button onClick={onClose} className="p-2 text-slate-300">
-            <X size={20} />
-          </button>
+  return (
+    <Modal
+      layout="form"
+      title={editingClient ? 'Editar cliente' : 'Nuevo cliente'}
+      icon={<UserPlus size={22} />}
+      iconTone="accent"
+      onClose={onClose}
+    >
+      {formError && (
+        <div className="mb-4">
+          <Notice tone="danger">{formError}</Notice>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Razón social o nombre"
+          name="name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          required
+          className="uppercase"
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="DNI (8 dígitos)"
+            name="dni"
+            value={dni}
+            inputMode="numeric"
+            maxLength={DNI_LENGTH}
+            onChange={(event) => setDni(onlyDigits(event.target.value))}
+            placeholder="Opcional"
+            trailing={lookingUp === 'dni' ? spinner : null}
+          />
+          <Input
+            label="RUC (11 dígitos)"
+            name="ruc"
+            value={ruc}
+            inputMode="numeric"
+            maxLength={RUC_LENGTH}
+            onChange={(event) => setRuc(onlyDigits(event.target.value))}
+            placeholder="Opcional"
+            trailing={lookingUp === 'ruc' ? spinner : null}
+          />
         </div>
 
-        {formError && (
-          <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 mb-6">
-            <AlertCircle className="text-red-500" size={20} />
-            <p className="text-red-700 text-xs font-black uppercase">{formError}</p>
-          </div>
-        )}
+        <Input
+          label="Celular / teléfono"
+          name="phone"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          inputMode="tel"
+          placeholder="999888777"
+        />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-              Razón Social o Nombre
-            </label>
-            <input
-              name="name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 uppercase focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                DNI (8 dígitos)
-              </label>
-              <div className="relative">
-                <input
-                  name="dni"
-                  value={dni}
-                  inputMode="numeric"
-                  maxLength={DNI_LENGTH}
-                  onChange={(event) => setDni(onlyDigits(event.target.value))}
-                  className="w-full bg-slate-50 border-none rounded-2xl p-4 pr-10 text-sm font-black text-slate-800 outline-none"
-                  placeholder="Opcional"
-                />
-                {lookingUp === 'dni' && (
-                  <Loader2
-                    size={16}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                RUC (11 dígitos)
-              </label>
-              <div className="relative">
-                <input
-                  name="ruc"
-                  value={ruc}
-                  inputMode="numeric"
-                  maxLength={RUC_LENGTH}
-                  onChange={(event) => setRuc(onlyDigits(event.target.value))}
-                  className="w-full bg-slate-50 border-none rounded-2xl p-4 pr-10 text-sm font-black text-slate-800 outline-none"
-                  placeholder="Opcional"
-                />
-                {lookingUp === 'ruc' && (
-                  <Loader2
-                    size={16}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-              Celular / Teléfono
-            </label>
-            <input
-              name="phone"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-black text-slate-800 outline-none"
-              placeholder="999888777"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-6">
-            <button
-              type="submit"
-              className="flex-1 py-4 bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl active:scale-90 transition-all"
-            >
-              Guardar Cliente
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="pt-2">
+          <Button type="submit" fullWidth>
+            Guardar cliente
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 

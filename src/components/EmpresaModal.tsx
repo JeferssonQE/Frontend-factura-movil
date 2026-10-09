@@ -4,12 +4,16 @@
 // portal. Eso se fue con el scraper: FactuMovil emite por Factu API y no custodia
 // credenciales de SUNAT. Queda la identidad de la empresa, que es lo unico suyo.
 
-import { AlertCircle, Building2, Loader2, Lock, Search, X } from 'lucide-react';
+import { Building2, Loader2, Lock, Search } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { useDebouncedLookup } from '../hooks/useDebouncedLookup';
 import { lookupService } from '../services/business/lookupService';
 import type { Sender, SenderUpsertInput } from '../types';
+import Button from './ui/Button';
+import Input from './ui/Input';
+import Modal from './ui/Modal';
+import Notice from './ui/Notice';
 
 const RUC_LENGTH = 11;
 
@@ -85,100 +89,61 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-              <Building2 size={24} />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase leading-none">
-                Datos de la empresa
-              </h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">
-                RUC y razón social
-              </p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 text-slate-300">
-            <X size={20} />
-          </button>
+    <Modal
+      layout="form"
+      title="Datos de la empresa"
+      description="RUC y razón social"
+      icon={<Building2 size={22} />}
+      iconTone="accent"
+      onClose={onClose}
+    >
+      {formError && (
+        <div className="mb-4">
+          <Notice tone="danger">{formError}</Notice>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Input
+            label={<>RUC {!canEditIdentity && <Lock size={12} />}</>}
+            value={ruc}
+            onChange={(event) => handleRucChange(event.target.value)}
+            readOnly={!canEditIdentity}
+            inputMode="numeric"
+            placeholder="20123456789"
+          />
+          {!canEditIdentity && (
+            <p className="ml-1 mt-1.5 text-xs text-slate-500">
+              El RUC y la razón social los gestiona el administrador.
+            </p>
+          )}
         </div>
 
-        {formError && (
-          <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 mb-6">
-            <AlertCircle className="text-red-500 shrink-0" size={20} />
-            <p className="text-red-700 text-xs font-black uppercase">{formError}</p>
-          </div>
-        )}
+        <Input
+          label={
+            <>
+              Razón social <Lock size={12} />
+              {lookingUp && <Loader2 size={12} className="animate-spin text-accent" />}
+            </>
+          }
+          value={razonSocial}
+          readOnly
+          placeholder={canEditIdentity ? 'Se completa con el RUC' : ''}
+          className="truncate"
+          trailing={canEditIdentity ? <Search size={16} className="text-slate-400" /> : null}
+        />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-              RUC {!canEditIdentity && <Lock size={11} />}
-            </label>
-            <input
-              value={ruc}
-              onChange={(e) => handleRucChange(e.target.value)}
-              readOnly={!canEditIdentity}
-              inputMode="numeric"
-              placeholder="20123456789"
-              className={`w-full border-none rounded-2xl p-4 text-sm font-black text-slate-800 outline-none ${
-                canEditIdentity
-                  ? 'bg-slate-50 focus:ring-2 focus:ring-blue-500'
-                  : 'bg-slate-100 text-slate-500'
-              }`}
-            />
-            {!canEditIdentity && (
-              <p className="text-[10px] text-slate-400 font-semibold ml-1 mt-1.5">
-                El RUC y la razón social los gestiona el administrador.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-              Razón Social <Lock size={11} />
-              {lookingUp && <Loader2 size={11} className="animate-spin text-blue-500" />}
-            </label>
-            <div className="relative">
-              <input
-                value={razonSocial}
-                readOnly
-                placeholder={canEditIdentity ? 'Se completa con el RUC' : ''}
-                className="w-full bg-slate-100 border-none rounded-2xl p-4 pr-10 text-sm font-black text-slate-600 outline-none truncate"
-              />
-              {canEditIdentity && (
-                <Search
-                  size={16}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1 py-4 bg-slate-100 text-slate-600 font-black uppercase text-[10px] tracking-widest rounded-2xl active:scale-95 transition-all disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || lookingUp}
-              className="flex-1 py-4 bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl active:scale-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {submitting && <Loader2 size={14} className="animate-spin" />}
-              {submitting ? 'Guardando...' : 'Guardar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex gap-3 pt-2">
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button type="submit" className="flex-1" loading={submitting} disabled={lookingUp}>
+            {submitting ? 'Guardando…' : 'Guardar'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 

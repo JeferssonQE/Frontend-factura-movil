@@ -1,8 +1,12 @@
 // views/ResetPassword.tsx
 
-import { AlertTriangle, CheckCircle2, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Notice from '../components/ui/Notice';
 import { authService } from '../services/core/authService';
 
 interface ResetPasswordProps {
@@ -16,6 +20,20 @@ const validatePassword = (password: string): { isValid: boolean; errors: string[
 
   return { isValid: errors.length === 0, errors };
 };
+
+const PasswordToggle: React.FC<{ visible: boolean; onToggle: () => void }> = ({
+  visible,
+  onToggle,
+}) => (
+  <Button
+    variant="ghost"
+    size="icon-sm"
+    onClick={onToggle}
+    aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+  >
+    {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+  </Button>
+);
 
 const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
   const [password, setPassword] = useState('');
@@ -60,91 +78,72 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-sm bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 text-center">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="text-emerald-600" size={24} />
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
+        <Card className="w-full max-w-sm p-6 text-center">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-success/10">
+            <CheckCircle2 className="text-success" size={28} />
           </div>
-          <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest mb-4">
-            ¡Contraseña Actualizada!
-          </h2>
-          <p className="text-[10px] text-slate-600 mb-6">
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">¡Contraseña actualizada!</h2>
+          <p className="mb-6 text-sm text-slate-600">
             Tu contraseña ha sido cambiada exitosamente.
             <br />
-            <span className="text-emerald-600 font-bold">Redirigiendo al sistema...</span>
+            <span className="font-semibold text-success">Redirigiendo al sistema…</span>
           </p>
           <div className="flex items-center justify-center">
-            <Loader2 className="animate-spin text-emerald-600" size={20} />
+            <Loader2 className="animate-spin text-success" size={20} />
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      {/* Logo */}
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
       <div className="mb-8 text-center">
         <img
           src="/logo-icon.png"
           alt="FactuMovil AI"
-          className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
+          className="mx-auto mb-4 size-20 drop-shadow-lg"
         />
-        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
-          FactuMovil AI
-        </h1>
-        <p className="text-[10px] text-slate-400 mt-1">Cambiar Contraseña</p>
+        <h1 className="text-xl font-bold text-slate-900">FactuMovil AI</h1>
+        <p className="mt-1 text-sm text-slate-500">Cambiar contraseña</p>
       </div>
 
-      {/* Card */}
-      <div className="w-full max-w-sm bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <Lock className="text-blue-600" size={16} />
-          <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
-            Nueva Contraseña
-          </h2>
+      <Card className="w-full max-w-sm p-6">
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <Lock className="text-accent" size={18} />
+          <h2 className="text-lg font-semibold text-slate-900">Nueva contraseña</h2>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
-          <p className="text-[9px] text-blue-700 text-center">
-            <strong>Crea una nueva contraseña</strong>
-            <br />
-            Mínimo 4 caracteres para acceso rápido
-          </p>
+        <div className="mb-6">
+          <Notice tone="info">
+            <strong>Crea una nueva contraseña.</strong> Mínimo 4 caracteres para acceso rápido.
+          </Notice>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-              Nueva Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  password && !passwordValidation.isValid
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-slate-200 focus:ring-blue-500'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <Input
+              label="Nueva contraseña"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              icon={<Lock size={18} />}
+              aria-invalid={password && !passwordValidation.isValid ? true : undefined}
+              trailing={
+                <PasswordToggle
+                  visible={showPassword}
+                  onToggle={() => setShowPassword((v) => !v)}
+                />
+              }
+            />
             {password && !passwordValidation.isValid && (
               <div className="mt-2 space-y-1">
-                {passwordValidation.errors.map((error, index) => (
-                  <p key={index} className="text-[8px] text-red-600">
-                    • {error}
+                {passwordValidation.errors.map((message) => (
+                  <p key={message} className="text-sm text-danger">
+                    • {message}
                   </p>
                 ))}
               </div>
@@ -152,82 +151,43 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess }) => {
           </div>
 
           <div>
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-              Confirmar Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  confirmPassword && !passwordsMatch
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-slate-200 focus:ring-blue-500'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <Input
+              label="Confirmar contraseña"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              icon={<Lock size={18} />}
+              aria-invalid={confirmPassword && !passwordsMatch ? true : undefined}
+              trailing={
+                <PasswordToggle
+                  visible={showConfirmPassword}
+                  onToggle={() => setShowConfirmPassword((v) => !v)}
+                />
+              }
+            />
             {confirmPassword && !passwordsMatch && (
-              <p className="text-[8px] text-red-600 mt-1">Las contraseñas no coinciden</p>
+              <p className="mt-1 text-sm text-danger">Las contraseñas no coinciden</p>
             )}
           </div>
 
-          {/* Indicador de validación */}
           {password && confirmPassword && (
-            <div
-              className={`rounded-xl p-3 ${formValid ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}
-            >
-              <div className="flex items-center gap-2">
-                {formValid ? (
-                  <CheckCircle2 className="text-emerald-600" size={14} />
-                ) : (
-                  <AlertTriangle className="text-amber-600" size={14} />
-                )}
-                <span
-                  className={`text-[9px] font-bold ${formValid ? 'text-emerald-700' : 'text-amber-700'}`}
-                >
-                  {formValid ? 'Contraseña válida' : 'Revisa los errores'}
-                </span>
-              </div>
-            </div>
+            <Notice tone={formValid ? 'success' : 'warning'}>
+              {formValid ? 'Contraseña válida' : 'Revisa los errores'}
+            </Notice>
           )}
 
-          {error && (
-            <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl text-center border border-red-200">
-              {error}
-            </div>
-          )}
+          {error && <Notice tone="danger">{error}</Notice>}
 
-          <button
-            type="submit"
-            disabled={loading || !formValid}
-            className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <>
-                <Lock size={18} />
-                Cambiar Contraseña
-              </>
-            )}
-          </button>
+          <Button type="submit" size="lg" fullWidth loading={loading} disabled={!formValid}>
+            {!loading && <Lock size={18} />}
+            Cambiar contraseña
+          </Button>
         </form>
-      </div>
+      </Card>
 
-      <p className="text-[9px] text-slate-300 mt-8 uppercase tracking-widest text-center">
-        🔒 Cambio seguro de contraseña
-      </p>
+      <p className="mt-8 text-center text-xs text-slate-500">Cambio seguro de contraseña</p>
     </div>
   );
 };

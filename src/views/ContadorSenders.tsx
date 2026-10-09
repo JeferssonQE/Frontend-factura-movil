@@ -1,6 +1,10 @@
-import { Building2, CheckCircle2, ChevronRight, Play, RefreshCw, Save } from 'lucide-react';
+import { Building2, CheckCircle2, ChevronRight, Play, Save } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import LoadingIndicator from '../components/ui/LoadingIndicator';
 import type { SenderFormData } from '../services/business/contadorService';
 import type { AdminUserRow, AuthUser, Sender } from '../types';
 
@@ -73,40 +77,21 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <img
-          src="/logo-icon.png"
-          alt=""
-          className="w-20 h-20"
-          style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}
-        />
-        <p className="text-[10px] font-medium text-blue-600 uppercase tracking-[4px]">
-          Cargando empresas
-        </p>
-        <div className="flex gap-1.5 mt-0.5">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="block w-1 h-1 rounded-full bg-blue-500"
-              style={{ animation: `fm-dot 3s ease-in-out ${i * 0.55}s infinite` }}
-            />
-          ))}
-        </div>
+      <div className="py-24">
+        <LoadingIndicator label="Cargando empresas" />
       </div>
     );
   }
 
   if (empresas.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-        <div className="w-16 h-16 rounded-[24px] bg-slate-100 flex items-center justify-center">
-          <Building2 size={28} className="text-slate-300" />
+      <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+        <div className="flex size-16 items-center justify-center rounded-card bg-slate-100">
+          <Building2 size={28} className="text-slate-400" />
         </div>
         <div>
-          <p className="text-[11px] font-black text-slate-800 uppercase tracking-widest">
-            Sin empresas asignadas
-          </p>
-          <p className="text-[10px] text-slate-400 mt-1">
+          <p className="text-base font-semibold text-slate-900">Sin empresas asignadas</p>
+          <p className="mt-1 text-sm text-slate-500">
             Contacta al administrador para que te asigne empresas.
           </p>
         </div>
@@ -118,66 +103,58 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
 
   return (
     <div className="space-y-5 pb-8">
-      {/* Header */}
-      <div className="pt-2 pb-1">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          Hola, {firstName}
-        </p>
-        <p className="text-[13px] font-black text-slate-800 uppercase tracking-tight mt-0.5">
+      <div className="pb-1 pt-2">
+        <p className="text-sm text-slate-500">Hola, {firstName}</p>
+        <p className="mt-0.5 text-lg font-bold text-slate-900">
           {empresas.length} empresa{empresas.length !== 1 ? 's' : ''} asignada
           {empresas.length !== 1 ? 's' : ''}
         </p>
       </div>
 
-      {/* Step 1: Empresa selector */}
       <div>
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
-          1 · Selecciona una empresa
-        </p>
+        <p className="mb-2 px-1 text-sm font-semibold text-slate-700">Selecciona una empresa</p>
         <div className="space-y-2">
           {empresas.map((empresa) => {
             const isSelected = empresa.id === selectedEmpresaId;
             return (
               <button
                 key={empresa.id}
+                type="button"
                 onClick={() => onSelectEmpresa(empresa.id)}
-                className={[
-                  'w-full flex items-center gap-3 rounded-[22px] px-4 py-3.5 text-left transition-all active:scale-[0.98]',
+                aria-pressed={isSelected}
+                className={`flex w-full items-center gap-3 rounded-card border px-4 py-3.5 text-left transition active:scale-[0.99] ${
                   isSelected
-                    ? 'bg-slate-900 shadow-xl shadow-slate-200'
-                    : 'bg-white border border-slate-100 shadow-sm hover:border-slate-200',
-                ].join(' ')}
+                    ? 'border-primary bg-primary'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
               >
                 <div
-                  className={[
-                    'w-10 h-10 rounded-2xl flex items-center justify-center font-black text-[11px] shrink-0',
-                    isSelected ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600',
-                  ].join(' ')}
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-control text-sm font-semibold ${
+                    isSelected ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
                 >
                   {getInitials(empresa)}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p
-                    className={[
-                      'text-[11px] font-black uppercase tracking-tight truncate leading-tight',
-                      isSelected ? 'text-white' : 'text-slate-800',
-                    ].join(' ')}
+                    className={`truncate text-sm font-semibold leading-tight ${
+                      isSelected ? 'text-white' : 'text-slate-900'
+                    }`}
                   >
                     {empresa.name || '—'}
                   </p>
                   <p
-                    className={[
-                      'text-[9px] truncate mt-0.5',
-                      isSelected ? 'text-white/50' : 'text-slate-400',
-                    ].join(' ')}
+                    className={`mt-0.5 truncate text-xs ${
+                      isSelected ? 'text-white/70' : 'text-slate-500'
+                    }`}
                   >
                     {empresa.email}
                   </p>
                 </div>
                 {isSelected ? (
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" strokeWidth={3} />
+                  <CheckCircle2 size={18} className="shrink-0 text-white" />
                 ) : (
-                  <ChevronRight size={15} className="text-slate-300 shrink-0" />
+                  <ChevronRight size={16} className="shrink-0 text-slate-400" />
                 )}
               </button>
             );
@@ -185,103 +162,70 @@ const ContadorSenders: React.FC<ContadorSendersProps> = ({
         </div>
       </div>
 
-      {/* Formulario de edición del emisor */}
       {selectedEmpresa && (
         <div>
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+          <p className="mb-2 px-1 text-sm font-semibold text-slate-700">
             Configurar emisor · {selectedEmpresa.name || selectedEmpresa.email}
           </p>
 
           {senderLoading ? (
-            <div className="bg-white rounded-[22px] border border-slate-100 shadow-sm py-10 flex flex-col items-center gap-2">
-              <img
-                src="/logo-icon.png"
-                alt=""
-                className="w-14 h-14"
-                style={{ animation: 'fm-breathe 3s ease-in-out infinite' }}
-              />
-              <p className="text-[9px] font-medium text-blue-600 uppercase tracking-[3px]">
-                Cargando emisor
-              </p>
-            </div>
+            <Card className="py-10">
+              <LoadingIndicator label="Cargando emisor" size="md" />
+            </Card>
           ) : (
-            <form
-              onSubmit={handleSubmit}
-              className="bg-white rounded-[22px] border border-slate-100 shadow-sm p-5 space-y-4"
-            >
-              <div className="space-y-3">
-                <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-                    Razón Social
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      setErrors((p) => ({ ...p, name: '' }));
-                    }}
-                    placeholder={sender?.name || 'Nombre de la empresa'}
-                    className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.name ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
-                  />
-                  {errors.name && (
-                    <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.name}</p>
-                  )}
+            <Card className="p-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <Input
+                      label="Razón social"
+                      type="text"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setErrors((p) => ({ ...p, name: '' }));
+                      }}
+                      placeholder={sender?.name || 'Nombre de la empresa'}
+                      aria-invalid={Boolean(errors.name) || undefined}
+                    />
+                    {errors.name && <p className="mt-1 px-1 text-sm text-danger">{errors.name}</p>}
+                  </div>
+
+                  <div>
+                    <Input
+                      label="RUC"
+                      type="text"
+                      value={ruc}
+                      onChange={(e) => {
+                        setRuc(e.target.value.replace(/\D/g, ''));
+                        setErrors((p) => ({ ...p, ruc: '' }));
+                      }}
+                      placeholder={sender?.ruc || '20123456789'}
+                      maxLength={11}
+                      inputMode="numeric"
+                      aria-invalid={Boolean(errors.ruc) || undefined}
+                    />
+                    {errors.ruc && <p className="mt-1 px-1 text-sm text-danger">{errors.ruc}</p>}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-                    RUC
-                  </label>
-                  <input
-                    type="text"
-                    value={ruc}
-                    onChange={(e) => {
-                      setRuc(e.target.value.replace(/\D/g, ''));
-                      setErrors((p) => ({ ...p, ruc: '' }));
-                    }}
-                    placeholder={sender?.ruc || '20123456789'}
-                    maxLength={11}
-                    className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 text-[12px] font-semibold text-slate-800 placeholder:text-slate-300 focus:outline-none focus:bg-white transition-colors ${errors.ruc ? 'border-red-300 focus:border-red-400' : 'border-slate-100 focus:border-slate-300'}`}
-                  />
-                  {errors.ruc && (
-                    <p className="text-[9px] text-red-500 font-semibold mt-1 px-1">{errors.ruc}</p>
-                  )}
-                </div>
-              </div>
-
-              {sender && (
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => onOperar(sender)}
-                    className="w-full py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-transform bg-emerald-600 text-white active:scale-95"
-                  >
-                    <Play size={13} strokeWidth={3} />
+                {sender ? (
+                  <Button variant="success" fullWidth onClick={() => onOperar(sender)}>
+                    <Play size={16} />
                     Operar como esta empresa
-                  </button>
-                </div>
-              )}
-
-              {!sender && (
-                <p className="text-[9px] text-slate-400 font-semibold text-center px-2">
-                  Guarda el emisor primero para poder operar como esta empresa.
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-slate-900 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
-              >
-                {saving ? (
-                  <RefreshCw size={13} className="animate-spin" />
+                  </Button>
                 ) : (
-                  <Save size={13} strokeWidth={3} />
+                  <p className="px-2 text-center text-sm text-slate-500">
+                    Guarda el emisor primero para poder operar como esta empresa.
+                  </p>
                 )}
-                {saving ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </form>
+
+                <Button type="submit" fullWidth loading={saving}>
+                  {!saving && <Save size={16} />}
+                  {saving ? 'Guardando…' : 'Guardar cambios'}
+                </Button>
+              </form>
+            </Card>
           )}
         </div>
       )}

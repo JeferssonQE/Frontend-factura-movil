@@ -1,10 +1,16 @@
 // src/pages/FeedbackPage.tsx
 
-import { CheckCircle, MessageCircle, RefreshCw, Send, Star } from 'lucide-react';
+import { CheckCircle, MessageCircle, Send, Star } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Textarea from '../components/ui/Textarea';
 import { useAppData } from '../context/AppDataContext';
 import { feedbackService } from '../services/business/feedbackService';
+
+const RATING_LABELS = ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', '¡Excelente!'];
 
 const FeedbackPage: React.FC = () => {
   const { activeSenderId, showToast } = useAppData();
@@ -35,118 +41,99 @@ const FeedbackPage: React.FC = () => {
 
   if (sent) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
-        <div className="w-20 h-20 rounded-[28px] bg-emerald-50 flex items-center justify-center">
-          <CheckCircle size={36} className="text-emerald-500" strokeWidth={2} />
+      <div className="flex flex-col items-center justify-center gap-5 py-20 text-center">
+        <div className="flex size-20 items-center justify-center rounded-card bg-success/10">
+          <CheckCircle size={36} className="text-success" strokeWidth={2} />
         </div>
         <div>
-          <h2 className="text-base font-black text-slate-800 uppercase tracking-tight">
-            ¡Gracias!
-          </h2>
-          <p className="text-[11px] text-slate-400 font-medium mt-1 uppercase tracking-widest">
-            Tu opinión fue enviada
-          </p>
+          <h2 className="text-lg font-bold text-slate-900">¡Gracias!</h2>
+          <p className="mt-1 text-sm text-slate-500">Tu opinión fue enviada</p>
         </div>
-        <button
+        <Button
+          variant="ghost"
           onClick={() => {
             setSent(false);
             setRating(0);
             setName('');
             setMessage('');
           }}
-          className="text-[10px] font-black text-blue-500 uppercase tracking-widest"
         >
           Enviar otra opinión
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-5 pb-8">
-      {/* Header */}
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
-          <MessageCircle size={22} className="text-blue-500" strokeWidth={2} />
+      <Card className="flex items-center gap-4 p-5">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-control bg-accent/10">
+          <MessageCircle size={22} className="text-accent" strokeWidth={2} />
         </div>
         <div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">
-            Tu opinión nos mejora :)
-          </h2>
-          <p className="text-[10px] text-slate-400 mt-0.5">
+          <h2 className="text-base font-semibold text-slate-900">Tu opinión nos mejora</h2>
+          <p className="mt-0.5 text-sm text-slate-500">
             Cuéntanos cómo fue tu experiencia con FactuMovil
           </p>
         </div>
-      </div>
+      </Card>
 
-      {/* Rating */}
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">
-          ¿Cómo calificarías FactuMovil?
-        </p>
-        <div className="flex gap-2 justify-center">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              onMouseEnter={() => setHovered(star)}
-              onMouseLeave={() => setHovered(0)}
-              onClick={() => setRating(star)}
-              className="transition-transform active:scale-90"
-            >
-              <Star
-                size={32}
-                className="transition-colors"
-                fill={(hovered || rating) >= star ? '#f59e0b' : 'transparent'}
-                stroke={(hovered || rating) >= star ? '#f59e0b' : '#cbd5e1'}
-                strokeWidth={1.5}
-              />
-            </button>
-          ))}
+      <Card className="p-5">
+        <p className="mb-4 text-sm font-medium text-slate-700">¿Cómo calificarías FactuMovil?</p>
+        <div className="flex justify-center gap-1">
+          {[1, 2, 3, 4, 5].map((star) => {
+            const filled = (hovered || rating) >= star;
+            return (
+              <button
+                key={star}
+                type="button"
+                onMouseEnter={() => setHovered(star)}
+                onMouseLeave={() => setHovered(0)}
+                onClick={() => setRating(star)}
+                aria-label={`${star} ${star === 1 ? 'estrella' : 'estrellas'}`}
+                aria-pressed={rating === star}
+                className="flex size-11 items-center justify-center transition-transform active:scale-90"
+              >
+                <Star
+                  size={32}
+                  strokeWidth={1.5}
+                  className={`transition-colors ${
+                    filled ? 'fill-warning text-warning' : 'fill-transparent text-slate-300'
+                  }`}
+                />
+              </button>
+            );
+          })}
         </div>
         {rating > 0 && (
-          <p className="text-center text-[10px] font-black text-amber-500 uppercase tracking-widest mt-3">
-            {['', 'Muy malo', 'Malo', 'Regular', 'Bueno', '¡Excelente!'][rating]}
+          <p className="mt-3 text-center text-sm font-semibold text-warning">
+            {RATING_LABELS[rating]}
           </p>
         )}
-      </div>
+      </Card>
 
-      {/* Form */}
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 space-y-4">
-        <div>
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-            Nombre (opcional)
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Tu nombre"
-            className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-medium text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+      <Card className="space-y-4 p-5">
+        <Input
+          label="Nombre (opcional)"
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Tu nombre"
+        />
 
-        <div>
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-            Mensaje o consulta *
-          </label>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Escribe tu opinión, sugerencia o consulta..."
-            rows={4}
-            className="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-medium text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
-        </div>
+        <Textarea
+          label="Mensaje o consulta *"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Escribe tu opinión, sugerencia o consulta…"
+          rows={4}
+        />
 
-        <button
-          onClick={handleSubmit}
-          disabled={busy || !message.trim()}
-          className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg disabled:opacity-40 flex items-center justify-center gap-2 active:scale-95 transition-transform"
-        >
-          {busy ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
-          {busy ? 'Enviando...' : 'Enviar Opinión'}
-        </button>
-      </div>
+        <Button fullWidth loading={busy} disabled={!message.trim()} onClick={handleSubmit}>
+          {!busy && <Send size={16} />}
+          {busy ? 'Enviando…' : 'Enviar opinión'}
+        </Button>
+      </Card>
     </div>
   );
 };

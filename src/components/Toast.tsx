@@ -13,25 +13,24 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   const isError = type === 'error';
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[400] flex justify-center px-4 pt-4 pointer-events-none">
+    <div className="pointer-events-none fixed left-0 right-0 top-0 z-[400] flex justify-center px-4 pt-4">
       <div
         role="alert"
-        className={`pointer-events-auto w-full max-w-md flex items-center gap-3 rounded-[22px] px-5 py-4 shadow-2xl animate-in slide-in-from-top-4 fade-in duration-300 ${
-          isError
-            ? 'bg-red-600 text-white shadow-red-200/50'
-            : 'bg-slate-900 text-white shadow-slate-300/40'
+        className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-card px-5 py-4 text-white shadow-2xl ${
+          isError ? 'bg-danger' : 'bg-primary'
         }`}
       >
         {isError ? (
           <AlertTriangle size={20} className="shrink-0" />
         ) : (
-          <CheckCircle2 size={20} className="shrink-0 text-emerald-400" />
+          <CheckCircle2 size={20} className="shrink-0" />
         )}
-        <p className="flex-1 text-xs font-bold leading-snug">{message}</p>
+        <p className="flex-1 text-sm font-medium leading-snug">{message}</p>
         <button
+          type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="p-1 rounded-full hover:bg-white/15 transition-colors shrink-0"
+          className="flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/15"
         >
           <X size={16} />
         </button>

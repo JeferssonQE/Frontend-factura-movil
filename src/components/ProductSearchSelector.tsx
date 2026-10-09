@@ -1,10 +1,13 @@
 // components/ProductSearchSelector.tsx
 
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Package } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { igvTypeLabel } from '../services/utils/invoiceMath';
 import type { Product } from '../types';
+import Badge from './ui/Badge';
+import Button from './ui/Button';
+import Input from './ui/Input';
 
 interface ProductSearchSelectorProps {
   products: Product[];
@@ -20,7 +23,7 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
   products,
   onSelectProduct,
   onSearchChange,
-  placeholder = 'NOMBRE DEL PRODUCTO',
+  placeholder = 'Nombre del producto',
   value = '',
   onChange,
   showDropdownButton = true,
@@ -39,11 +42,15 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
     setIsCatalogOpen(false);
   };
 
+  const closeLists = () => {
+    setIsDropdownOpen(false);
+    setIsCatalogOpen(false);
+  };
+
   const handleSelectProduct = (product: Product) => {
     onSelectProduct?.(product);
     onChange?.(product.description);
-    setIsDropdownOpen(false);
-    setIsCatalogOpen(false);
+    closeLists();
   };
 
   const handleCatalogToggle = () => {
@@ -51,132 +58,78 @@ const ProductSearchSelector: React.FC<ProductSearchSelectorProps> = ({
     setIsDropdownOpen(false);
   };
 
-  const shouldShowSearchDropdown = isDropdownOpen && value && filteredProducts.length > 0;
-  const shouldShowCatalogDropdown = isCatalogOpen && products.length > 0;
+  // Buscar y abrir el catalogo completo son excluyentes (cada accion cierra a la otra),
+  // asi que a lo sumo hay una lista visible.
+  const showSearchResults = isDropdownOpen && value && filteredProducts.length > 0;
+  const showCatalog = isCatalogOpen && products.length > 0;
+  const visibleProducts = showSearchResults ? filteredProducts : showCatalog ? products : null;
 
   return (
     <div className="relative">
-      <div className="relative">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={() => value && setIsDropdownOpen(true)}
-          placeholder={placeholder}
-          className="w-full bg-white border-2 border-blue-500 rounded-[28px] px-4 py-3 pr-16 text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder:text-slate-400 uppercase"
-        />
-
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {showDropdownButton && products.length > 0 && (
-            <button
-              type="button"
+      <Input
+        type="text"
+        value={value}
+        onChange={(event) => handleInputChange(event.target.value)}
+        onFocus={() => value && setIsDropdownOpen(true)}
+        placeholder={placeholder}
+        aria-label="Nombre del producto"
+        className="uppercase"
+        trailing={
+          showDropdownButton && products.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={handleCatalogToggle}
-              className="p-2 hover:bg-blue-50 rounded-full transition-colors"
+              aria-label="Ver mi catálogo"
+              aria-expanded={isCatalogOpen}
             >
               <ChevronDown
                 size={18}
-                className={`text-blue-500 transition-transform ${isCatalogOpen ? 'rotate-180' : ''}`}
+                className={`transition-transform ${isCatalogOpen ? 'rotate-180' : ''}`}
               />
-            </button>
-          )}
-        </div>
-      </div>
+            </Button>
+          ) : null
+        }
+      />
 
-      {/* Dropdown de resultados de búsqueda */}
-      {shouldShowSearchDropdown && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white border border-slate-200 rounded-[20px] shadow-xl max-h-60 overflow-y-auto">
-          <div className="p-2">
-            {filteredProducts.map((product) => (
+      {visibleProducts && (
+        <>
+          <button
+            type="button"
+            aria-label="Cerrar lista"
+            tabIndex={-1}
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={closeLists}
+          />
+          <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-60 overflow-y-auto rounded-card border border-slate-200 bg-white p-2 shadow-xl">
+            {visibleProducts.map((product) => (
               <button
                 key={product.id}
+                type="button"
                 onClick={() => handleSelectProduct(product)}
-                className="w-full text-left p-3 hover:bg-blue-50 rounded-[16px] transition-colors group"
+                className="flex w-full items-center gap-3 rounded-control p-3 text-left transition-colors hover:bg-slate-50"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <span className="text-blue-600 text-xs font-black">📦</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-slate-800 text-sm truncate uppercase">
-                      {product.description}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-bold text-blue-600">
-                        S/ {Number(product.sale_price).toFixed(2)}
-                      </span>
-                      <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
-                        {product.unit}
-                      </span>
-                      <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                          product.igv_type === 'GRAVADO'
-                            ? 'text-emerald-600 bg-emerald-50'
-                            : 'text-slate-400 bg-slate-50'
-                        }`}
-                      >
-                        {igvTypeLabel(product.igv_type)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <Package size={16} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold uppercase text-slate-900">
+                    {product.description}
+                  </span>
+                  <span className="mt-1 flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-700">
+                      S/ {Number(product.sale_price).toFixed(2)}
+                    </span>
+                    <Badge>{product.unit}</Badge>
+                    <Badge tone={product.igv_type === 'GRAVADO' ? 'success' : 'neutral'}>
+                      {igvTypeLabel(product.igv_type)}
+                    </Badge>
+                  </span>
+                </span>
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Dropdown del catálogo completo */}
-      {shouldShowCatalogDropdown && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white border border-slate-200 rounded-[20px] shadow-xl max-h-60 overflow-y-auto">
-          <div className="p-2">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => handleSelectProduct(product)}
-                className="w-full text-left p-3 hover:bg-blue-50 rounded-[16px] transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <span className="text-blue-600 text-xs font-black">📦</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-slate-800 text-sm truncate uppercase">
-                      {product.description}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-bold text-blue-600">
-                        S/ {Number(product.sale_price).toFixed(2)}
-                      </span>
-                      <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-lg uppercase">
-                        {product.unit}
-                      </span>
-                      <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${
-                          product.igv_type === 'GRAVADO'
-                            ? 'text-emerald-600 bg-emerald-50'
-                            : 'text-slate-400 bg-slate-50'
-                        }`}
-                      >
-                        {igvTypeLabel(product.igv_type)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Overlay para cerrar dropdowns */}
-      {(shouldShowSearchDropdown || shouldShowCatalogDropdown) && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => {
-            setIsDropdownOpen(false);
-            setIsCatalogOpen(false);
-          }}
-        />
+        </>
       )}
     </div>
   );

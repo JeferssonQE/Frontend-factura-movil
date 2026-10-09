@@ -1,8 +1,10 @@
 // views/Agent.tsx
 
-import { Mic, Send, X } from 'lucide-react';
+import { Mic, Send } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
+import Button from '../components/ui/Button';
+import Notice from '../components/ui/Notice';
 import { useAgent } from '../hooks/useAgent';
 import type { ChatMessage } from '../services/integrations/agentService';
 
@@ -30,11 +32,11 @@ const QUICK_TOPICS = [
 // ---------------------------------------------------------------------------
 
 const LoadingDots: React.FC = () => (
-  <div className="flex items-center gap-1.5 py-1 px-1">
+  <div className="flex items-center gap-1.5 px-1 py-1">
     {[0, 150, 300].map((delay) => (
       <span
         key={delay}
-        className="w-2 h-2 rounded-full bg-slate-300 animate-bounce"
+        className="size-2 animate-bounce rounded-full bg-slate-300"
         style={{ animationDelay: `${delay}ms` }}
       />
     ))}
@@ -47,7 +49,7 @@ const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="bg-slate-900 text-white rounded-[20px] rounded-tr-sm px-4 py-3 max-w-[80%] text-sm leading-relaxed">
+        <div className="max-w-[80%] rounded-card rounded-tr-sm bg-primary px-4 py-3 text-sm leading-relaxed text-white">
           {message.text}
         </div>
       </div>
@@ -56,11 +58,11 @@ const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
 
   return (
     <div className="flex justify-start">
-      <div className="bg-white border border-slate-100 shadow-sm rounded-[20px] rounded-tl-sm px-4 py-3 max-w-[85%]">
+      <div className="max-w-[85%] rounded-card rounded-tl-sm border border-slate-200 bg-white px-4 py-3">
         {message.isLoading ? (
           <LoadingDots />
         ) : (
-          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
             {message.text}
           </p>
         )}
@@ -111,45 +113,37 @@ const AgentView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col -mx-4 -mt-4" style={{ height: 'calc(100% + 1rem)' }}>
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2 space-y-3">
+    <div className="-mx-4 -mt-4 flex h-[calc(100%+1rem)] flex-col">
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-2 pt-4">
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Error banner */}
       {error && (
-        <div className="mx-4 mb-2 flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-          <p className="flex-1 text-xs text-red-600 font-medium">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="p-1 text-red-400 hover:text-red-600 transition-colors"
-            aria-label="Cerrar"
-          >
-            <X size={14} />
-          </button>
+        <div className="mx-4 mb-2">
+          <Notice tone="danger" onDismiss={() => setError(null)}>
+            {error}
+          </Notice>
         </div>
       )}
 
-      {/* Quick topics */}
-      <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-none">
+      <div className="scrollbar-none flex gap-2 overflow-x-auto px-4 pb-2">
         {QUICK_TOPICS.map((topic) => (
           <button
             key={topic}
+            type="button"
             onClick={() => handleChipClick(topic)}
             disabled={isLoading}
-            className="shrink-0 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold hover:bg-violet-100 hover:text-violet-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            className="min-h-9 shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-accent/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
           >
             {topic}
           </button>
         ))}
       </div>
 
-      {/* Input bar */}
-      <div className="bg-white border-t border-slate-100 px-4 py-3 flex items-end gap-2">
+      <div className="flex items-end gap-2 border-t border-slate-200 bg-white px-4 py-3">
         <textarea
           ref={textareaRef}
           rows={1}
@@ -159,30 +153,31 @@ const AgentView: React.FC = () => {
           onKeyDown={handleKeyDown}
           placeholder="Ej: ¿Que es el IGV? ¿Cuando emitir una nota de credito?"
           disabled={isLoading}
-          className="flex-1 resize-none rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all disabled:opacity-50"
-          style={{ minHeight: '44px', maxHeight: '120px', overflowY: 'auto' }}
+          className="max-h-[120px] min-h-11 flex-1 resize-none overflow-y-auto rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-50"
           aria-label="Consulta sobre SUNAT"
         />
 
         {/* Mic button — disabled, coming soon */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           disabled
-          title="Proximamente"
-          aria-label="Proximamente"
-          className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-slate-100 text-slate-300 cursor-not-allowed"
+          title="Próximamente"
+          aria-label="Próximamente"
+          className="shrink-0 bg-slate-100"
         >
           <Mic size={20} />
-        </button>
+        </Button>
 
-        {/* Send button */}
-        <button
+        <Button
+          size="icon"
           onClick={handleSend}
           disabled={isLoading || !inputText.trim()}
           aria-label="Enviar consulta"
-          className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0"
         >
           <Send size={18} />
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -1,8 +1,12 @@
 // views/Login.tsx
 
-import { AlertTriangle, Eye, EyeOff, Loader2, Lock, LogIn, Mail, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, LogIn, Mail, Shield } from 'lucide-react';
 import React, { useState } from 'react';
 import type { z } from 'zod';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Notice from '../components/ui/Notice';
 import { emailSchema, loginSchema, passwordSchema } from '../schemas/auth';
 
 interface LoginProps {
@@ -37,6 +41,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   const emailValidation = validateField(emailSchema, email);
   const passwordValidation = validateField(passwordSchema, password);
+  const emailInvalid = Boolean(email) && !emailValidation.isValid;
+  const passwordInvalid = Boolean(password) && !passwordValidation.isValid;
 
   React.useEffect(() => {
     if (attemptCount < 5) return;
@@ -97,135 +103,95 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
       <div className="mb-8 text-center">
         <img
           src="/logo-icon.png"
           alt="FactuMovil AI"
-          className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
+          className="mx-auto mb-4 size-20 drop-shadow-lg"
         />
-        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
-          FactuMovil AI
-        </h1>
-        <p className="text-[10px] text-slate-400 mt-1">Facturación Electrónica Segura</p>
+        <h1 className="text-xl font-bold text-slate-900">FactuMovil AI</h1>
+        <p className="mt-1 text-sm text-slate-500">Facturación electrónica segura</p>
       </div>
 
-      <div className="w-full max-w-sm bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <Shield className="text-emerald-600" size={16} />
-          <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
-            Iniciar Sesión
-          </h2>
+      <Card className="w-full max-w-sm p-6">
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <Shield className="text-success" size={18} />
+          <h2 className="text-lg font-semibold text-slate-900">Iniciar sesión</h2>
         </div>
 
-        {attemptCount > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="text-amber-600" size={14} />
-              <span className="text-[9px] font-bold text-amber-700">
-                Intentos fallidos: {attemptCount}/5
-              </span>
-            </div>
-          </div>
-        )}
-
-        {isBlocked && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Lock className="text-red-600" size={14} />
-              <span className="text-[9px] font-bold text-red-700 uppercase">Cuenta Bloqueada</span>
-            </div>
-            <p className="text-[8px] text-red-600">Tiempo restante: {formatTime(blockTimeLeft)}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="correo@empresa.com"
-                required
-                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-5 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  email && !emailValidation.isValid
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-slate-200 focus:ring-blue-500'
-                }`}
-              />
-            </div>
-            {email && !emailValidation.isValid && (
-              <p className="text-[8px] text-red-600 mt-1">{emailValidation.error}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-              Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  password && !passwordValidation.isValid
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-slate-200 focus:ring-blue-500'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            {password && !passwordValidation.isValid && (
-              <p className="text-[8px] text-red-600 mt-1">• {passwordValidation.error}</p>
-            )}
-          </div>
-
-          {error && (
-            <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl text-center border border-red-200">
-              {error}
-            </div>
+        <div className="space-y-3 empty:hidden">
+          {attemptCount > 0 && !isBlocked && (
+            <Notice tone="warning">Intentos fallidos: {attemptCount}/5</Notice>
           )}
 
-          <button
-            type="submit"
-            disabled={
-              loading || isBlocked || !emailValidation.isValid || !passwordValidation.isValid
-            }
-            className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <>
-                <LogIn size={18} />
-                Entrar Seguro
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+          {isBlocked && (
+            <Notice tone="danger">
+              Cuenta bloqueada. Tiempo restante: {formatTime(blockTimeLeft)}
+            </Notice>
+          )}
+        </div>
 
-      <div className="text-center mt-6 space-y-2">
-        <p className="text-[9px] text-slate-300 uppercase tracking-widest">
-          🔒 Sesión segura • Expira por inactividad
-        </p>
-      </div>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div>
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="correo@empresa.com"
+              required
+              icon={<Mail size={18} />}
+              aria-invalid={emailInvalid || undefined}
+            />
+            {emailInvalid && <p className="mt-1 text-sm text-danger">{emailValidation.error}</p>}
+          </div>
+
+          <div>
+            <Input
+              label="Contraseña"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+              required
+              minLength={6}
+              icon={<Lock size={18} />}
+              aria-invalid={passwordInvalid || undefined}
+              trailing={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </Button>
+              }
+            />
+            {passwordInvalid && (
+              <p className="mt-1 text-sm text-danger">{passwordValidation.error}</p>
+            )}
+          </div>
+
+          {error && <Notice tone="danger">{error}</Notice>}
+
+          <Button
+            type="submit"
+            size="lg"
+            fullWidth
+            loading={loading}
+            disabled={isBlocked || !emailValidation.isValid || !passwordValidation.isValid}
+          >
+            {!loading && <LogIn size={18} />}
+            Entrar
+          </Button>
+        </form>
+      </Card>
+
+      <p className="mt-6 text-center text-xs text-slate-500">
+        Sesión segura • Expira por inactividad
+      </p>
     </div>
   );
 };

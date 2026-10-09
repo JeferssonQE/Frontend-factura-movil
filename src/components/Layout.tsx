@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   History,
   Home,
+  type LucideIcon,
   Menu,
   MessageCircle,
   Package,
@@ -18,6 +19,7 @@ import {
 import type React from 'react';
 import { useState } from 'react';
 import type { Sender } from '../types';
+import Button from './ui/Button';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,6 +34,29 @@ interface LayoutProps {
   userInitials?: string;
   hideBottomNav?: boolean;
 }
+
+interface SidebarLinkProps {
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+const SidebarLink: React.FC<SidebarLinkProps> = ({ icon: Icon, label, active, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-current={active ? 'page' : undefined}
+    className={`flex min-h-12 w-full items-center gap-4 rounded-control px-5 py-3 text-sm font-semibold transition ${
+      active ? 'bg-accent/10 text-primary' : 'text-slate-600 hover:bg-slate-50'
+    }`}
+  >
+    <Icon size={20} />
+    {label}
+  </button>
+);
+
+const Divider: React.FC = () => <div className="mx-4 my-4 h-px bg-slate-100" />;
 
 const Layout: React.FC<LayoutProps> = ({
   children,
@@ -58,6 +83,8 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'products', icon: Package, label: 'Productos' },
     { id: 'clients', icon: Users, label: 'Clientes' },
     { id: 'history', icon: History, label: 'Historial' },
+    { id: 'feedback', icon: MessageCircle, label: 'Opiniones' },
+    { id: 'about', icon: Building2, label: 'Sobre nosotros' },
   ];
 
   const handleLinkClick = (id: string) => {
@@ -66,199 +93,137 @@ const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-50 border-x relative overflow-hidden font-sans">
-      {/* Sidebar Overlay */}
+    <div className="relative mx-auto flex h-screen max-w-md flex-col overflow-hidden border-x bg-slate-50 font-sans">
       {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/60 z-40 backdrop-blur-sm transition-opacity"
+        <button
+          type="button"
+          aria-label="Cerrar menú"
+          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar Drawer */}
       <aside
-        className={`fixed top-0 left-0 h-full w-72 bg-white z-50 transform transition-transform duration-300 ease-out shadow-2xl ${
+        inert={!isSidebarOpen}
+        className={`fixed left-0 top-0 z-50 h-full w-72 transform bg-white shadow-2xl transition-transform duration-300 ease-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-8 border-b flex flex-col gap-4 bg-slate-900 text-white">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <img src="/logo-horizontal-light.png" alt="FactuMovil" className="h-8 w-auto" />
-            </div>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-2 hover:bg-white/10 rounded-full"
-            >
-              <X size={20} />
-            </button>
-          </div>
+        <div className="flex items-center justify-between bg-primary p-8 text-white">
+          <img src="/logo-horizontal-light.png" alt="FactuMovil" className="h-8 w-auto" />
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-label="Cerrar menú"
+            className="flex size-11 items-center justify-center rounded-full hover:bg-white/10"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <nav className="p-4 space-y-1.5 mt-4">
+        <nav className="mt-4 space-y-1.5 p-4">
           {isContador && (
             <>
-              <button
+              <SidebarLink
+                icon={Building2}
+                label="Mis empresas"
+                active={activeTab === 'contador-senders'}
                 onClick={() => handleLinkClick('contador-senders')}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
-                  activeTab === 'contador-senders'
-                    ? 'bg-blue-50 text-blue-600 font-black'
-                    : 'text-slate-500 hover:bg-slate-50'
-                }`}
-              >
-                <Building2 size={20} />
-                <span className="text-[11px] uppercase font-black tracking-widest">
-                  Mis Empresas
-                </span>
-              </button>
-              <div className="h-px bg-slate-100 my-4 mx-4" />
+              />
+              <Divider />
             </>
           )}
 
-          <button
+          <SidebarLink
+            icon={Home}
+            label="Inicio"
+            active={activeTab === 'dashboard'}
             onClick={() => handleLinkClick('dashboard')}
-            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
-              activeTab === 'dashboard'
-                ? 'bg-blue-50 text-blue-600 font-black'
-                : 'text-slate-500 hover:bg-slate-50'
-            }`}
-          >
-            <Home size={20} />
-            <span className="text-[11px] uppercase font-black tracking-widest">Inicio</span>
-          </button>
+          />
 
-          <div className="h-px bg-slate-100 my-4 mx-4" />
+          <Divider />
 
           {sidebarLinks.map((link) => (
-            <button
+            <SidebarLink
               key={link.id}
+              icon={link.icon}
+              label={link.label}
+              active={activeTab === link.id}
               onClick={() => handleLinkClick(link.id)}
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
-                activeTab === link.id
-                  ? 'bg-blue-50 text-blue-600 font-black'
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
-            >
-              <link.icon size={20} />
-              <span className="text-[11px] uppercase font-black tracking-widest">{link.label}</span>
-            </button>
+            />
           ))}
 
-          {/* Opiniones */}
-          <button
-            onClick={() => handleLinkClick('feedback')}
-            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
-              activeTab === 'feedback'
-                ? 'bg-blue-50 text-blue-600 font-black'
-                : 'text-slate-500 hover:bg-slate-50'
-            }`}
-          >
-            <MessageCircle size={20} />
-            <span className="text-[11px] uppercase font-black tracking-widest">Opiniones</span>
-          </button>
-
-          {/* Sobre Nosotros */}
-          <button
-            onClick={() => handleLinkClick('about')}
-            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
-              activeTab === 'about'
-                ? 'bg-blue-50 text-blue-600 font-black'
-                : 'text-slate-500 hover:bg-slate-50'
-            }`}
-          >
-            <Building2 size={20} />
-            <span className="text-[11px] uppercase font-black tracking-widest">Sobre Nosotros</span>
-          </button>
-
-          {/* Admin section */}
           {isAdmin && (
             <>
-              <div className="h-px bg-slate-100 my-4 mx-4" />
-              <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest px-5 mb-2">
-                Administración
-              </p>
-              <button
+              <Divider />
+              <p className="mb-2 px-5 text-xs font-semibold text-slate-500">Administración</p>
+              <SidebarLink
+                icon={ShieldCheck}
+                label="Usuarios"
+                active={activeTab === 'admin-users'}
                 onClick={() => handleLinkClick('admin-users')}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${
-                  activeTab === 'admin-users'
-                    ? 'bg-purple-50 text-purple-600 font-black'
-                    : 'text-slate-500 hover:bg-slate-50'
-                }`}
-              >
-                <ShieldCheck size={20} />
-                <span className="text-[11px] uppercase font-black tracking-widest">Usuarios</span>
-              </button>
+              />
             </>
           )}
         </nav>
       </aside>
 
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md px-4 py-3 sticky top-0 z-30 flex items-center justify-between border-b border-slate-100 h-[68px]">
-        <div className="flex items-center gap-1">
-          {showBack && onGoBack ? (
-            <button
-              onClick={onGoBack}
-              className="p-3 text-slate-400 hover:bg-slate-50 rounded-2xl transition-colors"
-            >
-              <ChevronLeft size={24} />
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-3 text-slate-400 hover:bg-slate-50 rounded-2xl transition-colors"
-            >
-              <Menu size={24} />
-            </button>
-          )}
-        </div>
-
-        {activeTab === 'dashboard' ? (
-          <img src="/logo-icon.png" alt="FactuMovil AI" className="h-9 w-9" />
+      <header className="sticky top-0 z-30 flex h-[68px] items-center justify-between border-b border-slate-100 bg-white/80 px-4 py-3 backdrop-blur-md">
+        {showBack && onGoBack ? (
+          <Button variant="ghost" size="icon" onClick={onGoBack} aria-label="Volver">
+            <ChevronLeft size={24} />
+          </Button>
         ) : (
-          <h1 className="text-[11px] font-black text-slate-800 uppercase tracking-[0.2em]">
-            {title}
-          </h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSidebarOpen(true)}
+            aria-label="Abrir menú"
+          >
+            <Menu size={24} />
+          </Button>
         )}
 
-        <div className="w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-200 font-black text-xs">
+        {activeTab === 'dashboard' ? (
+          <img src="/logo-icon.png" alt="FactuMovil AI" className="size-9" />
+        ) : (
+          <h1 className="text-base font-semibold text-slate-900">{title}</h1>
+        )}
+
+        <div className="flex size-11 items-center justify-center rounded-control bg-primary text-sm font-semibold text-white">
           {userInitials}
         </div>
       </header>
 
-      {/* Contador active sender banner */}
       {isContador && activeSender && (
-        <div className="bg-slate-900 px-4 py-2.5 flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-            <Building2 size={13} className="text-white" />
+        <div className="flex items-center gap-2.5 bg-primary px-4 py-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-control bg-white/10">
+            <Building2 size={14} className="text-white" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-black text-[10px] uppercase tracking-widest truncate leading-tight">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold leading-tight text-white">
               {activeSender.name}
             </p>
-            <p className="text-white/40 text-[9px] font-medium leading-tight">
-              RUC {activeSender.ruc}
-            </p>
+            <p className="text-xs leading-tight text-white/60">RUC {activeSender.ruc}</p>
           </div>
           <button
+            type="button"
             onClick={() => onTabChange('contador-senders')}
-            className="shrink-0 flex items-center gap-1 text-white/50 hover:text-white transition-colors"
+            className="flex min-h-9 shrink-0 items-center gap-1.5 px-1 text-white/70 transition-colors hover:text-white"
             aria-label="Cambiar empresa"
           >
-            <ArrowLeftRight size={13} />
-            <span className="text-[9px] font-black uppercase tracking-widest">Cambiar</span>
+            <ArrowLeftRight size={14} />
+            <span className="text-xs font-semibold">Cambiar</span>
           </button>
         </div>
       )}
 
-      {/* Main Content */}
       <main className={`flex-1 overflow-y-auto px-4 pt-4 ${hideBottomNav ? 'pb-4' : 'pb-32'}`}>
         {children}
       </main>
 
-      {/* Bottom Navigation */}
       {!hideBottomNav && (
-        <nav className="bg-white/95 backdrop-blur-xl border-t border-slate-50 px-8 py-4 fixed bottom-0 left-0 right-0 max-w-md mx-auto z-30 flex justify-between items-center rounded-t-[40px] shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 mx-auto flex max-w-md items-center justify-between rounded-t-card border-t border-slate-100 bg-white/95 px-8 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] backdrop-blur-xl">
           {bottomTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -267,14 +232,15 @@ const Layout: React.FC<LayoutProps> = ({
               return (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => onTabChange(tab.id)}
+                  aria-label={tab.label}
+                  aria-current={isActive ? 'page' : undefined}
                   className="relative -top-8 flex flex-col items-center"
                 >
                   <div
-                    className={`w-16 h-16 rounded-[22px] flex items-center justify-center shadow-2xl transition-all active:scale-90 ${
-                      isActive
-                        ? 'bg-blue-600 text-white scale-110 shadow-blue-200'
-                        : 'bg-slate-900 text-white'
+                    className={`flex size-16 items-center justify-center rounded-card text-white shadow-2xl transition-all active:scale-90 ${
+                      isActive ? 'scale-110 bg-accent' : 'bg-primary'
                     }`}
                   >
                     <Icon size={32} strokeWidth={2.5} />
@@ -286,17 +252,15 @@ const Layout: React.FC<LayoutProps> = ({
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => onTabChange(tab.id)}
-                className={`flex flex-col items-center justify-center transition-all ${
-                  isActive ? 'text-blue-600' : 'text-slate-300'
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex min-w-14 flex-col items-center justify-center gap-1 transition-colors ${
+                  isActive ? 'text-primary' : 'text-slate-500'
                 }`}
               >
                 <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-                <span
-                  className={`text-[9px] mt-1.5 font-black uppercase tracking-widest ${
-                    isActive ? 'opacity-100' : 'opacity-0'
-                  }`}
-                >
+                <span className={`text-xs ${isActive ? 'font-bold' : 'font-medium'}`}>
                   {tab.label}
                 </span>
               </button>

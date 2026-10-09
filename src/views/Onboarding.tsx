@@ -4,9 +4,13 @@
 // -FactuMovil emite por Factu API y ya no custodia credenciales de SUNAT-, y sin el no
 // queda asistente que guiar: una sola pantalla.
 
-import { ArrowRight, Eye, EyeOff, Loader2, Lock, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Notice from '../components/ui/Notice';
 import type { Sender } from '../types';
 
 interface OnboardingProps {
@@ -16,17 +20,6 @@ interface OnboardingProps {
 }
 
 const MIN_PASSWORD_LENGTH = 8;
-
-const ReadOnlyField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div>
-    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-      {label}
-    </label>
-    <div className="w-full bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-500">
-      {value}
-    </div>
-  </div>
-);
 
 const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onFinish }) => {
   const [password, setPassword] = useState('');
@@ -54,136 +47,101 @@ const Onboarding: React.FC<OnboardingProps> = ({ sender, onChangePassword, onFin
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
       <div className="mb-8 text-center">
         <img
           src="/logo-icon.png"
           alt="FactuMovil AI"
-          className="w-20 h-20 mx-auto mb-4 drop-shadow-lg"
+          className="mx-auto mb-4 size-20 drop-shadow-lg"
         />
-        <h1 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.3em]">
-          FactuMovil AI
-        </h1>
-        <p className="text-[10px] text-slate-400 mt-1">Protege tu cuenta</p>
+        <h1 className="text-xl font-bold text-slate-900">FactuMovil AI</h1>
+        <p className="mt-1 text-sm text-slate-500">Protege tu cuenta</p>
       </div>
 
-      <div className="w-full max-w-sm bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <ShieldCheck className="text-blue-600" size={16} />
-          <h2 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">
-            Nueva Contraseña
-          </h2>
+      <Card className="w-full max-w-sm p-6">
+        <div className="mb-4 flex items-center justify-center gap-2">
+          <ShieldCheck className="text-accent" size={18} />
+          <h2 className="text-lg font-semibold text-slate-900">Nueva contraseña</h2>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
-          <p className="text-[9px] text-blue-700 text-center leading-relaxed">
-            Estás usando una contraseña temporal.
-            <br />
-            Crea una nueva para continuar (mínimo {MIN_PASSWORD_LENGTH} caracteres).
-          </p>
+
+        <div className="mb-6">
+          <Notice tone="info">
+            Estás usando una contraseña temporal. Crea una nueva para continuar (mínimo{' '}
+            {MIN_PASSWORD_LENGTH} caracteres).
+          </Notice>
         </div>
 
         <div className="space-y-4">
           {/* Los datos de la empresa, para que confirme que entro donde debia. */}
           {sender && (
             <>
-              <ReadOnlyField label="Razón Social" value={sender.name} />
-              <ReadOnlyField label="RUC" value={sender.ruc} />
+              <Input label="Razón social" value={sender.name} readOnly />
+              <Input label="RUC" value={sender.ruc} readOnly />
             </>
           )}
 
           <div>
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-              Nueva Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-12 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  passwordTooShort
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-slate-200 focus:ring-blue-500'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((p) => !p)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <Input
+              label="Nueva contraseña"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              icon={<Lock size={18} />}
+              aria-invalid={passwordTooShort || undefined}
+              trailing={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </Button>
+              }
+            />
             {passwordTooShort && (
-              <p className="text-[8px] text-red-600 mt-1">
-                Mínimo {MIN_PASSWORD_LENGTH} caracteres
-              </p>
+              <p className="mt-1 text-sm text-danger">Mínimo {MIN_PASSWORD_LENGTH} caracteres</p>
             )}
           </div>
 
           <div>
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
-              Confirmar Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  passwordsMismatch
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-slate-200 focus:ring-blue-500'
-                }`}
-              />
-            </div>
+            <Input
+              label="Confirmar contraseña"
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              icon={<Lock size={18} />}
+              aria-invalid={passwordsMismatch || undefined}
+            />
             {passwordsMismatch && (
-              <p className="text-[8px] text-red-600 mt-1">Las contraseñas no coinciden</p>
+              <p className="mt-1 text-sm text-danger">Las contraseñas no coinciden</p>
             )}
           </div>
 
-          {error && (
-            <div className="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl text-center border border-red-200">
-              {error}
-            </div>
-          )}
+          {error && <Notice tone="danger">{error}</Notice>}
 
-          <button
-            type="button"
+          <Button
+            size="lg"
+            fullWidth
             onClick={handleSubmitPassword}
-            disabled={loading || !passwordValid}
-            className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={loading}
+            disabled={!passwordValid}
           >
-            {loading ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <>
-                <span>Guardar y entrar</span>
-                <ArrowRight size={18} />
-              </>
-            )}
-          </button>
+            Guardar y entrar
+            {!loading && <ArrowRight size={18} />}
+          </Button>
 
-          <button
-            type="button"
-            onClick={onFinish}
-            disabled={loading}
-            className="w-full text-slate-400 py-2 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors disabled:opacity-50"
-          >
+          <Button variant="ghost" fullWidth onClick={onFinish} disabled={loading}>
             Más tarde
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      <p className="text-[9px] text-slate-300 mt-8 uppercase tracking-widest text-center">
-        🔒 Configuración inicial segura
-      </p>
+      <p className="mt-8 text-center text-xs text-slate-500">Configuración inicial segura</p>
     </div>
   );
 };

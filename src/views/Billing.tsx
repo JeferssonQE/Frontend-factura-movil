@@ -1094,7 +1094,7 @@ const Billing: React.FC<BillingProps> = ({
               <img
                 src={previewImage}
                 alt="Preview"
-                className="w-full h-full object-contain bg-slate-900 rounded-[28px]"
+                className="h-full w-full rounded-card bg-slate-900 object-contain"
               />
               {!isProcessing && (
                 <button

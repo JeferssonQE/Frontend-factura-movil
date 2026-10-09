@@ -1,6 +1,6 @@
 // views/Dashboard.tsx
 
-import { FileText, ShoppingBag, Target, TrendingUp, Zap } from 'lucide-react';
+import { FileText, type LucideIcon, ShoppingBag, Target, TrendingUp, Zap } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import {
@@ -13,13 +13,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import StatusBadge from '../components/StatusBadge';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 import type {
   DashboardSummary,
   IgvSummary,
   SalesByMonthItem,
 } from '../services/business/reportsService';
 import { type Invoice, InvoiceType, type Sender } from '../types';
-import { StatusBadge } from './History';
 
 interface DashboardProps {
   invoices: Invoice[];
@@ -32,6 +34,77 @@ interface DashboardProps {
 }
 
 type ActiveCard = 'igv' | 'total' | null;
+
+// Recharts pinta SVG con valores literales, no clases: estos hex son los tokens accent y
+// slate de index.css.
+const CHART_HIGHLIGHT = '#2b7fff';
+const CHART_MUTED = '#e2e8f0';
+const CHART_GRID = '#f1f5f9';
+const CHART_AXIS_TEXT = '#64748b';
+
+interface StatTileProps {
+  icon: LucideIcon;
+  iconClassName: string;
+  label: string;
+  value: string;
+  active?: boolean;
+  onClick?: () => void;
+}
+
+const StatTile: React.FC<StatTileProps> = ({
+  icon: Icon,
+  iconClassName,
+  label,
+  value,
+  active = false,
+  onClick,
+}) => {
+  const content = (
+    <>
+      <div
+        className={`mb-3 flex size-10 items-center justify-center rounded-control ${iconClassName}`}
+      >
+        <Icon size={20} strokeWidth={2.5} />
+      </div>
+      <p className="mb-1 text-xs leading-tight text-slate-500">{label}</p>
+      <p className="break-words text-sm font-bold text-slate-900">{value}</p>
+    </>
+  );
+  const baseClasses = 'flex flex-col items-center rounded-card border p-3 text-center';
+
+  if (!onClick) {
+    return <div className={`${baseClasses} border-slate-200 bg-white`}>{content}</div>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`${baseClasses} bg-white transition ${
+        active ? 'border-accent' : 'border-slate-200 hover:border-slate-300'
+      }`}
+    >
+      {content}
+    </button>
+  );
+};
+
+const DetailRow: React.FC<{ label: string; value: string; strong?: boolean }> = ({
+  label,
+  value,
+  strong = false,
+}) => (
+  <div className="flex items-center justify-between border-b border-slate-100 py-2 last:border-0">
+    <span className={`text-sm ${strong ? 'font-semibold text-slate-700' : 'text-slate-500'}`}>
+      {label}
+    </span>
+    <span
+      className={`text-sm ${strong ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}
+    >
+      {value}
+    </span>
+  </div>
+);
 
 const Dashboard: React.FC<DashboardProps> = ({
   invoices,
@@ -79,259 +152,169 @@ const Dashboard: React.FC<DashboardProps> = ({
   const currentBarIndex = chartData.findIndex((point) => point.isCurrent);
   const highlightIndex = currentBarIndex === -1 ? chartData.length - 1 : currentBarIndex;
 
+  const statusSummary = summary
+    ? [
+        {
+          label: 'Emitidos',
+          value: summary.emitted_invoices,
+          classes: 'bg-success/10 text-success',
+        },
+        {
+          label: 'Procesando',
+          value: summary.pending_invoices,
+          classes: 'bg-warning/10 text-warning',
+        },
+        { label: 'Fallidos', value: summary.failed_invoices, classes: 'bg-danger/10 text-danger' },
+      ]
+    : [];
+
   return (
     <div className="space-y-6 pb-6">
-      {/* Sender card */}
-      <div className="bg-slate-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden group">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-600/30 rounded-full blur-[80px] group-hover:scale-110 transition-transform duration-700" />
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-indigo-600/20 rounded-full blur-[60px]" />
-
-        <div className="relative z-10">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <p className="text-blue-400 text-[9px] font-black uppercase tracking-[0.3em] mb-1">
-                Emisor Activo
-              </p>
-              <h2 className="text-2xl font-black tracking-tight leading-tight">
-                {activeSender?.name || 'Configura tu Empresa'}
-              </h2>
-              <p className="text-white/40 text-[10px] font-bold mt-1 tracking-widest uppercase">
-                RUC: {activeSender?.ruc || '-'}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center">
-              <Target className="text-blue-400" size={24} />
-            </div>
+      <div className="rounded-card bg-primary p-6 text-white">
+        <div className="mb-6 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="mb-1 text-sm text-white/70">Emisor activo</p>
+            <h2 className="text-2xl font-bold leading-tight">
+              {activeSender?.name || 'Configura tu empresa'}
+            </h2>
+            <p className="mt-1 text-sm text-white/70">RUC: {activeSender?.ruc || '-'}</p>
           </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={onEmit}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-600/20 active:scale-95 transition-all text-[10px] uppercase tracking-widest"
-            >
-              Nueva Venta
-            </button>
-            <button
-              onClick={onHistory}
-              className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/5 backdrop-blur-md font-black py-4 rounded-2xl active:scale-95 transition-all text-[10px] uppercase tracking-widest"
-            >
-              Historial
-            </button>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-control bg-white/10">
+            <Target className="text-white" size={24} />
           </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button className="flex-1" onClick={onEmit}>
+            Nueva venta
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={onHistory}>
+            Historial
+          </Button>
         </div>
       </div>
 
-      {/* Stats grid */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white p-5 rounded-[32px] shadow-sm border border-slate-100 flex flex-col items-center text-center">
-          <div className="bg-blue-500/10 text-blue-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
-            <FileText size={20} strokeWidth={2.5} />
-          </div>
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
-            Tickets
-            <br />
-            del mes
-          </p>
-          <p className="text-xs font-black text-slate-900 tracking-tight">
-            {igvSummary?.invoice_count ?? 0}
-          </p>
-        </div>
-
-        <div
+        <StatTile
+          icon={FileText}
+          iconClassName="bg-accent/10 text-accent"
+          label="Tickets del mes"
+          value={String(igvSummary?.invoice_count ?? 0)}
+        />
+        <StatTile
+          icon={Zap}
+          iconClassName="bg-primary/10 text-primary"
+          label="IGV del mes"
+          value={igvSummary ? `S/ ${igvSummary.total_igv.toFixed(2)}` : '—'}
+          active={activeCard === 'igv'}
           onClick={() => handleCardClick('igv')}
-          className={`bg-white p-5 rounded-[32px] shadow-sm border transition-all cursor-pointer flex flex-col items-center text-center ${
-            activeCard === 'igv'
-              ? 'border-blue-500 shadow-blue-100'
-              : 'border-slate-100 hover:border-blue-100'
-          }`}
-        >
-          <div className="bg-violet-500/10 text-violet-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
-            <Zap size={20} strokeWidth={2.5} />
-          </div>
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
-            IGV
-            <br />
-            del mes
-          </p>
-          <p className="text-xs font-black text-slate-900 tracking-tight">
-            {igvSummary ? `S/ ${igvSummary.total_igv.toFixed(2)}` : '—'}
-          </p>
-        </div>
-
-        <div
+        />
+        <StatTile
+          icon={Target}
+          iconClassName="bg-success/10 text-success"
+          label="Total ventas"
+          value={igvSummary ? `S/ ${igvSummary.total_ventas.toFixed(2)}` : '—'}
+          active={activeCard === 'total'}
           onClick={() => handleCardClick('total')}
-          className={`bg-white p-5 rounded-[32px] shadow-sm border transition-all cursor-pointer flex flex-col items-center text-center ${
-            activeCard === 'total'
-              ? 'border-blue-500 shadow-blue-100'
-              : 'border-slate-100 hover:border-blue-100'
-          }`}
-        >
-          <div className="bg-emerald-500/10 text-emerald-500 w-10 h-10 rounded-xl flex items-center justify-center mb-3">
-            <Target size={20} strokeWidth={2.5} />
-          </div>
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-tight">
-            Total
-            <br />
-            ventas
-          </p>
-          <p className="text-xs font-black text-slate-900 tracking-tight">
-            {igvSummary ? `S/ ${igvSummary.total_ventas.toFixed(2)}` : '—'}
-          </p>
-        </div>
+        />
       </div>
 
-      {/* Detail panel */}
       {activeCard === 'igv' && igvSummary && (
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 space-y-1">
-          <div className="flex justify-between items-center py-2 border-b border-slate-50">
-            <span className="text-[10px] font-semibold text-slate-400">Base imponible</span>
-            <span className="text-[11px] font-black text-slate-700">
-              S/ {igvSummary.total_sin_igv.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-slate-50">
-            <span className="text-[10px] font-semibold text-slate-400">IGV 18%</span>
-            <span className="text-[11px] font-black text-blue-600">
-              S/ {igvSummary.total_igv.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-[10px] font-black text-slate-600">Total facturado</span>
-            <span className="text-[13px] font-black text-slate-900">
-              S/ {igvSummary.total_ventas.toFixed(2)}
-            </span>
-          </div>
-        </div>
+        <Card className="px-5 py-3">
+          <DetailRow label="Base imponible" value={`S/ ${igvSummary.total_sin_igv.toFixed(2)}`} />
+          <DetailRow label="IGV 18%" value={`S/ ${igvSummary.total_igv.toFixed(2)}`} />
+          <DetailRow
+            label="Total facturado"
+            value={`S/ ${igvSummary.total_ventas.toFixed(2)}`}
+            strong
+          />
+        </Card>
       )}
 
       {activeCard === 'total' && salesByMonth.length > 0 && (
-        <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm px-5 py-4 space-y-1">
+        <Card className="px-5 py-3">
           {salesByMonth.slice(-4).map((item) => (
-            <div
+            <DetailRow
               key={item.month}
-              className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0"
-            >
-              <span className="text-[10px] font-semibold text-slate-400">
-                {new Date(item.month).toLocaleDateString('es-PE', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </span>
-              <span className="text-[11px] font-black text-slate-700">
-                S/ {Number(item.total_sales).toFixed(2)}
-              </span>
-            </div>
+              label={new Date(item.month).toLocaleDateString('es-PE', {
+                month: 'long',
+                year: 'numeric',
+              })}
+              value={`S/ ${Number(item.total_sales).toFixed(2)}`}
+            />
           ))}
-        </div>
+        </Card>
       )}
 
-      {/* SUNAT status row */}
       {summary && (
         <div className="grid grid-cols-3 gap-2">
-          {[
-            {
-              label: 'Emitidos',
-              value: summary.emitted_invoices,
-              color: 'text-emerald-600',
-              bg: 'bg-emerald-50',
-            },
-            {
-              label: 'Procesando',
-              value: summary.pending_invoices,
-              color: 'text-amber-600',
-              bg: 'bg-amber-50',
-            },
-            {
-              label: 'Fallidos',
-              value: summary.failed_invoices,
-              color: 'text-red-500',
-              bg: 'bg-red-50',
-            },
-          ].map((s) => (
-            <div key={s.label} className={`${s.bg} rounded-[24px] p-3 text-center`}>
-              <p className={`text-base font-black ${s.color}`}>{s.value}</p>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-0.5">
-                {s.label}
-              </p>
+          {statusSummary.map((status) => (
+            <div key={status.label} className={`rounded-card p-3 text-center ${status.classes}`}>
+              <p className="text-xl font-bold">{status.value}</p>
+              <p className="mt-0.5 text-xs font-medium">{status.label}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Chart */}
-      <div className="bg-white p-7 rounded-[40px] shadow-sm border border-slate-100">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">
-              Actividad Reciente
-            </h3>
-            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-              Ventas por período
-            </p>
-          </div>
-          <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">
-            LIVE DATA
-          </span>
+      <Card className="p-6">
+        <div className="mb-6">
+          <h3 className="text-base font-semibold text-slate-900">Actividad reciente</h3>
+          <p className="mt-0.5 text-sm text-slate-500">Ventas por período</p>
         </div>
 
-        <div className="w-full" style={{ minWidth: '300px' }}>
+        <div className="w-full min-w-[300px]">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={192}>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="0" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="0" vertical={false} stroke={CHART_GRID} />
                 <XAxis
                   dataKey="name"
-                  fontSize={9}
+                  fontSize={12}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#94a3b8', fontWeight: 700 }}
+                  tick={{ fill: CHART_AXIS_TEXT, fontWeight: 600 }}
                 />
                 <YAxis hide />
                 <Tooltip
                   cursor={{ fill: '#f8fafc' }}
                   formatter={(value) => [`S/ ${Number(value).toFixed(2)}`, 'Ventas']}
                   contentStyle={{
-                    borderRadius: '16px',
+                    borderRadius: '12px',
                     border: 'none',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
-                    fontSize: '10px',
-                    fontWeight: '900',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                    fontSize: '13px',
+                    fontWeight: '600',
                   }}
                 />
                 <Bar dataKey="total" radius={[8, 8, 0, 0]} barSize={32}>
-                  {chartData.map((_, index) => (
+                  {chartData.map((point, index) => (
                     <Cell
-                      key={`cell-${index}`}
-                      fill={index === highlightIndex ? '#4f46e5' : '#e2e8f0'}
+                      key={`cell-${point.name}`}
+                      fill={index === highlightIndex ? CHART_HIGHLIGHT : CHART_MUTED}
                     />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400">
-              <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center mb-4 border border-slate-100">
-                <ShoppingBag size={32} className="opacity-20" />
-              </div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-50">
-                Esperando transacciones
-              </p>
+            <div className="flex flex-col items-center justify-center py-10 text-slate-500">
+              <ShoppingBag size={40} className="mb-3 text-slate-300" />
+              <p className="text-sm">Aún no hay ventas que mostrar.</p>
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
-      {/* Recent invoices */}
       <div className="space-y-4">
-        <div className="flex justify-between items-center px-4">
-          <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">
-            Últimas Operaciones
-          </h3>
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-base font-semibold text-slate-900">Últimas operaciones</h3>
           <button
+            type="button"
             onClick={onHistory}
-            className="text-blue-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1"
+            className="flex min-h-11 items-center gap-1 px-2 text-sm font-semibold text-primary"
           >
-            Ver Todo <TrendingUp size={12} />
+            Ver todo <TrendingUp size={14} />
           </button>
         </div>
 
@@ -342,48 +325,41 @@ const Dashboard: React.FC<DashboardProps> = ({
               .reverse()
               .slice(0, 5)
               .map((inv) => (
-                <div
-                  key={inv.id}
-                  className="bg-white p-5 rounded-[32px] shadow-sm border border-slate-100 flex items-center justify-between hover:border-blue-100 transition-all active:scale-[0.98]"
-                >
-                  <div className="flex items-center gap-4 min-w-0">
+                <Card key={inv.id} className="flex items-center justify-between gap-3 p-4">
+                  <div className="flex min-w-0 items-center gap-4">
                     <div
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+                      className={`flex size-12 shrink-0 items-center justify-center rounded-control ${
                         inv.invoice_type === InvoiceType.BOLETA
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'bg-indigo-50 text-indigo-600'
+                          ? 'bg-accent/10 text-accent'
+                          : 'bg-primary/10 text-primary'
                       }`}
                     >
                       <FileText size={22} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[14px] font-black text-slate-800 truncate uppercase tracking-tight max-w-[120px]">
+                      <p className="truncate text-sm font-semibold text-slate-900">
                         {inv.client_name}
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
                         <StatusBadge status={inv.status} />
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                          {inv.invoice_date}
-                        </span>
+                        <span className="text-xs text-slate-500">{inv.invoice_date}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-slate-900">
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-bold text-slate-900">
                       S/ {Number(inv.total).toFixed(2)}
                     </p>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                    <p className="text-xs text-slate-500">
                       {inv.series}-{inv.number}
                     </p>
                   </div>
-                </div>
+                </Card>
               ))
           ) : (
-            <div className="bg-white/40 p-12 rounded-[40px] border border-dashed border-slate-200 text-center">
-              <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">
-                Comienza a vender para ver historial
-              </p>
-            </div>
+            <Card dashed className="p-10 text-center">
+              <p className="text-sm text-slate-500">Comienza a vender para ver tu historial.</p>
+            </Card>
           )}
         </div>
       </div>

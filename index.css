@@ -2,13 +2,42 @@
 
 @import "tailwindcss";
 
-/* ── Tokens de marca (Tailwind v4) ──
-   Habilitan utilidades bg-primary / text-accent / ring-secondary, etc.
-   La landing tiene su propia hoja (src/pages/landing.css) y ahi ajusta el azul. */
+/* ── Tokens del sistema (Tailwind v4) ──
+   Habilitan utilidades bg-primary / text-accent / rounded-card / text-danger, etc.
+   La landing tiene su propia hoja (src/pages/landing.css) y ahi ajusta el azul.
+
+   Tipografia: se usa la escala de Tailwind tal cual. text-xs (12px) es el minimo
+   permitido y text-sm (14px) el cuerpo; los tamanos arbitrarios text-[Npx] los frena
+   scripts/check-text-sizes.mjs. Neutros: la familia slate. */
 @theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
   --color-primary: #112657;
   --color-accent: #2b7fff;
   --color-secondary: #283450;
+
+  /* Estados. Para un fondo suave usar el mismo token con opacidad: bg-danger/10 text-danger.
+     Van en la gradacion 700 porque tambien se usan como texto: en 600 el ambar no llega al
+     contraste minimo (4.5:1) sobre fondo claro. */
+  --color-success: var(--color-emerald-700);
+  --color-warning: var(--color-amber-700);
+  --color-danger: var(--color-red-700);
+
+  /* Radios por rol, no por tamano: una tarjeta y un campo siempre miden lo mismo. */
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+}
+
+/* iOS hace zoom al enfocar un campo con letra menor a 16px. El viewport ya no lo impide
+   (bloquear el zoom le quita accesibilidad a quien necesita agrandar), asi que el campo
+   se agranda en pantallas tactiles. Va fuera de @layer a proposito: asi gana sobre las
+   utilidades text-sm / text-xs de Tailwind. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 /* Ocultar el icono nativo de revelar/limpiar contrasena (Edge/IE).
