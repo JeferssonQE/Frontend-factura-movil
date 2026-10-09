@@ -1,6 +1,6 @@
 """Procesa los logos de marca a PNG con fondo transparente.
 
-Genera, en public/:
+Lee los maestros de brand/ y genera, en public/:
   - logo-icon.png / pwa-512.png / pwa-192.png  (icono cuadrado redondeado)
   - logo-horizontal-light.png  (texto claro, para fondos oscuros)
   - logo-horizontal-dark.png   (texto oscuro, para fondos claros)
@@ -10,7 +10,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-PUBLIC = Path(__file__).parent / "public"
+ROOT = Path(__file__).resolve().parent.parent
+BRAND = ROOT / "brand"
+PUBLIC = ROOT / "public"
 
 
 def _content_bbox(rgb: np.ndarray) -> tuple[int, int, int, int]:
@@ -33,7 +35,7 @@ def _rounded_mask(size: int, radius_ratio: float = 0.225) -> Image.Image:
 
 
 def build_icon() -> Image.Image:
-    src = Image.open(PUBLIC / "logo_app.png").convert("RGB")
+    src = Image.open(BRAND / "logo_app.png").convert("RGB")
     arr = np.asarray(src)
     x0, y0, x1, y1 = _content_bbox(arr)
 
@@ -57,7 +59,7 @@ def _alpha_from_distance(arr: np.ndarray, color: np.ndarray,
 
 def remove_white(filename: str, soft: float = 30.0, hard: float = 75.0) -> Image.Image:
     """Fondo claro -> transparente. Para logos con foreground oscuro sobre blanco."""
-    img = Image.open(PUBLIC / filename).convert("RGBA")
+    img = Image.open(BRAND / filename).convert("RGBA")
     arr = np.asarray(img).astype(np.float32)
     arr[..., 3] = _alpha_from_distance(arr, np.array([255, 255, 255]), soft, hard)
     return Image.fromarray(arr.astype(np.uint8), "RGBA")
@@ -70,7 +72,7 @@ def remove_canvas_and_box(filename: str) -> Image.Image:
     2) Eliminacion global del navy de la caja (el foreground claro no es navy).
     Deja solo el texto/icono claro sobre transparente.
     """
-    img = Image.open(PUBLIC / filename).convert("RGBA")
+    img = Image.open(BRAND / filename).convert("RGBA")
     w, h = img.size
     seeds = [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]
     for seed in seeds:
