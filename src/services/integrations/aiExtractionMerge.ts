@@ -83,6 +83,9 @@ const mergeClient = (
     name: name || current.name,
     document: isValidDocument(document) ? document : current.document,
     phone: phone || current.phone,
+    // La IA lee un ticket o un audio, no el domicilio del comprador: se conserva el que
+    // ya habia, que solo puede venir de la busqueda por RUC.
+    address: current.address,
     invoice_date: isEmittableDate(date) ? date : current.invoice_date,
   };
 };

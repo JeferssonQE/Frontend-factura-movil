@@ -168,6 +168,17 @@ interface BillingProps {
   }) => Promise<void>;
 }
 
+// Un solo sitio que sabe como es un cliente vacio. Estaba escrito tres veces iguales, y
+// agregar un campo obligaba a acordarse de los tres: al sumar la direccion, dos se
+// quedaron atras y solo lo vio el compilador.
+const clienteVacio = (): BillingClientData => ({
+  name: '',
+  document: '',
+  phone: '',
+  address: '',
+  invoice_date: new Date().toLocaleDateString('en-CA'),
+});
+
 const Billing: React.FC<BillingProps> = ({
   sender,
   products,
@@ -182,12 +193,7 @@ const Billing: React.FC<BillingProps> = ({
   onRefresh,
 }) => {
   const [invoiceType, setInvoiceType] = useState<InvoiceType>(InvoiceType.BOLETA);
-  const [clientData, setClientData] = useState<BillingClientData>({
-    name: '',
-    document: '',
-    phone: '',
-    invoice_date: new Date().toLocaleDateString('en-CA'),
-  });
+  const [clientData, setClientData] = useState<BillingClientData>(clienteVacio);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingType, setProcessingType] = useState<'image' | 'audio' | null>(null);
@@ -296,7 +302,13 @@ const Billing: React.FC<BillingProps> = ({
     setDocumentLookup('searching');
     const result = await lookupService.lookupRuc(value);
     if (result?.razon_social) {
-      setClientData((prev) => ({ ...prev, name: result.razon_social }));
+      // La direccion venia en la respuesta y se descartaba aqui, asi que toda factura
+      // salia sin domicilio en el PDF. Es lo unico que la trae: con DNI no hay de donde.
+      setClientData((prev) => ({
+        ...prev,
+        name: result.razon_social,
+        address: result.direccion ?? prev.address,
+      }));
       setDocumentLookup('found');
     } else {
       setDocumentLookup('notfound');
@@ -615,12 +627,7 @@ const Billing: React.FC<BillingProps> = ({
 
   const resetForm = () => {
     stopPolling();
-    setClientData({
-      name: '',
-      document: '',
-      phone: '',
-      invoice_date: new Date().toLocaleDateString('en-CA'),
-    });
+    setClientData(clienteVacio());
     setItems([]);
     setDocumentLookup('idle');
     setPreviewImage(null);
@@ -743,6 +750,7 @@ const Billing: React.FC<BillingProps> = ({
         client_id: null,
         client_name: clientData.name.trim().toUpperCase(),
         client_document: clientData.document || null,
+        client_address: clientData.address || null,
         invoice_type: invoiceType,
         series,
         number: nextNumber,
@@ -765,12 +773,7 @@ const Billing: React.FC<BillingProps> = ({
       };
 
       await onSaveDraft(invoiceData);
-      setClientData({
-        name: '',
-        document: '',
-        phone: '',
-        invoice_date: new Date().toLocaleDateString('en-CA'),
-      });
+      setClientData(clienteVacio());
       setItems([]);
       setDocumentLookup('idle');
       setPreviewImage(null);
@@ -797,6 +800,7 @@ const Billing: React.FC<BillingProps> = ({
         client_id: null,
         client_name: clientData.name.trim().toUpperCase(),
         client_document: clientData.document || null,
+        client_address: clientData.address || null,
         invoice_type: invoiceType,
         series,
         number: nextNumber,

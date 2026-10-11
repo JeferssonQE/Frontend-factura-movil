@@ -165,6 +165,7 @@ export interface Invoice {
   client_id: number | null;
   client_name: string;
   client_document: string | null;
+  client_address: string | null;
   invoice_type: InvoiceType;
   series: string;
   number: string;
@@ -195,6 +196,7 @@ export interface CreateInvoiceInput {
   client_id?: number;
   client_name?: string;
   client_document?: string;
+  client_address?: string;
   invoice_type: InvoiceType;
   invoice_date: string;
   items: Array<{
@@ -256,5 +258,7 @@ export interface BillingClientData {
   name: string;
   document: string;
   phone: string;
+  /** Solo se llena desde la busqueda por RUC: la consulta de DNI no devuelve domicilio. */
+  address: string;
   invoice_date: string;
 }
