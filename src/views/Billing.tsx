@@ -765,6 +765,9 @@ const Billing: React.FC<BillingProps> = ({
         task_id: null,
         pdf_ticket_url: null,
         pdf_a4_url: null,
+        // Los llena el proveedor al cerrar el comprobante, no el borrador.
+        xml_url: null,
+        cdr_url: null,
         sunat_message: null,
         referenced_invoice_id: null,
         credit_note_reason: null,
@@ -815,6 +818,9 @@ const Billing: React.FC<BillingProps> = ({
         task_id: null,
         pdf_ticket_url: null,
         pdf_a4_url: null,
+        // Los llena el proveedor al cerrar el comprobante, no el borrador.
+        xml_url: null,
+        cdr_url: null,
         sunat_message: null,
         referenced_invoice_id: null,
         credit_note_reason: null,

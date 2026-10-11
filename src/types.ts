@@ -183,6 +183,11 @@ export interface Invoice {
   // Los dos formatos, como link: el archivo ya no viaja dentro de la factura.
   pdf_ticket_url: string | null;
   pdf_a4_url: string | null;
+  /** El comprobante de verdad, firmado. El PDF es solo su representacion impresa. */
+  xml_url: string | null;
+  /** La constancia que SUNAT firma al aceptarlo: la prueba de validez ante un reclamo.
+   *  Llega vacia mientras SUNAT no haya respondido. */
+  cdr_url: string | null;
   sunat_message: string | null;
   referenced_invoice_id: number | null;
   credit_note_reason: CreditNoteReason | null;

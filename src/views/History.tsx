@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   CornerUpLeft,
   Download,
+  FileCode,
   FileText,
   FileX,
   Loader2,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   Search,
   Share2,
+  ShieldCheck,
   Trash2,
   X,
   Zap,
@@ -553,6 +555,42 @@ const History: React.FC<HistoryProps> = ({
                       }}
                     />
                   </div>
+
+                  {/* La prueba ante SUNAT, aparte de los PDF a proposito: un PDF no
+                      prueba nada -cualquiera fabrica uno-. El XML firmado es el
+                      comprobante, y el CDR es la constancia que SUNAT firma al aceptarlo.
+                      Es lo que se le ensena a un cliente que duda de su validez. */}
+                  {(selectedInvoice.xml_url || selectedInvoice.cdr_url) && (
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs text-slate-500">
+                        Prueba ante SUNAT
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedInvoice.cdr_url && (
+                          <a
+                            href={selectedInvoice.cdr_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            <ShieldCheck size={14} />
+                            Constancia de SUNAT
+                          </a>
+                        )}
+                        {selectedInvoice.xml_url && (
+                          <a
+                            href={selectedInvoice.xml_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            <FileCode size={14} />
+                            XML firmado
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {canRetryOrEmit && (
                     <Button
