@@ -120,12 +120,19 @@ export type InvoiceItemInput = z.infer<typeof invoiceItemSchema>;
 
 // ==================== INVOICE FORM CLIENT DATA ====================
 export const invoiceClientDataSchema = z.object({
+  // Opcional a proposito: una boleta no necesita comprador. SUNAT solo obliga a
+  // identificarlo desde S/ 700, y el backend acepta la venta sin cliente. Exigirlo aqui
+  // era una regla del frontend, mas estricta que la ley y que el backend, que impedia la
+  // venta mas comun de una bodega. Para FACTURA lo exige el refine de abajo.
   name: z
     .string()
     .trim()
-    .min(2, 'Nombre del cliente es requerido')
     .max(150, 'Máximo 150 caracteres')
     .transform((value) => value.toUpperCase()),
+  address: optionalText.refine(
+    (value) => !value || value.length <= 200,
+    'Máximo 200 caracteres',
+  ),
   document: optionalText.refine(
     (value) => !value || /^\d+$/.test(value),
     'Documento solo debe contener números',
@@ -177,6 +184,13 @@ export const invoiceEmissionSchema = z
     {
       message: 'Para BOLETA el documento debe ser DNI de 8 dígitos o RUC de 11 dígitos',
       path: ['clientData.document'],
+    },
+  )
+  .refine(
+    (data) => data.invoice_type !== InvoiceType.FACTURA || data.clientData.name.length >= 2,
+    {
+      message: 'Para FACTURA el cliente debe tener razón social',
+      path: ['clientData.name'],
     },
   );
 
