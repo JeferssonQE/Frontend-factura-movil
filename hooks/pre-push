@@ -1,0 +1,57 @@
+#!/bin/sh
+# Corre lo mismo que el CI -lint y typecheck- ANTES de empujar a main.
+#
+# Existe porque el CI tumbo el despliegue dos veces en un dia, y la segunda fue por dos
+# errores de FORMATO que `tsc` no ve: verificar la mitad del CI no es verificar.
+#
+# A diferencia de los repos de Python, esto corre sobre el ARBOL DE TRABAJO y no sobre
+# una copia del commit: biome necesita node_modules, y montarlo en un worktree en cada
+# push costaria mas de lo que protege. A cambio exige que el arbol este limpio, que es lo
+# que hace que arbol y commit sean la misma cosa.
+#
+# Para instalarlo:   git config core.hooksPath hooks
+# Para saltarlo:     git push --no-verify   (decision tuya, no mia)
+
+set -e
+
+empuja_main=""
+sha=""
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+    case "$remote_ref" in
+        refs/heads/main)
+            empuja_main="si"
+            sha="$local_sha"
+            ;;
+    esac
+done
+[ -n "$empuja_main" ] || exit 0
+
+case "$sha" in *[!0]*) ;; *) exit 0 ;; esac
+
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    cat >&2 <<'FIN'
+
+pre-push: hay cambios sin commitear.
+
+Las comprobaciones corren sobre el arbol de trabajo, asi que con cambios sueltos
+estarian probando algo distinto de lo que se empuja. Commitealos o guardalos.
+FIN
+    exit 1
+fi
+
+echo "pre-push: lint y typecheck, lo mismo que corre el CI..."
+if npm run lint && npm run typecheck; then
+    echo "pre-push: verde. Adelante."
+    exit 0
+fi
+
+cat >&2 <<'FIN'
+
+pre-push: el CI fallaria con este commit.
+
+Si son errores de FORMATO, se arreglan solos:
+    npm run format
+
+Despues vuelve a intentar, o usa git push --no-verify si sabes lo que haces.
+FIN
+exit 1

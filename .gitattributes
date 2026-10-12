@@ -1,0 +1,3 @@
+# Un script de shell con CRLF no arranca: "bad interpreter". Que se cheque siempre en LF,
+# aunque el clon sea de Windows.
+hooks/* text eol=lf
