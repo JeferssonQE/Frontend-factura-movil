@@ -21,6 +21,7 @@ import {
   type Client,
   type CreditNoteReason,
   type Invoice,
+  InvoiceStatus,
   type Product,
   type Sender,
   type SenderUpsertInput,
@@ -80,6 +81,7 @@ type AppDataContextValue = {
   emitDraft: (invoiceId: number) => Promise<void>;
   deleteInvoice: (invoiceId: number) => Promise<void>;
   emitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => Promise<void>;
+  voidInvoice: (invoice: Invoice, reason: string) => Promise<void>;
   patchInvoice: (invoiceId: number, patch: Partial<Invoice>) => void;
 
   logout: () => void;
@@ -554,6 +556,29 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [refreshAllData, showToast, isContador],
   );
 
+  const voidInvoice = useCallback(
+    async (invoice: Invoice, reason: string) => {
+      try {
+        const senderId = isContador ? (activeSenderIdRef.current ?? undefined) : undefined;
+        const actualizado = await invoiceService.voidInvoice(invoice.id, reason, senderId);
+
+        await refreshAllData();
+        // SUNAT procesa la baja y puede tardar: el comprobante puede seguir EMITIDO un
+        // rato. Decirle "anulado" al cajero cuando todavia existe le haria cobrar dos
+        // veces o entregar mercaderia creyendo que la venta se deshizo.
+        showToast(
+          actualizado.status === InvoiceStatus.ANULADO
+            ? 'COMPROBANTE ANULADO'
+            : 'BAJA ENVIADA A SUNAT. PUEDE TARDAR UNOS MINUTOS',
+        );
+      } catch (error) {
+        console.error('Error anulando el comprobante:', error);
+        showToast(getUserMessage(error, 'No se pudo anular el comprobante.'), 'error');
+      }
+    },
+    [refreshAllData, showToast, isContador],
+  );
+
   const login = useCallback(async (email: string, password: string) => {
     const response = await authService.login(email, password);
     setUser(response.user as AuthUser);
@@ -661,6 +686,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       emitDraft,
       deleteInvoice,
       emitCreditNote,
+      voidInvoice,
       patchInvoice,
 
       logout,
@@ -696,6 +722,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       emitDraft,
       deleteInvoice,
       emitCreditNote,
+      voidInvoice,
       patchInvoice,
       logout,
     ],

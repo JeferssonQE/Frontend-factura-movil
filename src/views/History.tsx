@@ -55,6 +55,7 @@ interface HistoryProps {
   invoices: Invoice[];
   activeSenderId?: number | null;
   onEmitCreditNote: (baseInvoice: Invoice, reason: CreditNoteReason) => void;
+  onVoidInvoice: (invoice: Invoice, reason: string) => void;
   onEmitDraft: (invoiceId: number) => Promise<void>;
   onDeleteInvoice: (invoiceId: number) => Promise<void>;
   onRefresh: () => void;
@@ -183,6 +184,7 @@ const History: React.FC<HistoryProps> = ({
   invoices,
   activeSenderId,
   onEmitCreditNote,
+  onVoidInvoice,
   onEmitDraft,
   onDeleteInvoice,
   onRefresh,
@@ -193,6 +195,7 @@ const History: React.FC<HistoryProps> = ({
   const [selectedInvoicePdf, setSelectedInvoicePdf] = useState<string | null>(null);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [showReasonSelect, setShowReasonSelect] = useState(false);
+  const [motivoBaja, setMotivoBaja] = useState('');
   const [isEmittingDraft, setIsEmittingDraft] = useState(false);
   const [isDeletingInvoice, setIsDeletingInvoice] = useState(false);
 
@@ -255,12 +258,22 @@ const History: React.FC<HistoryProps> = ({
     if (!selectedInvoice) return;
     onEmitCreditNote(selectedInvoice, reason);
     setShowReasonSelect(false);
+    setMotivoBaja('');
     setSelectedInvoice(null);
   };
 
   const closeDetail = () => {
     setSelectedInvoice(null);
     setShowReasonSelect(false);
+    setMotivoBaja('');
+  };
+
+  const handleVoid = () => {
+    if (!selectedInvoice || motivoBaja.trim().length < 3) return;
+    onVoidInvoice(selectedInvoice, motivoBaja.trim());
+    setShowReasonSelect(false);
+    setMotivoBaja('');
+    setSelectedInvoice(null);
   };
 
   const canRetryOrEmit =
@@ -488,26 +501,74 @@ const History: React.FC<HistoryProps> = ({
               )}
 
               {showReasonSelect ? (
-                <div className="space-y-3 print:hidden">
-                  <p className="text-center text-sm font-semibold text-slate-700">
-                    Motivo de la nota de crédito
-                  </p>
+                selectedInvoice.can_be_voided ? (
+                  // Dentro del plazo: se da de baja y el comprobante deja de existir.
+                  <div className="space-y-3 print:hidden">
+                    <Notice tone="info">
+                      <p className="font-semibold">Se dará de baja ante SUNAT</p>
+                      <p className="mt-0.5 font-normal">
+                        El comprobante dejará de existir. No se puede deshacer.
+                      </p>
+                    </Notice>
 
-                  <div className="grid grid-cols-1 gap-2">
-                    {CREDIT_NOTE_REASONS.map((reason) => (
-                      <Button
-                        key={reason.id}
-                        variant="outline"
-                        fullWidth
-                        className="justify-between"
-                        onClick={() => handleCreateCreditNote(reason.id)}
-                      >
-                        {reason.label}
-                        <ArrowLeftRight size={16} className="text-slate-400" />
-                      </Button>
-                    ))}
+                    <label
+                      className="block text-sm font-semibold text-slate-700"
+                      htmlFor="motivo-baja"
+                    >
+                      ¿Por qué se anula?
+                    </label>
+                    <input
+                      id="motivo-baja"
+                      type="text"
+                      value={motivoBaja}
+                      onChange={(evento) => setMotivoBaja(evento.target.value)}
+                      maxLength={100}
+                      placeholder="Ej: el cliente se arrepintió"
+                      className="min-h-11 w-full rounded-control border border-slate-300 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary focus:outline-none"
+                    />
+
+                    <Button
+                      variant="danger"
+                      fullWidth
+                      disabled={motivoBaja.trim().length < 3}
+                      onClick={handleVoid}
+                    >
+                      Confirmar anulación
+                    </Button>
                   </div>
-                </div>
+                ) : (
+                  // Fuera de plazo: SUNAT ya no admite la baja y la via es la nota de
+                  // credito. Se le dice al cajero ANTES de elegir, no despues de que el
+                  // proveedor lo rechace.
+                  <div className="space-y-3 print:hidden">
+                    <Notice tone="info">
+                      <p className="font-semibold">Ya pasó el plazo para dar de baja</p>
+                      <p className="mt-0.5 font-normal">
+                        SUNAT solo lo admite durante 7 días. Se emitirá una nota de crédito, que
+                        revierte la venta con un comprobante nuevo.
+                      </p>
+                    </Notice>
+
+                    <p className="text-center text-sm font-semibold text-slate-700">
+                      Motivo de la nota de crédito
+                    </p>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {CREDIT_NOTE_REASONS.map((reason) => (
+                        <Button
+                          key={reason.id}
+                          variant="outline"
+                          fullWidth
+                          className="justify-between"
+                          onClick={() => handleCreateCreditNote(reason.id)}
+                        >
+                          {reason.label}
+                          <ArrowLeftRight size={16} className="text-slate-400" />
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )
               ) : (
                 <div className="flex flex-col gap-3 pt-2 print:hidden">
                   <div className="flex justify-between gap-2">
@@ -648,7 +709,7 @@ const History: React.FC<HistoryProps> = ({
                     selectedInvoice.status === InvoiceStatus.EMITIDO &&
                     (NOTA_CREDITO_ENABLED ? (
                       <Button variant="outline" fullWidth onClick={() => setShowReasonSelect(true)}>
-                        <CornerUpLeft size={18} /> Emitir nota de crédito
+                        <CornerUpLeft size={18} /> Anular comprobante
                       </Button>
                     ) : (
                       <a

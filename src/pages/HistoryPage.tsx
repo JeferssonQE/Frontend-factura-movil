@@ -19,6 +19,7 @@ const HistoryPage: React.FC = () => {
   const {
     invoices,
     emitCreditNote,
+    voidInvoice,
     emitDraft,
     deleteInvoice,
     refreshAllData,
@@ -92,6 +93,7 @@ const HistoryPage: React.FC = () => {
       invoices={invoices}
       activeSenderId={activeSenderId}
       onEmitCreditNote={emitCreditNote}
+      onVoidInvoice={voidInvoice}
       onEmitDraft={emitDraft}
       onDeleteInvoice={deleteInvoice}
       onRefresh={refreshAllData}

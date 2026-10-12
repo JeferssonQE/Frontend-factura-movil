@@ -138,6 +138,12 @@ export const invoiceService = {
     );
   },
 
+  async voidInvoice(invoiceId: number, reason: string, senderId?: number): Promise<Invoice> {
+    return apiClient.post<Invoice>(`/invoices/${invoiceId}/void${qs({ sender_id: senderId })}`, {
+      reason,
+    });
+  },
+
   async deleteInvoice(invoiceId: number, senderId?: number): Promise<void> {
     return apiClient.delete<void>(`/invoices/${invoiceId}${qs({ sender_id: senderId })}`);
   },
