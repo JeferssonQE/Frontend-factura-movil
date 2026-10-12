@@ -1,3 +1,8 @@
+# El arbol de trabajo en LF, igual que lo que guarda git y que lo que ve el runner.
+# Sin esto, en Windows core.autocrlf deja los archivos en CRLF y el formateador de biome
+# reporta errores que NO existen en el CI: la barrera de pre-push frenaba pushes buenos.
+* text=auto eol=lf
+
 # Un script de shell con CRLF no arranca: "bad interpreter". Que se cheque siempre en LF,
 # aunque el clon sea de Windows.
 hooks/* text eol=lf
