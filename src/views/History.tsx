@@ -32,6 +32,10 @@ import { pdfCache } from '../services/business/pdfCache';
 import { PDFService } from '../services/integrations/pdfService';
 import { CreditNoteReason, type Invoice, InvoiceStatus, InvoiceType } from '../types';
 
+// Lo que dice el comprobante cuando nadie se identifico. Es el relleno que SUNAT
+// admite en boletas de menos de S/ 700, asi que es la verdad y no un placeholder.
+const SIN_COMPRADOR = 'CLIENTE VARIOS';
+
 const NOTA_CREDITO_ENABLED = false; // en debug — reactivar cuando el flujo de NC esté estable
 
 const SOPORTE_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP ?? '51963376546';
@@ -40,7 +44,7 @@ const buildSoporteWhatsappUrl = (invoice: Invoice): string => {
   const mensaje = [
     'Hola, necesito anular un comprobante:',
     `• Documento: ${invoice.series}-${invoice.number} (ID ${invoice.id})`,
-    `• Cliente: ${invoice.client_name}`,
+    `• Cliente: ${invoice.client_name ?? SIN_COMPRADOR}`,
     `• Total: S/ ${Number(invoice.total).toFixed(2)}`,
     `• Fecha: ${invoice.invoice_date}`,
   ].join('\n');
@@ -234,10 +238,14 @@ const History: React.FC<HistoryProps> = ({
   }, [selectedInvoice]);
 
   const filtered = invoices.filter((invoice) => {
+    // Sin el `?? ''` esto reventaba la pantalla entera: una boleta sin comprador guarda
+    // client_name en null -SUNAT no obliga a identificarlo- y el filtro asumia texto.
+    // El numero tampoco esta hasta que el proveedor lo asigna.
+    const termino = search.toLowerCase();
     const matchesSearch =
-      invoice.client_name.toLowerCase().includes(search.toLowerCase()) ||
-      invoice.series.toLowerCase().includes(search.toLowerCase()) ||
-      invoice.number.includes(search);
+      (invoice.client_name ?? '').toLowerCase().includes(termino) ||
+      (invoice.series ?? '').toLowerCase().includes(termino) ||
+      (invoice.number ?? '').includes(search);
 
     const matchesType = filterType === 'ALL' || invoice.invoice_type === filterType;
     return matchesSearch && matchesType;
@@ -322,7 +330,7 @@ const History: React.FC<HistoryProps> = ({
 
                 <div className="min-w-0">
                   <h4 className="truncate pr-2 text-sm font-semibold text-slate-900">
-                    {invoice.client_name}
+                    {invoice.client_name ?? SIN_COMPRADOR}
                   </h4>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <StatusBadge status={invoice.status} />
@@ -392,7 +400,7 @@ const History: React.FC<HistoryProps> = ({
               <Card tone="muted" className="p-5">
                 <p className="mb-1 text-xs text-slate-500">Cliente</p>
                 <p className="text-base font-semibold text-slate-900">
-                  {selectedInvoice.client_name}
+                  {selectedInvoice.client_name ?? SIN_COMPRADOR}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
                   Documento: {selectedInvoice.client_document || 'sin documento'}
@@ -562,9 +570,7 @@ const History: React.FC<HistoryProps> = ({
                       Es lo que se le ensena a un cliente que duda de su validez. */}
                   {(selectedInvoice.xml_url || selectedInvoice.cdr_url) && (
                     <div className="mt-3">
-                      <p className="mb-2 text-xs text-slate-500">
-                        Prueba ante SUNAT
-                      </p>
+                      <p className="mb-2 text-xs text-slate-500">Prueba ante SUNAT</p>
                       <div className="flex flex-wrap gap-2">
                         {selectedInvoice.cdr_url && (
                           <a

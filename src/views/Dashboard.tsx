@@ -338,7 +338,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-slate-900">
-                        {inv.client_name}
+                        {inv.client_name ?? 'CLIENTE VARIOS'}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <StatusBadge status={inv.status} />

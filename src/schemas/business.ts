@@ -129,10 +129,7 @@ export const invoiceClientDataSchema = z.object({
     .trim()
     .max(150, 'Máximo 150 caracteres')
     .transform((value) => value.toUpperCase()),
-  address: optionalText.refine(
-    (value) => !value || value.length <= 200,
-    'Máximo 200 caracteres',
-  ),
+  address: optionalText.refine((value) => !value || value.length <= 200, 'Máximo 200 caracteres'),
   document: optionalText.refine(
     (value) => !value || /^\d+$/.test(value),
     'Documento solo debe contener números',
@@ -186,13 +183,10 @@ export const invoiceEmissionSchema = z
       path: ['clientData.document'],
     },
   )
-  .refine(
-    (data) => data.invoice_type !== InvoiceType.FACTURA || data.clientData.name.length >= 2,
-    {
-      message: 'Para FACTURA el cliente debe tener razón social',
-      path: ['clientData.name'],
-    },
-  );
+  .refine((data) => data.invoice_type !== InvoiceType.FACTURA || data.clientData.name.length >= 2, {
+    message: 'Para FACTURA el cliente debe tener razón social',
+    path: ['clientData.name'],
+  });
 
 export type InvoiceEmissionInput = z.infer<typeof invoiceEmissionSchema>;
 

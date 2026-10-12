@@ -163,7 +163,9 @@ export interface Invoice {
   id: number;
   sender_id: number;
   client_id: number | null;
-  client_name: string;
+  /** Puede faltar: una boleta no necesita comprador. SUNAT solo obliga a
+   *  identificarlo desde S/ 700. */
+  client_name: string | null;
   client_document: string | null;
   client_address: string | null;
   invoice_type: InvoiceType;
