@@ -36,7 +36,11 @@ import { CreditNoteReason, type Invoice, InvoiceStatus, InvoiceType } from '../t
 // admite en boletas de menos de S/ 700, asi que es la verdad y no un placeholder.
 const SIN_COMPRADOR = 'CLIENTE VARIOS';
 
-const NOTA_CREDITO_ENABLED = false; // en debug — reactivar cuando el flujo de NC esté estable
+// Encendido el 2026-10-12. El flujo de anulación ya está completo de punta a punta:
+// baja dentro de los 7 días de SUNAT, nota de crédito pasado ese plazo, y la pantalla
+// avisa cuál se usará antes de confirmar. El camino de WhatsApp de abajo se queda como
+// escape por si hay que apagarlo.
+const NOTA_CREDITO_ENABLED = true;
 
 const SOPORTE_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP ?? '51963376546';
 
