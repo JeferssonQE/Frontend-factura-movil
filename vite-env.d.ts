@@ -1,5 +1,6 @@
 // vite-env.d.ts
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/react" />
 
 // Solo lo que el frontend realmente consume. No declarar aqui claves de Supabase ni de
 // Gemini: el frontend no habla con ninguno de los dos, todo pasa por la API.

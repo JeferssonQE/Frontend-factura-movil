@@ -19,7 +19,10 @@ export default defineConfig(() => {
       tailwindcss(),
       react(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // 'prompt' y no 'autoUpdate': la version nueva espera a que el usuario toque
+        // "Actualizar" (ver hooks/useAppUpdate.ts). Recargar solo podia borrar una venta a
+        // medio escribir; y con autoUpdate la pestana abierta seguia con el JS viejo igual.
+        registerType: 'prompt',
         includeAssets: ['favicon.ico', 'robots.txt', 'logo-icon.png'],
         manifest: {
           name: 'FactuMovil AI',
