@@ -1,5 +1,6 @@
 // schemas/business.ts
 import { z } from 'zod';
+import { normalizePeruMobile, PERU_MOBILE_ERROR } from '../services/utils/peruMobile';
 import type { IgvType } from '../types';
 import { CreditNoteReason, InvoiceType } from '../types';
 
@@ -24,6 +25,11 @@ const currency = (label: string) =>
     .number({ error: `${label} debe ser un número válido` })
     .min(0, `${label} no puede ser negativo`)
     .max(999999.99, `${label} muy alto`);
+
+// Opcional: vacio pasa como ''. Si viene, sale normalizado a 9 digitos.
+const optionalPeruMobile = optionalText
+  .refine((value) => !value || normalizePeruMobile(value) !== null, PERU_MOBILE_ERROR)
+  .transform((value) => (value ? (normalizePeruMobile(value) ?? '') : ''));
 
 const creditNoteReasonEnum = z.enum(
   Object.values(CreditNoteReason) as [CreditNoteReason, ...CreditNoteReason[]],
@@ -73,9 +79,7 @@ export const clientSchema = z
       (value) => !value || /^\d{11}$/.test(value),
       'RUC debe tener exactamente 11 dígitos',
     ),
-    phone: optionalText
-      .refine((value) => !value || /^[0-9\s\-+()]+$/.test(value), 'Teléfono inválido')
-      .refine((value) => !value || value.length <= 20, 'Máximo 20 caracteres'),
+    phone: optionalPeruMobile,
   })
   .refine((data) => !(data.dni && data.ruc), {
     message: 'Ingresa DNI o RUC, no ambos',
@@ -134,9 +138,7 @@ export const invoiceClientDataSchema = z.object({
     (value) => !value || /^\d+$/.test(value),
     'Documento solo debe contener números',
   ),
-  phone: optionalText
-    .refine((value) => !value || /^[0-9\s\-+()]+$/.test(value), 'Teléfono inválido')
-    .refine((value) => !value || value.length <= 20, 'Máximo 20 caracteres'),
+  phone: optionalPeruMobile,
   invoice_date: z
     .string()
     .trim()

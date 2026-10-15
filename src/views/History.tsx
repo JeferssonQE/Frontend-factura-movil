@@ -9,12 +9,10 @@ import {
   FileText,
   FileX,
   Loader2,
-  type LucideIcon,
   MessageCircle,
   Printer,
   RefreshCw,
   Search,
-  Share2,
   ShieldCheck,
   Trash2,
   X,
@@ -22,6 +20,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import WhatsAppIcon from '../components/icons/WhatsAppIcon';
 import StatusBadge from '../components/StatusBadge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -148,7 +147,7 @@ const TILE_TONE_CLASSES: Record<TileTone, string> = {
 };
 
 interface ActionTileProps {
-  icon: LucideIcon;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
   tone: TileTone;
   loading: boolean;
@@ -197,6 +196,8 @@ const History: React.FC<HistoryProps> = ({
   const [filterType, setFilterType] = useState<TypeFilter>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedInvoicePdf, setSelectedInvoicePdf] = useState<string | null>(null);
+  const selectedInvoicePdfUrl =
+    selectedInvoice?.pdf_a4_url ?? selectedInvoice?.pdf_ticket_url ?? null;
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [showReasonSelect, setShowReasonSelect] = useState(false);
   const [motivoBaja, setMotivoBaja] = useState('');
@@ -610,21 +611,16 @@ const History: React.FC<HistoryProps> = ({
                       }}
                     />
                     <ActionTile
-                      icon={Share2}
-                      label="Compartir"
+                      icon={WhatsAppIcon}
+                      label="WhatsApp"
                       tone="success"
-                      loading={isPdfLoading}
-                      disabled={isPdfLoading || !selectedInvoicePdf}
-                      onClick={async () => {
-                        if (!selectedInvoicePdf) return;
-                        const filename = `${selectedInvoice.series}-${selectedInvoice.number}.pdf`;
-                        const shared = await PDFService.shareNative(
-                          selectedInvoicePdf,
-                          filename,
-                          `Comprobante ${filename}`,
+                      loading={false}
+                      disabled={!selectedInvoicePdfUrl}
+                      onClick={() => {
+                        if (!selectedInvoicePdfUrl) return;
+                        PDFService.openExternal(
+                          PDFService.buildWhatsAppUrl(selectedInvoice, '', selectedInvoicePdfUrl),
                         );
-                        if (shared) return;
-                        PDFService.shareWhatsApp(selectedInvoice as any, '', selectedInvoicePdf);
                       }}
                     />
                   </div>

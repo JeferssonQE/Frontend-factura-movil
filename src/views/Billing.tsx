@@ -7,12 +7,11 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
-  Download,
+  FileText,
   FlaskConical,
   Images,
   Layers,
   Loader2,
-  MessageCircle,
   Mic,
   Pencil,
   Plus,
@@ -27,6 +26,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import React, { useCallback, useRef, useState } from 'react';
+import WhatsAppIcon from '../components/icons/WhatsAppIcon';
 import ProductFormModal from '../components/ProductFormModal';
 import SaleSummary from '../components/SaleSummary';
 import Button from '../components/ui/Button';
@@ -43,7 +43,6 @@ import { cachedUnits } from '../hooks/useUnits';
 import { invoiceEmissionSchema } from '../schemas/business';
 import { invoiceService } from '../services/business/invoiceService';
 import { lookupService } from '../services/business/lookupService';
-import { pdfCache } from '../services/business/pdfCache';
 import { ApiError, getUserMessage } from '../services/core/apiClient';
 import { type FormSnapshot, mergeExtraction } from '../services/integrations/aiExtractionMerge';
 import { processInvoiceAudio, processInvoiceImage } from '../services/integrations/geminiService';
@@ -212,7 +211,7 @@ const Billing: React.FC<BillingProps> = ({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [emissionStep, setEmissionStep] = useState(0);
   const [emissionSuccess, setEmissionSuccess] = useState<Invoice | null>(null);
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [emissionState, setEmissionState] = useState<EmissionState>(null);
   const [sunatMessage, setSunatMessage] = useState<string | null>(null);
   const [numeroComprobante, setNumeroComprobante] = useState<string | null>(null);
@@ -574,16 +573,11 @@ const Billing: React.FC<BillingProps> = ({
           stopPolling();
           setNumeroComprobante(statusData.nro_comprobante_sunat);
           setSunatMessage(statusData.sunat_message);
+          // El link llega junto con el estado: asi la pantalla de "Emitido" nace completa,
+          // sin esperar a bajar el archivo ni cambiar de botones a medio camino.
+          setPdfUrl(statusData.pdf_url);
           setEmissionState('emitido');
           void refreshUsage();
-          try {
-            // El PDF ya no viaja dentro de la factura: se baja del endpoint, que lo trae
-            // del link que guardo Factu API.
-            const base64 = await pdfCache.load(invoiceId, sender?.id);
-            if (base64) setPdfBase64(base64);
-          } catch {
-            /* PDF opcional */
-          }
         } else if (statusData.status === InvoiceStatus.FALLO) {
           stopPolling();
           setSunatMessage(statusData.sunat_message);
@@ -632,7 +626,7 @@ const Billing: React.FC<BillingProps> = ({
     setDocumentLookup('idle');
     setPreviewImage(null);
     setEmissionSuccess(null);
-    setPdfBase64(null);
+    setPdfUrl(null);
     setErrors([]);
     setEmissionStep(0);
     setEmissionState(null);
@@ -854,24 +848,14 @@ const Billing: React.FC<BillingProps> = ({
     }
   };
 
-  const handleWhatsAppShare = async () => {
-    if (!emissionSuccess || emissionState !== 'emitido') return;
-    if (pdfBase64) {
-      const filename = `${emissionSuccess.series}-${emissionSuccess.number}.pdf`;
-      const shared = await PDFService.shareNative(pdfBase64, filename, `Comprobante ${filename}`);
-      if (shared) return;
-    }
-    PDFService.shareWhatsApp(emissionSuccess as any, clientData.phone, pdfBase64 || undefined);
-  };
-
-  const handleDownloadPdf = () => {
-    if (!pdfBase64 || !emissionSuccess) return;
-    PDFService.downloadPDF(pdfBase64, `${emissionSuccess.series}-${emissionSuccess.number}.pdf`);
+  const handleWhatsAppShare = () => {
+    if (!emissionSuccess || !pdfUrl || emissionState !== 'emitido') return;
+    PDFService.openExternal(PDFService.buildWhatsAppUrl(emissionSuccess, clientData.phone, pdfUrl));
   };
 
   const handleViewPdf = () => {
-    if (!pdfBase64) return;
-    PDFService.viewPDF(pdfBase64);
+    if (!pdfUrl) return;
+    PDFService.openExternal(pdfUrl);
   };
 
   if (emissionState !== null) {
@@ -926,16 +910,25 @@ const Billing: React.FC<BillingProps> = ({
             {!numeroComprobante && <div className="mb-10" />}
 
             <div className="w-full max-w-xs space-y-3">
-              <Button variant="success" size="lg" fullWidth onClick={handleWhatsAppShare}>
-                <MessageCircle size={20} />
-                {pdfBase64 ? 'Compartir PDF' : 'Compartir WhatsApp'}
+              <Button
+                variant="success"
+                size="lg"
+                fullWidth
+                disabled={!pdfUrl}
+                onClick={handleWhatsAppShare}
+              >
+                <WhatsAppIcon size={20} /> Enviar por WhatsApp
               </Button>
 
-              {pdfBase64 && (
-                <Button variant="outline" size="lg" fullWidth onClick={handleDownloadPdf}>
-                  <Download size={18} /> Descargar PDF
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="lg"
+                fullWidth
+                disabled={!pdfUrl}
+                onClick={handleViewPdf}
+              >
+                <FileText size={18} /> Ver PDF
+              </Button>
 
               <Button variant="outline" size="lg" fullWidth onClick={resetForm}>
                 <RotateCcw size={18} /> Nueva venta

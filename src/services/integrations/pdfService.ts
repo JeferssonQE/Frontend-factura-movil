@@ -1,4 +1,5 @@
 // services/pdfService.ts - Manejo de PDFs para compartir
+import { normalizePeruMobile, PERU_COUNTRY_CODE } from '../utils/peruMobile';
 
 export class PDFService {
   /**
@@ -65,81 +66,34 @@ export class PDFService {
   }
 
   /**
-   * Comparte el PDF usando la Web Share API nativa (móvil).
-   * Retorna true si tuvo éxito, false si no está disponible (usar fallback).
+   * Abre un link de terceros (proveedor del PDF, WhatsApp) sin darle acceso a esta
+   * pestaña: sin `noopener`, la pagina abierta podria redirigir la app via `window.opener`.
    */
-  static async shareNative(base64: string, filename: string, title?: string): Promise<boolean> {
-    if (typeof navigator.share !== 'function') return false;
-    try {
-      const blob = this.base64ToBlob(base64);
-      const file = new File([blob], filename, { type: 'application/pdf' });
-      if (navigator.canShare && !navigator.canShare({ files: [file] })) return false;
-      await navigator.share({ files: [file], title: title ?? filename });
-      return true;
-    } catch {
-      return false;
-    }
+  static openExternal(url: string): void {
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   /**
-   * Comparte por WhatsApp con instrucciones
+   * Arma el link de WhatsApp con el comprobante ya dentro del mensaje.
+   * Sin celular, `wa.me/?text=` deja elegir el contacto en la propia app.
    */
-  static shareWhatsApp(invoice: any, clientPhone: string, pdfBase64?: string): void {
-    const message = `Hola ${invoice.clientName},
+  static buildWhatsAppUrl(
+    invoice: {
+      client_name?: string | null;
+      series: string;
+      number: string;
+      total: number | string;
+    },
+    clientPhone: string,
+    pdfUrl: string,
+  ): string {
+    const saludo = invoice.client_name ? `Hola ${invoice.client_name}, ` : 'Hola, ';
+    const message =
+      `${saludo}te envío tu comprobante ${invoice.series}-${invoice.number} ` +
+      `por S/ ${Number(invoice.total).toFixed(2)}:\n${pdfUrl}`;
 
-📄 *Su comprobante electrónico está listo:*
-
-• *Tipo:* ${invoice.type}
-• *Número:* ${invoice.series}-${invoice.number}
-• *Fecha:* ${invoice.date}
-• *Monto Total:* S/ ${Number(invoice.total).toFixed(2)}
-
-${pdfBase64 ? '💾 *El PDF se descargará automáticamente.* Por favor adjúntelo a este chat cuando se lo solicite.' : '📱 Puede solicitar el PDF si lo necesita.'}
-
-✅ *Documento válido ante SUNAT*
-🏢 Gracias por su preferencia.
-
-_Mensaje automático de FactuMovil AI_`;
-
-    // Descargar PDF si existe
-    if (pdfBase64) {
-      this.downloadPDF(pdfBase64, `${invoice.series}-${invoice.number}.pdf`);
-    }
-
-    // Abrir WhatsApp
-    const phone = clientPhone?.replace(/\D/g, '') || '';
-    let whatsappUrl;
-
-    if (phone) {
-      whatsappUrl = `https://wa.me/${phone.startsWith('51') ? phone : `51${phone}`}?text=${encodeURIComponent(message)}`;
-    } else {
-      // Si no hay teléfono, abrir WhatsApp Web con el mensaje copiado
-      whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    }
-
-    setTimeout(() => {
-      window.open(whatsappUrl, '_blank');
-    }, 500); // Delay para que termine la descarga
-  }
-
-  /**
-   * Copia enlace temporal del PDF (para compartir por otros medios)
-   */
-  static async copyPDFLink(base64: string): Promise<string> {
-    // En producción, subirías a un servicio temporal como:
-    // - Supabase Storage (público por 24h)
-    // - Cloudinary
-    // - AWS S3 con URL firmada
-
-    // Por ahora, crear URL local temporal
-    const url = this.createPDFUrl(base64);
-
-    try {
-      await navigator.clipboard.writeText(url);
-      return url;
-    } catch (error) {
-      console.error('Error copiando enlace:', error);
-      return url;
-    }
+    const mobile = clientPhone ? normalizePeruMobile(clientPhone) : null;
+    const recipient = mobile ? `${PERU_COUNTRY_CODE}${mobile}` : '';
+    return `https://wa.me/${recipient}?text=${encodeURIComponent(message)}`;
   }
 }

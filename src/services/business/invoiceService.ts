@@ -57,6 +57,7 @@ export type InvoiceStatusResponse = {
   task_id: string | null;
   sunat_message: string | null;
   pdf_available: boolean;
+  pdf_url: string | null;
   nro_comprobante_sunat: string | null;
   series: string;
   number: string;
