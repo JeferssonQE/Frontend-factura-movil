@@ -36,7 +36,7 @@ import { CreditNoteReason, type Invoice, InvoiceStatus, InvoiceType } from '../t
 const SIN_COMPRADOR = 'CLIENTE VARIOS';
 
 // Encendido el 2026-10-12. El flujo de anulación ya está completo de punta a punta:
-// baja dentro de los 7 días de SUNAT, nota de crédito pasado ese plazo, y la pantalla
+// baja dentro del plazo, nota de crédito pasado ese plazo, y la pantalla
 // avisa cuál se usará antes de confirmar. El camino de WhatsApp de abajo se queda como
 // escape por si hay que apagarlo.
 const NOTA_CREDITO_ENABLED = true;
@@ -549,8 +549,8 @@ const History: React.FC<HistoryProps> = ({
                     <Notice tone="info">
                       <p className="font-semibold">Ya pasó el plazo para dar de baja</p>
                       <p className="mt-0.5 font-normal">
-                        SUNAT solo lo admite durante 7 días. Se emitirá una nota de crédito, que
-                        revierte la venta con un comprobante nuevo.
+                        El plazo para anular este comprobante ya terminó. Se emitirá una nota de
+                        crédito, que revierte la venta con un comprobante nuevo.
                       </p>
                     </Notice>
 

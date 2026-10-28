@@ -163,12 +163,12 @@ export interface Invoice {
   id: number;
   sender_id: number;
   client_id: number | null;
-  /** Puede faltar: una boleta no necesita comprador. SUNAT solo obliga a
-   *  identificarlo desde S/ 700. */
   /** Si anular este comprobante sera una BAJA o ya solo una NOTA DE CREDITO. Lo
-   *  decide el backend: la regla es de SUNAT -7 dias calendario- y aqui no va
+   *  decide el backend: el plazo depende del tipo de comprobante y aqui no va
    *  logica de negocio. */
   can_be_voided?: boolean;
+  /** Puede faltar: una boleta no necesita comprador. SUNAT solo obliga a
+   *  identificarlo desde S/ 700. */
   client_name: string | null;
   client_document: string | null;
   client_address: string | null;
